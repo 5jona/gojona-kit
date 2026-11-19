@@ -39,8 +39,19 @@ body {
 }
 
 /* Transparent outer canvas mode for native hardware-blurred WebView hosts */
-:root[data-surface="native-glass"] {
+:root[data-surface="native-glass"],
+:root[data-surface="native-glass"][data-theme] {
+  --surface-canvas-light: transparent;
+  --surface-canvas-dark: transparent;
   --surface-canvas: transparent;
+  --surface-panel-light: transparent;
+  --surface-panel-dark: transparent;
+  --surface-panel: transparent;
+}
+
+html[data-surface="native-glass"],
+html[data-surface="native-glass"] body {
+  background-color: transparent;
 }
 
 :root[data-surface="native-glass"] .pochita-shell-backdrop {
