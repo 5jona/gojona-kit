@@ -47,10 +47,20 @@ export function TelemetryTab({ onLog }: TelemetryTabProps) {
       null,
       2,
     );
-    const res = await bridge.writeFileAtomic('/etc/example/profile.json', payload);
-    const msg = `保存遥测策略配置 (上限 ${chargeCeilingPercent}%) -> errno=${res.errno}`;
-    onLog(msg);
-    pushToast('配置已保存', 'success');
+    try {
+      const res = await bridge.writeFileAtomic('/etc/example/profile.json', payload);
+      const msg = `保存遥测策略配置 (上限 ${chargeCeilingPercent}%) -> errno=${res.errno}`;
+      onLog(msg);
+      if (res.errno !== 0) {
+        pushToast(`保存配置失败 (errno=${res.errno})`, 'danger');
+      } else {
+        pushToast('配置已保存', 'success');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      onLog(`保存策略配置异常: ${msg}`);
+      pushToast(`保存配置失败: ${msg}`, 'danger');
+    }
   };
 
   const handleReset = () => {

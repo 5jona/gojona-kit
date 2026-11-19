@@ -4,10 +4,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { isValidThemeId, THEME_REGISTRY } from './registry.ts';
+import { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME } from './tokens.ts';
 import type {
   ColorMode,
   ResolvedColorScheme,
@@ -17,8 +19,7 @@ import type {
   ThemeSyncPayload,
 } from './types.ts';
 
-export const STORAGE_KEY_THEME = 'pochita:theme';
-export const STORAGE_KEY_SCHEME = 'pochita:color-scheme';
+export { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
 
 function readStoredTheme(fallback: ThemeId): ThemeId {
   if (typeof window === 'undefined') return fallback;
@@ -34,7 +35,7 @@ function readStoredColorMode(fallback: ColorMode): ColorMode {
   if (typeof window === 'undefined') return fallback;
   try {
     const val = window.localStorage.getItem(STORAGE_KEY_SCHEME);
-    if (val === 'light' || val === 'dark') return val;
+    if (val === 'light' || val === 'dark' || val === 'system') return val;
     return fallback;
   } catch {
     return fallback;
@@ -100,6 +101,9 @@ export function ThemeProvider({
   const [systemScheme, setSystemScheme] = useState<ResolvedColorScheme>(getSystemScheme);
   const [internalSurfaceMode, setInternalSurfaceMode] = useState<SurfaceMode>(defaultSurfaceMode);
 
+  const onThemeSyncRef = useRef(onThemeSync);
+  onThemeSyncRef.current = onThemeSync;
+
   const surfaceMode = controlledSurfaceMode ?? internalSurfaceMode;
   const resolvedScheme: ResolvedColorScheme = colorMode === 'system' ? systemScheme : colorMode;
   const theme = THEME_REGISTRY[themeId];
@@ -116,12 +120,7 @@ export function ThemeProvider({
   const setColorMode = useCallback((nextMode: ColorMode) => {
     setColorModeState(nextMode);
     try {
-      if (nextMode === 'system') {
-        // Remove override cleanly rather than pinning literal value.
-        window.localStorage.removeItem(STORAGE_KEY_SCHEME);
-      } else {
-        window.localStorage.setItem(STORAGE_KEY_SCHEME, nextMode);
-      }
+      window.localStorage.setItem(STORAGE_KEY_SCHEME, nextMode);
     } catch {
       // Ignore storage errors in restricted contexts.
     }
@@ -150,7 +149,7 @@ export function ThemeProvider({
       if (ev.key === STORAGE_KEY_THEME) {
         setThemeIdState(isValidThemeId(ev.newValue) ? ev.newValue : defaultTheme);
       } else if (ev.key === STORAGE_KEY_SCHEME) {
-        if (ev.newValue === 'light' || ev.newValue === 'dark') {
+        if (ev.newValue === 'light' || ev.newValue === 'dark' || ev.newValue === 'system') {
           setColorModeState(ev.newValue);
         } else {
           setColorModeState('system');
@@ -169,13 +168,13 @@ export function ThemeProvider({
       updateMetaColorScheme(colorMode);
     }
 
-    onThemeSync?.({
+    onThemeSyncRef.current?.({
       themeId,
       colorScheme: resolvedScheme,
       wantsNativeBlur: theme.wantsNativeBlur,
       cornerRadiusPx: theme.defaultCornerRadiusPx,
     });
-  }, [themeId, surfaceMode, colorMode, resolvedScheme, theme, onThemeSync]);
+  }, [themeId, surfaceMode, colorMode, resolvedScheme, theme]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({

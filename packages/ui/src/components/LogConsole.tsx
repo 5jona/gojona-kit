@@ -1,4 +1,5 @@
-import { Copy, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertCircle, Check, Copy, Trash2 } from 'lucide-react';
 import { cn } from '../lib/cn.ts';
 import { Button } from './Button.tsx';
 
@@ -23,6 +24,25 @@ const LEVEL_STYLES: Record<NonNullable<LogEntry['level']>, string> = {
   error: 'text-[var(--danger)]',
 };
 
+function copyTextFallback(text: string): boolean {
+  if (typeof document === 'undefined') return false;
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-9999px';
+  textArea.style.top = '-9999px';
+  textArea.setAttribute('readonly', '');
+  document.body.appendChild(textArea);
+  try {
+    textArea.select();
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
 export function LogConsole({
   entries,
   onClear,
@@ -30,9 +50,38 @@ export function LogConsole({
   maxHeightClassName = 'max-h-52',
   className,
 }: LogConsoleProps) {
-  const handleCopy = () => {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = async () => {
     const text = entries.map((e) => `[${e.timestamp}] ${e.message}`).join('\n');
-    void navigator.clipboard?.writeText(text);
+    let success = false;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        success = true;
+      } else {
+        success = copyTextFallback(text);
+      }
+    } catch {
+      success = copyTextFallback(text);
+    }
+
+    setCopyStatus(success ? 'copied' : 'error');
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+    }
+    timerRef.current = window.setTimeout(() => {
+      setCopyStatus('idle');
+    }, 1500);
   };
 
   return (
@@ -49,8 +98,22 @@ export function LogConsole({
             disabled={entries.length === 0}
             aria-label="复制日志"
           >
-            <Copy className="size-3.5" />
-            复制
+            {copyStatus === 'copied' ? (
+              <>
+                <Check className="size-3.5 text-[var(--success)]" />
+                已复制
+              </>
+            ) : copyStatus === 'error' ? (
+              <>
+                <AlertCircle className="size-3.5 text-[var(--danger)]" />
+                复制失败
+              </>
+            ) : (
+              <>
+                <Copy className="size-3.5" />
+                复制
+              </>
+            )}
           </Button>
           {onClear ? (
             <Button

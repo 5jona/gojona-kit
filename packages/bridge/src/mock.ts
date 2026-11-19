@@ -2,6 +2,7 @@ import type {
   ContainerAction,
   ExecOptions,
   ExecResult,
+  HostEventListener,
   MockExecHandler,
   MockRpcHandler,
 } from './types.ts';
@@ -14,7 +15,11 @@ const customRpcHandlers = new Map<string, MockRpcHandler>();
  */
 export function registerMockExec(namespace: string, handler: MockExecHandler): () => void {
   customExecHandlers.set(namespace, handler);
-  return () => customExecHandlers.delete(namespace);
+  return () => {
+    if (customExecHandlers.get(namespace) === handler) {
+      customExecHandlers.delete(namespace);
+    }
+  };
 }
 
 /**
@@ -22,7 +27,11 @@ export function registerMockExec(namespace: string, handler: MockExecHandler): (
  */
 export function registerMockRpc(namespace: string, handler: MockRpcHandler): () => void {
   customRpcHandlers.set(namespace, handler);
-  return () => customRpcHandlers.delete(namespace);
+  return () => {
+    if (customRpcHandlers.get(namespace) === handler) {
+      customRpcHandlers.delete(namespace);
+    }
+  };
 }
 
 function getFileStorageKey(namespace: string, path: string): string {
@@ -94,3 +103,95 @@ export function dispatchMockContainerAction(
 ): void {
   callback?.(action);
 }
+
+/**
+ * Standalone mock transport simulating the host bridge and daemon endpoints
+ * for testing and isolated browser execution.
+ */
+export class MockTransport {
+  private readonly listeners = new Map<string, Set<HostEventListener>>();
+  private readonly storage = new Map<string, string>();
+  private config: Record<string, unknown>;
+  private status: Record<string, unknown>;
+
+  constructor(options: {
+    initialConfig?: Record<string, unknown>;
+    initialStatus?: Record<string, unknown>;
+  } = {}) {
+    this.config = options.initialConfig ?? {
+      version: 1,
+      enabled: true,
+      panel: {
+        themeId: 'coloros-glass',
+        colorMode: 'dark',
+        blurRadiusPx: 160,
+      },
+    };
+    this.status = options.initialStatus ?? {
+      pid: 14820,
+      uid: 1000,
+      uptimeMs: 184_200,
+      enabled: true,
+      panelState: 'open',
+    };
+  }
+
+  async invoke<T = unknown>(method: string, params?: unknown): Promise<T> {
+    if (method === 'daemon.ping') {
+      return { pong: true, daemonUptimeMs: 184_200, timestampMs: Date.now() } as T;
+    }
+    if (method === 'daemon.status') {
+      return { ...this.status } as T;
+    }
+    if (method === 'config.get') {
+      return { ...this.config } as T;
+    }
+    if (method === 'config.patchAppearance') {
+      const patch = (params ?? {}) as Record<string, unknown>;
+      const existingPanel = (this.config.panel as Record<string, unknown>) ?? {};
+      this.config = {
+        ...this.config,
+        panel: { ...existingPanel, ...patch },
+      };
+      return { ...this.config } as T;
+    }
+    return runMockRpc('default', method, params) as Promise<T>;
+  }
+
+  async readFile(path: string): Promise<string | null> {
+    return this.storage.get(path) ?? null;
+  }
+
+  async writeFile(path: string, content: string): Promise<ExecResult> {
+    this.storage.set(path, content);
+    return { errno: 0, stdout: 'OK', stderr: '' };
+  }
+
+  subscribe(event: string, listener: HostEventListener): () => void {
+    let set = this.listeners.get(event);
+    if (!set) {
+      set = new Set();
+      this.listeners.set(event, set);
+    }
+    set.add(listener);
+    return () => {
+      set?.delete(listener);
+      if (set && set.size === 0) {
+        this.listeners.delete(event);
+      }
+    };
+  }
+
+  emit(event: string, payload?: unknown): void {
+    const set = this.listeners.get(event);
+    if (!set) return;
+    for (const listener of set) {
+      listener(payload);
+    }
+  }
+
+  getListenerCount(event: string): number {
+    return this.listeners.get(event)?.size ?? 0;
+  }
+}
+

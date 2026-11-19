@@ -1,18 +1,22 @@
 {
   "name": "@pochita/bridge",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "files": [
+    "src"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import ./test/register-ts.mjs --test test/*.test.mjs"
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

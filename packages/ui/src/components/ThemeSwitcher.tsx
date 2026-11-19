@@ -71,7 +71,7 @@ export function ThemeSwitcher({ compact = false, className }: ThemeSwitcherProps
                 aria-pressed={active}
                 onClick={() => setColorMode(opt.mode)}
                 className={cn(
-                  'inline-flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-control)-3px)] px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150',
+                  'inline-flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-control)-3px)] px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                   active
                     ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-xs'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
@@ -89,7 +89,7 @@ export function ThemeSwitcher({ compact = false, className }: ThemeSwitcherProps
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2" role="group" aria-label="界面主题">
         {THEME_LIST.map((item) => {
           const active = themeId === item.id;
           return (
@@ -150,7 +150,7 @@ export function ThemeSwitcher({ compact = false, className }: ThemeSwitcherProps
               aria-pressed={active}
               onClick={() => setColorMode(opt.mode)}
               className={cn(
-                'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[calc(var(--radius-control)-3px)] px-2.5 py-1.5 text-xs font-medium transition-all duration-150',
+                'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[calc(var(--radius-control)-3px)] px-2.5 py-1.5 text-xs font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                 active
                   ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',

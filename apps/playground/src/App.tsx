@@ -1,5 +1,5 @@
 import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BridgeProvider, createBridge } from '@pochita/bridge';
 import {
   AppShell,
@@ -59,6 +59,8 @@ export default function App() {
       }),
     [appendLog],
   );
+
+  useEffect(() => () => bridge.dispose(), [bridge]);
 
   const handleThemeSync = useCallback(
     (payload: ThemeSyncPayload) => {

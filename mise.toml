@@ -1,2 +1,21 @@
 [tools]
 pnpm = "12.22.0"
+
+[task_config]
+dir = "{{config_root}}"
+
+[tasks.typecheck]
+description = "Run TypeScript typecheck across all workspace packages"
+run = "pnpm typecheck"
+
+[tasks.test]
+description = "Run Vitest unit tests across workspace packages"
+run = "pnpm test"
+
+[tasks.build]
+description = "Build playground application"
+run = "pnpm build"
+
+[tasks.check]
+description = "Run typecheck, unit tests, and playground build"
+run = "pnpm typecheck && pnpm test && pnpm build"

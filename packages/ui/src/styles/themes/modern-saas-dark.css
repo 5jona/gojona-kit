@@ -67,6 +67,8 @@
   --scrollbar-track: var(--scrollbar-track-light);
   --panel-shadow: var(--panel-shadow-light);
   --card-shadow: var(--card-shadow-light);
+  --surface-toast: light-dark(rgba(255, 255, 255, 0.96), rgba(24, 24, 27, 0.96));
+  --thumb-bg: light-dark(#ffffff, #f4f4f5);
 
   @media (prefers-color-scheme: dark) {
     --surface-canvas: var(--surface-canvas-dark);
@@ -106,6 +108,8 @@
     --danger: light-dark(var(--danger-light), var(--danger-dark));
     --scrollbar-thumb: light-dark(var(--scrollbar-thumb-light), var(--scrollbar-thumb-dark));
     --scrollbar-track: light-dark(var(--scrollbar-track-light), var(--scrollbar-track-dark));
+    --surface-toast: light-dark(rgba(255, 255, 255, 0.96), rgba(24, 24, 27, 0.96));
+    --thumb-bg: light-dark(#ffffff, #f4f4f5);
   }
 
   &:has(> head > meta[name="color-scheme"][content="dark"]) {

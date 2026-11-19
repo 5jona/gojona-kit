@@ -43,3 +43,6 @@ export function createWebUiViteConfig(options = {}) {
     },
   });
 }
+
+export const createPochitaViteConfig = createWebUiViteConfig;
+

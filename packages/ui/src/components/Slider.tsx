@@ -61,7 +61,10 @@ export function Slider({
         <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-[var(--radius-pill)] bg-[var(--surface-elevated)] border border-[var(--border-hairline)]">
           <SliderPrimitive.Range className="absolute h-full rounded-[var(--radius-pill)] bg-[var(--accent)]" />
         </SliderPrimitive.Track>
-        <SliderPrimitive.Thumb className="block size-5 cursor-grab rounded-full border-2 border-[var(--accent)] bg-white shadow-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:cursor-grabbing" />
+        <SliderPrimitive.Thumb
+          aria-label={label}
+          className="block size-5 cursor-grab rounded-full border-2 border-[var(--accent)] bg-[var(--thumb-bg,#ffffff)] shadow-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:cursor-grabbing"
+        />
       </SliderPrimitive.Root>
 
       {presets && presets.length > 0 ? (

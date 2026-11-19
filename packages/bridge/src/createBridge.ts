@@ -1,7 +1,15 @@
-import { createContext, createElement, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { detectRuntime } from './detect.ts';
 import { HostTransport } from './host.ts';
-import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic, shellQuote } from './ksu.ts';
+import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
 import {
   dispatchMockContainerAction,
   mockReadFile,
@@ -16,6 +24,7 @@ import type {
   ExecOptions,
   ExecResult,
   HostEventListener,
+  WriteFileAtomicOptions,
 } from './types.ts';
 
 /**
@@ -23,11 +32,17 @@ import type {
  * KernelSU WebUI, and browser mock preview modes behind a single interface.
  */
 export function createBridge(options: BridgeOptions = {}): BridgeClient {
-  const env = options.forceEnv ?? detectRuntime();
+  const allowUrlOverride = options.allowUrlOverride ?? options.allowQueryOverride;
+  const env =
+    options.forceEnv ?? detectRuntime({ allowUrlOverride });
   const mockNamespace = options.mockNamespace ?? 'default';
   const transport =
     env === 'host'
-      ? new HostTransport({ wsUrl: options.wsUrl, timeoutMs: options.timeoutMs })
+      ? new HostTransport({
+        wsUrl: options.wsUrl,
+        timeoutMs: options.timeoutMs,
+        allowedOrigins: options.allowedOrigins,
+      })
       : null;
 
   const exec = async (cmd: string, execOpts?: ExecOptions): Promise<ExecResult> => {
@@ -45,22 +60,22 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return ksuReadFile(path);
     }
     if (env === 'host' && transport) {
-      try {
-        const res = await transport.invoke<{ content: string | null }>('fs.read', { path });
-        return res.content;
-      } catch {
-        return null;
-      }
+      const res = await transport.invoke<{ content: string | null }>('fs.read', { path });
+      return res?.content ?? null;
     }
     return mockReadFile(mockNamespace, path);
   };
 
-  const writeFileAtomic = async (path: string, content: string): Promise<ExecResult> => {
+  const writeFileAtomic = async (
+    path: string,
+    content: string,
+    writeOpts?: WriteFileAtomicOptions,
+  ): Promise<ExecResult> => {
     if (env === 'ksu') {
-      return ksuWriteFileAtomic(path, content);
+      return ksuWriteFileAtomic(path, content, writeOpts);
     }
     if (env === 'host' && transport) {
-      return transport.invoke<ExecResult>('fs.writeAtomic', { path, content });
+      return transport.invoke<ExecResult>('fs.writeAtomic', { path, content, options: writeOpts });
     }
     return mockWriteFile(mockNamespace, path, content);
   };
@@ -70,10 +85,12 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return transport.invoke<T>(method, params);
     }
     if (env === 'ksu') {
-      const res = await ksuExec(
-        `echo ${shellQuote(JSON.stringify({ method, params: params ?? null }))}`,
+      if (options.onKsuRpc) {
+        return (await options.onKsuRpc(method, params)) as T;
+      }
+      throw new Error(
+        `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
       );
-      return res as unknown as T;
     }
     return runMockRpc(mockNamespace, method, params, options.onMockRpc) as Promise<T>;
   };
@@ -83,7 +100,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return;
     }
     if (env === 'host' && transport) {
-      void transport.invoke('ui.toast', { message }).catch(() => {});
+      void transport.invoke('ui.toast', { message }).catch(() => { });
     }
   };
 
@@ -92,7 +109,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       await transport.sendContainerAction(action);
       return;
     }
-    if (env === 'browser') {
+    if (env === 'browser' || env === 'mock') {
       dispatchMockContainerAction(action, options.onMockContainerAction);
     }
   };
@@ -101,7 +118,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     if (transport) {
       return transport.subscribe(event, listener);
     }
-    return () => {};
+    return () => { };
   };
 
   const dispose = (): void => {
@@ -130,7 +147,62 @@ export interface BridgeProviderProps {
 }
 
 export function BridgeProvider({ options, client, children }: BridgeProviderProps) {
-  const bridge = useMemo(() => client ?? createBridge(options), [client, options]);
+  const callbacksRef = useRef({
+    onMockExec: options?.onMockExec,
+    onMockRpc: options?.onMockRpc,
+    onKsuRpc: options?.onKsuRpc,
+    onMockContainerAction: options?.onMockContainerAction,
+  });
+  callbacksRef.current = {
+    onMockExec: options?.onMockExec,
+    onMockRpc: options?.onMockRpc,
+    onKsuRpc: options?.onKsuRpc,
+    onMockContainerAction: options?.onMockContainerAction,
+  };
+
+  const forceEnv = options?.forceEnv;
+  const allowUrlOverride = options?.allowUrlOverride ?? options?.allowQueryOverride;
+  const wsUrl = options?.wsUrl;
+  const mockNamespace = options?.mockNamespace;
+  const timeoutMs = options?.timeoutMs;
+  const allowedOriginsKey = options?.allowedOrigins?.join('\u0000') ?? '';
+
+  const bridge = useMemo(() => {
+    if (client) return client;
+    return createBridge({
+      forceEnv,
+      allowUrlOverride,
+      wsUrl,
+      mockNamespace,
+      timeoutMs,
+      allowedOrigins: allowedOriginsKey ? allowedOriginsKey.split('\u0000') : undefined,
+      onMockExec: (cmd, execOpts) =>
+        callbacksRef.current.onMockExec
+          ? callbacksRef.current.onMockExec(cmd, execOpts)
+          : runMockExec(mockNamespace ?? 'default', cmd, execOpts),
+      onMockRpc: (method, params) =>
+        callbacksRef.current.onMockRpc
+          ? callbacksRef.current.onMockRpc(method, params)
+          : runMockRpc(mockNamespace ?? 'default', method, params),
+      onKsuRpc: (method, params) => {
+        if (callbacksRef.current.onKsuRpc) {
+          return callbacksRef.current.onKsuRpc(method, params);
+        }
+        throw new Error(
+          `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
+        );
+      },
+      onMockContainerAction: (action) => callbacksRef.current.onMockContainerAction?.(action),
+    });
+  }, [
+    client,
+    forceEnv,
+    allowUrlOverride,
+    wsUrl,
+    mockNamespace,
+    timeoutMs,
+    allowedOriginsKey,
+  ]);
 
   useEffect(() => {
     return () => {
