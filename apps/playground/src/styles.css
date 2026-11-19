@@ -1,0 +1,9 @@
+@import "@pochita/ui/styles.css";
+@source "./";
+
+.playground-backdrop {
+  background-image:
+    radial-gradient(circle at 18% 18%, rgba(0, 102, 255, 0.28), transparent 46%),
+    radial-gradient(circle at 82% 24%, rgba(16, 185, 129, 0.24), transparent 44%),
+    radial-gradient(circle at 60% 84%, rgba(99, 102, 241, 0.28), transparent 52%);
+}

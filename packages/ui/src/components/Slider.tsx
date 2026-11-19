@@ -1,0 +1,92 @@
+import * as SliderPrimitive from '@radix-ui/react-slider';
+import { cn } from '../lib/cn.ts';
+
+export interface SliderPreset {
+  label: string;
+  value: number;
+}
+
+export interface SliderProps {
+  label?: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  disabled?: boolean;
+  presets?: readonly SliderPreset[];
+  onValueChange: (value: number) => void;
+  className?: string;
+}
+
+export function Slider({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  unit = '',
+  disabled = false,
+  presets,
+  onValueChange,
+  className,
+}: SliderProps) {
+  return (
+    <div className={cn('space-y-2.5', className)}>
+      {label ? (
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="font-medium text-[var(--text-secondary)]">{label}</span>
+          <span className="tabular-nums font-semibold text-[var(--accent)]">
+            {value}
+            {unit}
+          </span>
+        </div>
+      ) : null}
+
+      <SliderPrimitive.Root
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        disabled={disabled}
+        onValueChange={(vals) => {
+          const next = vals[0];
+          if (typeof next === 'number') {
+            onValueChange(next);
+          }
+        }}
+        aria-label={label ?? 'Slider'}
+        className="relative flex h-6 w-full touch-none select-none items-center data-[disabled]:opacity-45"
+      >
+        <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-[var(--radius-pill)] bg-[var(--surface-elevated)] border border-[var(--border-hairline)]">
+          <SliderPrimitive.Range className="absolute h-full rounded-[var(--radius-pill)] bg-[var(--accent)]" />
+        </SliderPrimitive.Track>
+        <SliderPrimitive.Thumb className="block size-5 cursor-grab rounded-full border-2 border-[var(--accent)] bg-white shadow-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:cursor-grabbing" />
+      </SliderPrimitive.Root>
+
+      {presets && presets.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {presets.map((preset) => {
+            const active = Math.abs(value - preset.value) < 1e-6;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                disabled={disabled}
+                onClick={() => onValueChange(preset.value)}
+                className={cn(
+                  'cursor-pointer rounded-[var(--radius-pill)] border px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors disabled:pointer-events-none disabled:opacity-45',
+                  active
+                    ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-fg)]'
+                    : 'border-[var(--border-hairline)] bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}

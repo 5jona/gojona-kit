@@ -1,0 +1,117 @@
+/* ColorOS Glass theme: frosted translucent surfaces with continuous large radii */
+:root,
+:root[data-theme="coloros-glass"] {
+  --radius-panel: 24px;
+  --radius-card: 20px;
+  --radius-control: 14px;
+  --radius-pill: 9999px;
+  --blur-amount: 24px;
+
+  --surface-canvas-light: #eef2f8;
+  --surface-canvas-dark: #0b0e14;
+  --surface-panel-light: rgba(249, 251, 255, 0.78);
+  --surface-panel-dark: rgba(20, 23, 30, 0.78);
+  --surface-card-light: rgba(255, 255, 255, 0.72);
+  --surface-card-dark: rgba(34, 38, 48, 0.68);
+  --surface-elevated-light: rgba(235, 241, 250, 0.84);
+  --surface-elevated-dark: rgba(46, 52, 66, 0.72);
+
+  --text-primary-light: #121826;
+  --text-primary-dark: #f4f7fb;
+  --text-secondary-light: #4e5969;
+  --text-secondary-dark: #a6b0c3;
+
+  --border-hairline-light: rgba(18, 24, 38, 0.08);
+  --border-hairline-dark: rgba(255, 255, 255, 0.14);
+
+  --accent-light: #0066ff;
+  --accent-dark: #3b82f6;
+  --accent-soft-light: rgba(0, 102, 255, 0.12);
+  --accent-soft-dark: rgba(59, 130, 246, 0.22);
+  --accent-fg-light: #ffffff;
+  --accent-fg-dark: #ffffff;
+
+  --success-light: #059669;
+  --success-dark: #34d399;
+  --warning-light: #d97706;
+  --warning-dark: #fbbf24;
+  --danger-light: #dc2626;
+  --danger-dark: #f87171;
+
+  --scrollbar-thumb-light: rgba(18, 24, 38, 0.34);
+  --scrollbar-thumb-dark: rgba(255, 255, 255, 0.36);
+  --scrollbar-track-light: transparent;
+  --scrollbar-track-dark: transparent;
+
+  --panel-shadow-light: 0 18px 46px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --panel-shadow-dark: 0 24px 56px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --card-shadow-light: 0 4px 16px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --card-shadow-dark: 0 6px 20px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  /* Light defaults + OS dark fallback when light-dark() is unsupported */
+  --surface-canvas: var(--surface-canvas-light);
+  --surface-panel: var(--surface-panel-light);
+  --surface-card: var(--surface-card-light);
+  --surface-elevated: var(--surface-elevated-light);
+  --text-primary: var(--text-primary-light);
+  --text-secondary: var(--text-secondary-light);
+  --border-hairline: var(--border-hairline-light);
+  --accent: var(--accent-light);
+  --accent-soft: var(--accent-soft-light);
+  --accent-fg: var(--accent-fg-light);
+  --success: var(--success-light);
+  --warning: var(--warning-light);
+  --danger: var(--danger-light);
+  --scrollbar-thumb: var(--scrollbar-thumb-light);
+  --scrollbar-track: var(--scrollbar-track-light);
+  --panel-shadow: var(--panel-shadow-light);
+  --card-shadow: var(--card-shadow-light);
+
+  @media (prefers-color-scheme: dark) {
+    --surface-canvas: var(--surface-canvas-dark);
+    --surface-panel: var(--surface-panel-dark);
+    --surface-card: var(--surface-card-dark);
+    --surface-elevated: var(--surface-elevated-dark);
+    --text-primary: var(--text-primary-dark);
+    --text-secondary: var(--text-secondary-dark);
+    --border-hairline: var(--border-hairline-dark);
+    --accent: var(--accent-dark);
+    --accent-soft: var(--accent-soft-dark);
+    --accent-fg: var(--accent-fg-dark);
+    --success: var(--success-dark);
+    --warning: var(--warning-dark);
+    --danger: var(--danger-dark);
+    --scrollbar-thumb: var(--scrollbar-thumb-dark);
+    --scrollbar-track: var(--scrollbar-track-dark);
+    --panel-shadow: var(--panel-shadow-dark);
+    --card-shadow: var(--card-shadow-dark);
+  }
+
+  @supports (color: light-dark(white, black)) {
+    --surface-canvas: light-dark(var(--surface-canvas-light), var(--surface-canvas-dark));
+    --surface-panel: light-dark(var(--surface-panel-light), var(--surface-panel-dark));
+    --surface-card: light-dark(var(--surface-card-light), var(--surface-card-dark));
+    --surface-elevated: light-dark(var(--surface-elevated-light), var(--surface-elevated-dark));
+    --text-primary: light-dark(var(--text-primary-light), var(--text-primary-dark));
+    --text-secondary: light-dark(var(--text-secondary-light), var(--text-secondary-dark));
+    --border-hairline: light-dark(var(--border-hairline-light), var(--border-hairline-dark));
+    --accent: light-dark(var(--accent-light), var(--accent-dark));
+    --accent-soft: light-dark(var(--accent-soft-light), var(--accent-soft-dark));
+    --accent-fg: light-dark(var(--accent-fg-light), var(--accent-fg-dark));
+    --success: light-dark(var(--success-light), var(--success-dark));
+    --warning: light-dark(var(--warning-light), var(--warning-dark));
+    --danger: light-dark(var(--danger-light), var(--danger-dark));
+    --scrollbar-thumb: light-dark(var(--scrollbar-thumb-light), var(--scrollbar-thumb-dark));
+    --scrollbar-track: light-dark(var(--scrollbar-track-light), var(--scrollbar-track-dark));
+  }
+
+  &:has(> head > meta[name="color-scheme"][content="dark"]) {
+    --panel-shadow: var(--panel-shadow-dark);
+    --card-shadow: var(--card-shadow-dark);
+  }
+
+  &:has(> head > meta[name="color-scheme"][content="light"]) {
+    --panel-shadow: var(--panel-shadow-light);
+    --card-shadow: var(--card-shadow-light);
+  }
+}

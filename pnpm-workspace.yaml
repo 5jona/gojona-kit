@@ -1,0 +1,7 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+allowBuilds:
+  esbuild: false
+minimumReleaseAgeExclude:
+  - lucide-react@1.75.0

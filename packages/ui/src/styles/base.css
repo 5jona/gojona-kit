@@ -1,0 +1,203 @@
+@import "tailwindcss";
+@source "../";
+
+/* Top-level scroll-fade properties required by scroll-driven animations */
+@property --fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* Always keep root color-scheme responsive to OS preference and <meta> override */
+:root {
+  color-scheme: light dark;
+  font-family: Inter, "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  &:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+  }
+
+  &:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--surface-canvas);
+  color: var(--text-primary);
+}
+
+/* Transparent outer canvas mode for native hardware-blurred WebView hosts */
+:root[data-surface="native-glass"] {
+  --surface-canvas: transparent;
+}
+
+:root[data-surface="native-glass"] .pochita-shell-backdrop {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Container-aware adaptive root shell */
+.pochita-shell {
+  container-type: inline-size;
+  container-name: pochita-shell;
+  background-color: var(--surface-panel);
+  color: var(--text-primary);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+}
+
+.pochita-shell-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pochita-adaptive-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.pochita-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+@media (min-width: 600px) {
+  .pochita-shell-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pochita-adaptive-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .pochita-metrics-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@supports (container-type: inline-size) {
+  @media (min-width: 600px) {
+    .pochita-shell-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .pochita-adaptive-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pochita-metrics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container pochita-shell (min-width: 480px) {
+    .pochita-shell-header {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pochita-adaptive-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .pochita-metrics-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+  }
+}
+
+/* Theme-token card surface */
+.pochita-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+}
+
+.pochita-card-elevated {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-control);
+}
+
+/* Custom themed scrollbars & scroll-driven edge fades */
+.pochita-scroller {
+  overflow-y: auto;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+
+  --fade-size: 0.875rem;
+  scroll-padding-block: var(--fade-size);
+  mask:
+    linear-gradient(black, black) no-clip subtract,
+    linear-gradient(to bottom, black, transparent) 0 0 / 100% var(--fade-start) no-repeat no-clip,
+    linear-gradient(to bottom, transparent, black) 0 100% / 100% var(--fade-end) no-repeat no-clip;
+  animation:
+    pochita-reveal-fade-start linear both,
+    pochita-hide-fade-end linear both;
+  animation-timeline: scroll(self block);
+  animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+}
+
+@supports not (scrollbar-color: auto) {
+  .pochita-scroller {
+    scrollbar-width: auto;
+  }
+
+  .pochita-scroller::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .pochita-scroller::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  .pochita-scroller::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+}
+
+@keyframes pochita-reveal-fade-start {
+  to {
+    --fade-start: var(--fade-size);
+  }
+}
+
+@keyframes pochita-hide-fade-end {
+  from {
+    --fade-end: var(--fade-size);
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

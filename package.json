@@ -1,0 +1,12 @@
+{
+  "name": "pochita-webui-kit",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.22.0",
+  "scripts": {
+    "dev": "pnpm --filter @pochita/playground dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "preview": "pnpm --filter @pochita/playground preview"
+  }
+}
