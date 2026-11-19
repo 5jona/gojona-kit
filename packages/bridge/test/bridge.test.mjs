@@ -59,37 +59,41 @@ test('detectRuntime resolves mock by default and respects allowUrlOverride const
   }
 });
 
-test('MockTransport handles daemon.ping, daemon.status, config methods, fs, and subscriptions', async () => {
-  const transport = new MockTransport();
+test('MockTransport handles built-in ping, custom RPC handlers, fs storage, and event subscriptions', async () => {
+  let state = { themeId: 'coloros-glass', blurRadiusPx: 160 };
+  const transport = new MockTransport({
+    initialFiles: { '/etc/seed.json': '{"seeded":true}' },
+    handlers: {
+      'state.get': () => ({ ...state }),
+      'state.patch': (params) => {
+        state = { ...state, ...(params ?? {}) };
+        return { ...state };
+      },
+    },
+  });
 
-  // daemon.ping
+  // built-in ping
   const ping = await transport.invoke('daemon.ping');
   assert.equal(ping.pong, true);
-  assert.equal(typeof ping.daemonUptimeMs, 'number');
+  assert.equal(typeof ping.timestampMs, 'number');
 
-  // daemon.status
-  const status = await transport.invoke('daemon.status');
-  assert.equal(status.enabled, true);
-  assert.equal(status.pid, 14820);
-  assert.equal(status.panelState, 'open');
+  // custom handlers
+  const initial = await transport.invoke('state.get');
+  assert.equal(initial.themeId, 'coloros-glass');
 
-  // config.get
-  const initialConfig = await transport.invoke('config.get');
-  assert.equal(initialConfig.version, 1);
-  assert.equal(initialConfig.panel.themeId, 'coloros-glass');
-
-  // config.patchAppearance
-  const patched = await transport.invoke('config.patchAppearance', {
+  const patched = await transport.invoke('state.patch', {
     themeId: 'modern-saas-dark',
     blurRadiusPx: 240,
   });
-  assert.equal(patched.panel.themeId, 'modern-saas-dark');
-  assert.equal(patched.panel.blurRadiusPx, 240);
+  assert.equal(patched.themeId, 'modern-saas-dark');
+  assert.equal(patched.blurRadiusPx, 240);
 
-  const reloaded = await transport.invoke('config.get');
-  assert.equal(reloaded.panel.themeId, 'modern-saas-dark');
+  const unsubHandler = transport.registerHandler('custom.echo', (p) => ({ echoed: p }));
+  assert.deepEqual(await transport.invoke('custom.echo', 'hello'), { echoed: 'hello' });
+  unsubHandler();
 
   // readFile / writeFile
+  assert.equal(await transport.readFile('/etc/seed.json'), '{"seeded":true}');
   assert.equal(await transport.readFile('/tmp/state.json'), null);
   const writeRes = await transport.writeFile('/tmp/state.json', '{"saved":true}');
   assert.equal(writeRes.errno, 0);

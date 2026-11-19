@@ -104,58 +104,57 @@ export function dispatchMockContainerAction(
   callback?.(action);
 }
 
+export interface MockTransportOptions {
+  namespace?: string;
+  handlers?: Record<string, (params?: unknown) => unknown | Promise<unknown>>;
+  initialFiles?: Record<string, string>;
+}
+
 /**
- * Standalone mock transport simulating the host bridge and daemon endpoints
+ * Standalone mock transport simulating the host bridge and RPC endpoints
  * for testing and isolated browser execution.
  */
 export class MockTransport {
+  private readonly namespace: string;
   private readonly listeners = new Map<string, Set<HostEventListener>>();
   private readonly storage = new Map<string, string>();
-  private config: Record<string, unknown>;
-  private status: Record<string, unknown>;
+  private readonly handlers = new Map<string, (params?: unknown) => unknown | Promise<unknown>>();
 
-  constructor(options: {
-    initialConfig?: Record<string, unknown>;
-    initialStatus?: Record<string, unknown>;
-  } = {}) {
-    this.config = options.initialConfig ?? {
-      version: 1,
-      enabled: true,
-      panel: {
-        themeId: 'coloros-glass',
-        colorMode: 'dark',
-        blurRadiusPx: 160,
-      },
-    };
-    this.status = options.initialStatus ?? {
-      pid: 14820,
-      uid: 1000,
-      uptimeMs: 184_200,
-      enabled: true,
-      panelState: 'open',
+  constructor(options: MockTransportOptions = {}) {
+    this.namespace = options.namespace ?? 'default';
+    if (options.initialFiles) {
+      for (const [filePath, content] of Object.entries(options.initialFiles)) {
+        this.storage.set(filePath, content);
+      }
+    }
+    if (options.handlers) {
+      for (const [method, handler] of Object.entries(options.handlers)) {
+        this.handlers.set(method, handler);
+      }
+    }
+  }
+
+  registerHandler(
+    method: string,
+    handler: (params?: unknown) => unknown | Promise<unknown>,
+  ): () => void {
+    this.handlers.set(method, handler);
+    return () => {
+      if (this.handlers.get(method) === handler) {
+        this.handlers.delete(method);
+      }
     };
   }
 
   async invoke<T = unknown>(method: string, params?: unknown): Promise<T> {
-    if (method === 'daemon.ping') {
-      return { pong: true, daemonUptimeMs: 184_200, timestampMs: Date.now() } as T;
+    const custom = this.handlers.get(method);
+    if (custom) {
+      return (await custom(params)) as T;
     }
-    if (method === 'daemon.status') {
-      return { ...this.status } as T;
+    if (method === 'ping' || method === 'daemon.ping') {
+      return { pong: true, timestampMs: Date.now() } as T;
     }
-    if (method === 'config.get') {
-      return { ...this.config } as T;
-    }
-    if (method === 'config.patchAppearance') {
-      const patch = (params ?? {}) as Record<string, unknown>;
-      const existingPanel = (this.config.panel as Record<string, unknown>) ?? {};
-      this.config = {
-        ...this.config,
-        panel: { ...existingPanel, ...patch },
-      };
-      return { ...this.config } as T;
-    }
-    return runMockRpc('default', method, params) as Promise<T>;
+    return runMockRpc(this.namespace, method, params) as Promise<T>;
   }
 
   async readFile(path: string): Promise<string | null> {
