@@ -22,6 +22,8 @@
 
   --border-hairline-light: #e4e4e7;
   --border-hairline-dark: rgba(255, 255, 255, 0.09);
+  --glass-divider-light: #e4e4e7;
+  --glass-divider-dark: rgba(255, 255, 255, 0.09);
 
   --accent-light: #4f46e5;
   --accent-dark: #6366f1;
@@ -54,6 +56,7 @@
   --text-primary: var(--text-primary-light);
   --text-secondary: var(--text-secondary-light);
   --border-hairline: var(--border-hairline-light);
+  --glass-divider: var(--glass-divider-light);
   --accent: var(--accent-light);
   --accent-soft: var(--accent-soft-light);
   --accent-fg: var(--accent-fg-light);
@@ -73,6 +76,7 @@
     --text-primary: var(--text-primary-dark);
     --text-secondary: var(--text-secondary-dark);
     --border-hairline: var(--border-hairline-dark);
+    --glass-divider: var(--glass-divider-dark);
     --accent: var(--accent-dark);
     --accent-soft: var(--accent-soft-dark);
     --accent-fg: var(--accent-fg-dark);
@@ -93,6 +97,7 @@
     --text-primary: light-dark(var(--text-primary-light), var(--text-primary-dark));
     --text-secondary: light-dark(var(--text-secondary-light), var(--text-secondary-dark));
     --border-hairline: light-dark(var(--border-hairline-light), var(--border-hairline-dark));
+    --glass-divider: light-dark(var(--glass-divider-light), var(--glass-divider-dark));
     --accent: light-dark(var(--accent-light), var(--accent-dark));
     --accent-soft: light-dark(var(--accent-soft-light), var(--accent-soft-dark));
     --accent-fg: light-dark(var(--accent-fg-light), var(--accent-fg-dark));

@@ -18,7 +18,7 @@ export type {
   ThemeSyncPayload,
 } from './theme/types.ts';
 
-export { AppShell, type AppShellProps } from './components/AppShell.tsx';
+export { AppShell, type AppShellProps, type AppShellVariant } from './components/AppShell.tsx';
 export { Badge, type BadgeProps } from './components/Badge.tsx';
 export { Button, type ButtonProps } from './components/Button.tsx';
 export {

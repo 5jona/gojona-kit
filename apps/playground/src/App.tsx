@@ -1,4 +1,4 @@
-import { Layers, Smartphone, Tablet } from 'lucide-react';
+import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { BridgeProvider, createBridge } from '@pochita/bridge';
 import {
@@ -13,6 +13,7 @@ import {
   ThemeProvider,
   ThemeSwitcher,
   ToastProvider,
+  type AppShellVariant,
   type LogEntry,
   type SurfaceMode,
   type ThemeSyncPayload,
@@ -36,6 +37,7 @@ function createLogEntry(message: string, level: LogEntry['level'] = 'info'): Log
 
 export default function App() {
   const [viewportMode, setViewportMode] = useState<'manager' | 'sidebar'>('manager');
+  const [shellVariant, setShellVariant] = useState<AppShellVariant>('floating');
   const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>('standalone');
   const [logs, setLogs] = useState<LogEntry[]>(() => [
     createLogEntry('工作台已就绪：可在上方实时切换主题、明暗模式与容器宽度'),
@@ -88,19 +90,36 @@ export default function App() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
-                      variant={viewportMode === 'manager' ? 'primary' : 'secondary'}
-                      onClick={() => setViewportMode('manager')}
+                      variant={viewportMode === 'manager' && shellVariant === 'floating' ? 'primary' : 'secondary'}
+                      onClick={() => {
+                        setViewportMode('manager');
+                        setShellVariant('floating');
+                      }}
                     >
                       <Tablet className="size-3.5" />
-                      宽屏管理视图
+                      宽屏浮层
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={shellVariant === 'page' ? 'primary' : 'secondary'}
+                      onClick={() => {
+                        setViewportMode('manager');
+                        setShellVariant('page');
+                      }}
+                    >
+                      <LayoutPanelTop className="size-3.5" />
+                      单画布页面
                     </Button>
                     <Button
                       size="sm"
                       variant={viewportMode === 'sidebar' ? 'primary' : 'secondary'}
-                      onClick={() => setViewportMode('sidebar')}
+                      onClick={() => {
+                        setViewportMode('sidebar');
+                        setShellVariant('drawer');
+                      }}
                     >
                       <Smartphone className="size-3.5" />
-                      340px 抽屉视图
+                      340px 抽屉
                     </Button>
                     <Button
                       size="sm"
@@ -131,13 +150,22 @@ export default function App() {
                 }
               >
                 <AppShell
+                  variant={shellVariant}
                   title="自适应容器预览"
                   subtitle={
-                    viewportMode === 'sidebar'
-                      ? '窄屏抽屉模式 (@container < 480px)'
-                      : '宽屏管理模式 (@container >= 480px)'
+                    shellVariant === 'drawer'
+                      ? undefined
+                      : shellVariant === 'page'
+                        ? '单层全屏画布模式 (variant="page")'
+                        : '宽屏管理模式 (@container >= 480px)'
                   }
-                  className={viewportMode === 'sidebar' ? 'h-[620px]' : 'min-h-[540px]'}
+                  className={
+                    shellVariant === 'drawer'
+                      ? 'h-[620px] rounded-[var(--radius-panel)]'
+                      : shellVariant === 'page'
+                        ? 'min-h-[540px] rounded-[var(--radius-panel)] overflow-hidden'
+                        : 'min-h-[540px]'
+                  }
                   headerTrailing={
                     <Badge variant="success" dot>
                       环境: {bridge.env}
