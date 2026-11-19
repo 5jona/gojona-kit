@@ -22,7 +22,11 @@
 - **Adaptive Container Layout**: Wrap page layouts in `<AppShell>` so content adapts seamlessly via `@container` queries between narrow drawer containers (`~340px`) and full-width views (`>= 480px`).
 - **Accessibility (a11y)**: Every interactive control (`Slider` thumb, `Switch`, `Input`, icon-only `Button`, `Tabs`) must expose an accessible name via `aria-label` or `aria-labelledby`.
 
-## 4. Verification Workflow
+## 4. Android Native Host Integration (`native-glass`)
+- **Window Blur vs. Optical Backdrop Layer Separation**: Never bind stateful custom `Drawable`s (`RuntimeShader`, dynamic tints/rims) to `Window.setBackgroundDrawable(...)` on windows using `Window.setBackgroundBlurRadius(...)`, because AOSP `DecorView` wraps the window background in a `LayerDrawable` with `BackgroundBlurDrawable` and clears the original drawable's `Drawable.Callback`, breaking `invalidateSelf()` on live theme switches. Always bind a pure-transparent, immutable `BlurMaskDrawable` (implementing only `Outline.setRoundRect`) to `Window.setBackgroundDrawable(...)`, attach the optical glass `Drawable` (`GlassBackdropDrawable`) to the regular content container (`contentContainer.background`), rebind `RuntimeShader` to `Paint` after uniform updates, and propagate `updateDensity()` on `onConfigurationChanged`.
+- **Theme Authority & Deferred Host Sync**: Daemon-backed `native-glass` hosts must pass `syncEnabled={hydrated}` to `<ThemeProvider>` and use `useContainerThemeSync({ includeAppearanceHints: false })` from `@pochita/bridge` so stale `localStorage` preferences never race ahead of daemon config on cold start, and appearance controls must send minimal partial RPC patches (`{ themeId }`, `{ colorMode }`, `{ nativeBlurEnabled }`).
+
+## 5. Verification Workflow
 Before finalizing any UI or bridge change:
 1. Run `pnpm typecheck` and resolve all TypeScript diagnostics.
 2. Run `pnpm test` and ensure all unit tests across workspace packages pass.

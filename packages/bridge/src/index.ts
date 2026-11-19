@@ -22,3 +22,9 @@ export { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic, shellQuote } from '
 export { HostTransport } from './host.ts';
 export { MockTransport, registerMockExec, registerMockRpc } from './mock.ts';
 export { BridgeProvider, createBridge, useBridge } from './createBridge.ts';
+export {
+  createThemeSyncDeduplicator,
+  useContainerThemeSync,
+  type ContainerThemeSyncOptions,
+  type ThemeSyncDeduplicator,
+} from './themeSync.ts';

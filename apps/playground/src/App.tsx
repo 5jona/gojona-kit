@@ -1,6 +1,6 @@
 import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BridgeProvider, createBridge } from '@pochita/bridge';
+import { BridgeProvider, createBridge, createThemeSyncDeduplicator } from '@pochita/bridge';
 import {
   AppShell,
   Badge,
@@ -16,7 +16,6 @@ import {
   type AppShellVariant,
   type LogEntry,
   type SurfaceMode,
-  type ThemeSyncPayload,
 } from '@pochita/ui';
 import { BridgeDiagTab } from './components/BridgeDiagTab.tsx';
 import { ExtensionsTab } from './components/ExtensionsTab.tsx';
@@ -62,15 +61,16 @@ export default function App() {
 
   useEffect(() => () => bridge.dispose(), [bridge]);
 
-  const handleThemeSync = useCallback(
-    (payload: ThemeSyncPayload) => {
-      void bridge.sendContainerAction({ type: 'syncTheme', payload });
-    },
+  const themeSyncDeduplicator = useMemo(
+    () =>
+      createThemeSyncDeduplicator((payload) => {
+        void bridge.sendContainerAction({ type: 'syncTheme', payload });
+      }),
     [bridge],
   );
 
   return (
-    <ThemeProvider surfaceMode={surfaceMode} onThemeSync={handleThemeSync}>
+    <ThemeProvider surfaceMode={surfaceMode} onThemeSync={themeSyncDeduplicator.sync}>
       <BridgeProvider client={bridge}>
         <ToastProvider>
           <div className="playground-backdrop min-h-dvh p-3 sm:p-5">

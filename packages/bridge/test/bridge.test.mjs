@@ -5,6 +5,7 @@ import {
   detectRuntime,
   HostTransport,
   MockTransport,
+  createThemeSyncDeduplicator,
 } from '../src/index.ts';
 
 test('shellQuote properly escapes single quotes and shell metacharacters', () => {
@@ -223,4 +224,94 @@ test('HostTransport rejects untrusted origins and accepts valid responses/events
       delete globalThis.window;
     }
   }
+});
+
+test('createThemeSyncDeduplicator deduplicates consecutive identical payloads, respects includeAppearanceHints, and resets', () => {
+  const sent = [];
+  const deduplicator = createThemeSyncDeduplicator((payload) => {
+    sent.push(payload);
+  });
+
+  const payloadA = {
+    themeId: 'coloros-glass',
+    colorScheme: 'dark',
+    wantsNativeBlur: true,
+    cornerRadiusPx: 24,
+  };
+
+  // First call emits
+  deduplicator.sync(payloadA);
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0], payloadA);
+
+  // Consecutive identical call suppressed
+  deduplicator.sync({ ...payloadA });
+  assert.equal(sent.length, 1);
+
+  // Emits on change
+  const payloadB = {
+    themeId: 'modern-saas-dark',
+    colorScheme: 'dark',
+    wantsNativeBlur: false,
+    cornerRadiusPx: 14,
+  };
+  deduplicator.sync(payloadB);
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[1], payloadB);
+
+  // Suppressed again
+  deduplicator.sync(payloadB);
+  assert.equal(sent.length, 2);
+
+  // reset() allows re-emitting identical payload
+  deduplicator.reset();
+  deduplicator.sync(payloadB);
+  assert.equal(sent.length, 3);
+  assert.deepEqual(sent[2], payloadB);
+
+  // includeAppearanceHints: false strips hints and deduplicates based only on themeId + colorScheme
+  const sentStripped = [];
+  const strippedDeduplicator = createThemeSyncDeduplicator(
+    (payload) => {
+      sentStripped.push(payload);
+    },
+    { includeAppearanceHints: false },
+  );
+
+  strippedDeduplicator.sync({
+    themeId: 'coloros-glass',
+    colorScheme: 'light',
+    wantsNativeBlur: true,
+    cornerRadiusPx: 24,
+  });
+
+  assert.equal(sentStripped.length, 1);
+  assert.deepEqual(sentStripped[0], {
+    themeId: 'coloros-glass',
+    colorScheme: 'light',
+  });
+  assert.equal(Object.hasOwn(sentStripped[0], 'wantsNativeBlur'), false);
+  assert.equal(Object.hasOwn(sentStripped[0], 'cornerRadiusPx'), false);
+
+  // Changing only appearance hints does not emit since hints are stripped
+  strippedDeduplicator.sync({
+    themeId: 'coloros-glass',
+    colorScheme: 'light',
+    wantsNativeBlur: false,
+    cornerRadiusPx: 0,
+  });
+  assert.equal(sentStripped.length, 1);
+
+  // Changing colorScheme emits new stripped payload
+  strippedDeduplicator.sync({
+    themeId: 'coloros-glass',
+    colorScheme: 'dark',
+    wantsNativeBlur: false,
+    cornerRadiusPx: 0,
+  });
+  assert.equal(sentStripped.length, 2);
+  assert.deepEqual(sentStripped[1], {
+    themeId: 'coloros-glass',
+    colorScheme: 'dark',
+  });
 });

@@ -15,8 +15,18 @@ export interface ExecOptions {
 export interface ContainerThemeSyncPayload {
   themeId: string;
   colorScheme: 'light' | 'dark';
-  wantsNativeBlur: boolean;
-  cornerRadiusPx: number;
+  /**
+   * Advisory hint indicating whether the web container requests native background blur.
+   * Standalone embedded hosts may adjust their window backdrop blur accordingly,
+   * whereas daemon-authoritative hosts may omit or ignore this hint.
+   */
+  wantsNativeBlur?: boolean;
+  /**
+   * Advisory hint specifying the preferred container corner radius in pixels.
+   * Standalone embedded hosts may round native window/container corners,
+   * whereas daemon-authoritative hosts may omit or ignore this hint.
+   */
+  cornerRadiusPx?: number;
 }
 
 export type ContainerAction =

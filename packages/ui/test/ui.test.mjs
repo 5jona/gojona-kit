@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isValidThemeId, THEME_REGISTRY } from '../src/theme/registry.ts';
+import { buildThemeSyncKey } from '../src/theme/sync.ts';
 import {
   colorWithAlpha,
   readThemeToken,
@@ -124,4 +125,34 @@ test('cn merges Tailwind classes cleanly', () => {
     cn('text-sm font-medium', false && 'opacity-50', 'text-lg'),
     'font-medium text-lg',
   );
+});
+
+test('buildThemeSyncKey produces distinct keys for any field change and identical keys for equal payloads', () => {
+  const basePayload = {
+    themeId: 'coloros-glass',
+    colorScheme: 'dark',
+    wantsNativeBlur: true,
+    cornerRadiusPx: 24,
+  };
+
+  const baseKey = buildThemeSyncKey(basePayload);
+  assert.equal(typeof baseKey, 'string');
+  assert.ok(baseKey.length > 0);
+
+  // Identical payload produces identical key
+  const equalPayload = { ...basePayload };
+  assert.equal(buildThemeSyncKey(equalPayload), baseKey);
+
+  // Any single field change produces a distinct key
+  const differentTheme = { ...basePayload, themeId: 'modern-saas-dark' };
+  assert.notEqual(buildThemeSyncKey(differentTheme), baseKey);
+
+  const differentScheme = { ...basePayload, colorScheme: 'light' };
+  assert.notEqual(buildThemeSyncKey(differentScheme), baseKey);
+
+  const differentBlur = { ...basePayload, wantsNativeBlur: false };
+  assert.notEqual(buildThemeSyncKey(differentBlur), baseKey);
+
+  const differentRadius = { ...basePayload, cornerRadiusPx: 14 };
+  assert.notEqual(buildThemeSyncKey(differentRadius), baseKey);
 });

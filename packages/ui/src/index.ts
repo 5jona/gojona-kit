@@ -4,6 +4,7 @@ export {
   STORAGE_KEY_SCHEME,
   STORAGE_KEY_THEME,
   ThemeProvider,
+  buildThemeSyncKey,
   useTheme,
   type ThemeContextValue,
   type ThemeProviderProps,

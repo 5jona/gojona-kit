@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { isValidThemeId, THEME_REGISTRY } from './registry.ts';
+import { buildThemeSyncKey } from './sync.ts';
 import { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME } from './tokens.ts';
 import type {
   ColorMode,
@@ -20,6 +21,7 @@ import type {
 } from './types.ts';
 
 export { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
+export { buildThemeSyncKey };
 
 function readStoredTheme(fallback: ThemeId): ThemeId {
   if (typeof window === 'undefined') return fallback;
@@ -82,6 +84,13 @@ export interface ThemeProviderProps {
   defaultColorMode?: ColorMode;
   defaultSurfaceMode?: SurfaceMode;
   surfaceMode?: SurfaceMode;
+  /**
+   * Whether theme synchronization with the native container host is enabled.
+   * Daemon-backed embedded WebViews should pass `syncEnabled={hydrated}` so stale
+   * `localStorage` values do not flash the native container backdrop before authoritative config loads.
+   * Defaults to `true`.
+   */
+  syncEnabled?: boolean;
   onThemeSync?: (payload: ThemeSyncPayload) => void;
   children: ReactNode;
 }
@@ -91,6 +100,7 @@ export function ThemeProvider({
   defaultColorMode = 'system',
   defaultSurfaceMode = 'standalone',
   surfaceMode: controlledSurfaceMode,
+  syncEnabled = true,
   onThemeSync,
   children,
 }: ThemeProviderProps) {
@@ -103,6 +113,7 @@ export function ThemeProvider({
 
   const onThemeSyncRef = useRef(onThemeSync);
   onThemeSyncRef.current = onThemeSync;
+  const lastSyncedKeyRef = useRef<string>('');
 
   const surfaceMode = controlledSurfaceMode ?? internalSurfaceMode;
   const resolvedScheme: ResolvedColorScheme = colorMode === 'system' ? systemScheme : colorMode;
@@ -168,13 +179,21 @@ export function ThemeProvider({
       updateMetaColorScheme(colorMode);
     }
 
-    onThemeSyncRef.current?.({
+    const payload: ThemeSyncPayload = {
       themeId,
       colorScheme: resolvedScheme,
       wantsNativeBlur: theme.wantsNativeBlur,
       cornerRadiusPx: theme.defaultCornerRadiusPx,
-    });
-  }, [themeId, surfaceMode, colorMode, resolvedScheme, theme]);
+    };
+
+    if (syncEnabled) {
+      const syncKey = buildThemeSyncKey(payload);
+      if (syncKey !== lastSyncedKeyRef.current) {
+        lastSyncedKeyRef.current = syncKey;
+        onThemeSyncRef.current?.(payload);
+      }
+    }
+  }, [themeId, surfaceMode, colorMode, resolvedScheme, theme, syncEnabled]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({

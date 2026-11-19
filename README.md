@@ -18,11 +18,21 @@ pochita-webui-kit/
 ### `@pochita/ui`
 
 Tailwind- and Radix-based UI component library and theme management primitives:
-- **Components**: `AppShell`, `Button`, `Input`, `Card`, `SettingRow`, `Slider`, `Switch`, `Tabs`, `Badge`, `LogConsole`, `MetricTile`, `ThemeSwitcher`, and `ToastProvider`.
+- **Components & Providers**: `AppShell`, `Button`, `Input`, `Card`, `SettingRow`, `Slider`, `Switch`, `Tabs`, `Badge`, `LogConsole`, `MetricTile`, `ThemeSwitcher`, `ToastProvider`, and `ThemeProvider`.
+  - `ThemeProvider`: Manages theme and color mode. Supports `syncEnabled?: boolean` (defaults to `true`); daemon-backed embedded WebViews should pass `syncEnabled={hydrated}` so stale `localStorage` values do not flash the native container backdrop before authoritative config loads.
 - **Canvas & Theme Helpers**:
+  - `buildThemeSyncKey(payload)`: Computes a deterministic serialization key to deduplicate container theme synchronization events.
   - `readThemeToken(tokenName, scheme, fallback, root?)`: Resolves concrete scheme-qualified CSS custom properties (`--${name}-${scheme}`) for 2D Canvas or WebGL contexts where CSS `light-dark(...)` is unsupported.
   - `colorWithAlpha(color, alpha)`: Converts `#rgb`, `#rrggbb`, `rgb(...)`, or `rgba(...)` color values into an `rgba(r, g, b, alpha)` string with clamped alpha in the `[0, 1]` range.
   - `THEME_BOOTSTRAP_SCRIPT`: Synchronous inline script for `<head>` to hydrate saved theme and color-scheme attributes before first paint, eliminating theme flash.
+
+### `@pochita/bridge`
+
+Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, and browser mock environments:
+- **Core APIs**: `createBridge`, `BridgeProvider`, `useBridge`, and `detectRuntime`.
+- **Host Theme Synchronization**:
+  - `useContainerThemeSync(options?)`: React hook providing a stable callback for `<ThemeProvider onThemeSync={...} />` with zero boilerplate, wrapping `createThemeSyncDeduplicator` and delegating to `bridge.sendContainerAction({ type: 'syncTheme', payload })`.
+  - `createThemeSyncDeduplicator(send, options?)`: Pure deduplicator suppressing consecutive identical theme payloads. With `includeAppearanceHints: false`, appearance hints (`wantsNativeBlur`, `cornerRadiusPx`) are stripped to preserve daemon authority.
 
 ## Prerequisites
 
