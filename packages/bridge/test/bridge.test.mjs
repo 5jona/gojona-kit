@@ -484,3 +484,50 @@ test('createBridge supports pluginId, invokePlugin, onPluginEvent, onPluginBacke
 
   bridge.dispose();
 });
+
+test('createBridge routes mock mode storage and event subscriptions through MockTransport', async () => {
+  const mockTransport = new MockTransport({
+    namespace: 'unit-test',
+    initialFiles: { 'prefs.json': '{"v":1}' },
+  });
+  const bridge = createBridge({
+    forceEnv: 'mock',
+    pluginId: 'com.example.demo',
+    mockTransport,
+  });
+
+  assert.equal(await bridge.readFile('prefs.json'), '{"v":1}');
+  await bridge.writeFileAtomic('prefs.json', '{"v":2}');
+  assert.equal(await bridge.readFile('prefs.json'), '{"v":2}');
+
+  let backCount = 0;
+  let lastBackendState = null;
+  let lastScopedEvent = null;
+
+  const unsubBack = bridge.onBackPressed(() => {
+    backCount += 1;
+  });
+  const unsubBackend = bridge.onPluginBackendState((state) => {
+    lastBackendState = state;
+  });
+  const unsubPluginEvent = bridge.onPluginEvent('telemetry', (payload) => {
+    lastScopedEvent = payload;
+  });
+
+  mockTransport.emit('panel.backPressed', { timestampMs: 1 });
+  mockTransport.emit('plugin.backendState', { pluginId: 'com.example.demo', state: 'online' });
+  mockTransport.emit('plugin.event', {
+    pluginId: 'com.example.demo',
+    event: 'telemetry',
+    payload: { fps: 120 },
+  });
+
+  assert.equal(backCount, 1);
+  assert.equal(lastBackendState, 'online');
+  assert.deepEqual(lastScopedEvent, { fps: 120 });
+
+  unsubBack();
+  unsubBackend();
+  unsubPluginEvent();
+  bridge.dispose();
+});

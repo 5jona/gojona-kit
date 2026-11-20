@@ -10,13 +10,7 @@ import {
 import { detectPluginId, detectRuntime } from './detect.ts';
 import { HostTransport } from './host.ts';
 import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
-import {
-  dispatchMockContainerAction,
-  mockReadFile,
-  mockWriteFile,
-  runMockExec,
-  runMockRpc,
-} from './mock.ts';
+import { MockTransport, runMockExec, runMockRpc } from './mock.ts';
 import type {
   BridgeClient,
   BridgeOptions,
@@ -24,6 +18,7 @@ import type {
   ExecOptions,
   ExecResult,
   HostEventListener,
+  PluginBackendState,
   WriteFileAtomicOptions,
 } from './types.ts';
 
@@ -36,34 +31,49 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const env = options.forceEnv ?? detectRuntime({ allowUrlOverride });
   const pluginId = detectPluginId(options.pluginId);
   const mockNamespace = options.mockNamespace ?? 'default';
-  const transport =
+  const hostTransport =
     env === 'host'
       ? new HostTransport({
-          wsUrl: options.wsUrl,
-          timeoutMs: options.timeoutMs,
-          allowedOrigins: options.allowedOrigins,
-        })
+        wsUrl: options.wsUrl,
+        timeoutMs: options.timeoutMs,
+        allowedOrigins: options.allowedOrigins,
+      })
+      : null;
+  const ownsMockTransport = !options.mockTransport;
+  const mockTransport =
+    env === 'mock' || env === 'browser'
+      ? (options.mockTransport ??
+        new MockTransport({
+          namespace: mockNamespace,
+          persistToLocalStorage: true,
+          onExec: options.onMockExec,
+          onRpc: options.onMockRpc,
+          onPluginInvoke: options.onMockPluginInvoke,
+          onContainerAction: options.onMockContainerAction,
+        }))
       : null;
 
   const exec = async (cmd: string, execOpts?: ExecOptions): Promise<ExecResult> => {
     if (env === 'ksu') {
       return ksuExec(cmd, { timeoutMs: options.timeoutMs, ...execOpts });
     }
-    if (env === 'host' && transport) {
-      return transport.invoke<ExecResult>('system.exec', { cmd, options: execOpts });
+    if (hostTransport) {
+      return hostTransport.invoke<ExecResult>('system.exec', { cmd, options: execOpts });
     }
-    return runMockExec(mockNamespace, cmd, execOpts, options.onMockExec);
+    return mockTransport
+      ? mockTransport.exec(cmd, execOpts)
+      : runMockExec(mockNamespace, cmd, execOpts, options.onMockExec);
   };
 
   const readFile = async (path: string): Promise<string | null> => {
     if (env === 'ksu') {
       return ksuReadFile(path);
     }
-    if (env === 'host' && transport) {
-      const res = await transport.invoke<{ content: string | null }>('fs.read', { path });
+    if (hostTransport) {
+      const res = await hostTransport.invoke<{ content: string | null }>('fs.read', { path });
       return res?.content ?? null;
     }
-    return mockReadFile(mockNamespace, path);
+    return mockTransport ? mockTransport.readFile(path) : null;
   };
 
   const writeFileAtomic = async (
@@ -74,15 +84,21 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     if (env === 'ksu') {
       return ksuWriteFileAtomic(path, content, writeOpts);
     }
-    if (env === 'host' && transport) {
-      return transport.invoke<ExecResult>('fs.writeAtomic', { path, content, options: writeOpts });
+    if (hostTransport) {
+      return hostTransport.invoke<ExecResult>('fs.writeAtomic', {
+        path,
+        content,
+        options: writeOpts,
+      });
     }
-    return mockWriteFile(mockNamespace, path, content);
+    return mockTransport
+      ? mockTransport.writeFile(path, content)
+      : { errno: -1, stdout: '', stderr: 'No mock transport available' };
   };
 
   const invoke = async <T = unknown>(method: string, params?: unknown): Promise<T> => {
-    if (env === 'host' && transport) {
-      return transport.invoke<T>(method, params);
+    if (hostTransport) {
+      return hostTransport.invoke<T>(method, params);
     }
     if (env === 'ksu') {
       if (options.onKsuRpc) {
@@ -92,23 +108,28 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
         `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
       );
     }
-    return runMockRpc(mockNamespace, method, params, options.onMockRpc) as Promise<T>;
+    return mockTransport
+      ? mockTransport.invoke<T>(method, params)
+      : (runMockRpc(mockNamespace, method, params, options.onMockRpc) as Promise<T>);
   };
 
   const invokePlugin = async <T = unknown>(method: string, params?: unknown): Promise<T> => {
-    if (env === 'host' && transport) {
-      return transport.invoke<T>('plugin.invoke', { method, params });
-    }
-    if (options.onMockPluginInvoke) {
-      return (await options.onMockPluginInvoke(method, params)) as T;
+    if (hostTransport) {
+      return hostTransport.invoke<T>('plugin.invoke', { method, params });
     }
     if (env === 'ksu') {
+      if (options.onMockPluginInvoke) {
+        return (await options.onMockPluginInvoke(method, params)) as T;
+      }
       if (options.onKsuRpc) {
         return (await options.onKsuRpc(`plugin.invoke:${method}`, params)) as T;
       }
       throw new Error(
         `invokePlugin("${method}") is not supported in KernelSU mode unless onMockPluginInvoke or onKsuRpc is provided`,
       );
+    }
+    if (mockTransport) {
+      return mockTransport.invokePlugin<T>(method, params);
     }
     return runMockRpc(
       mockNamespace,
@@ -122,26 +143,27 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     if (env === 'ksu' && ksuToast(message)) {
       return;
     }
-    if (env === 'host' && transport) {
-      void transport.invoke('ui.toast', { message }).catch(() => {});
+    if (hostTransport) {
+      void hostTransport.invoke('ui.toast', { message }).catch(() => { });
     }
   };
 
   const sendContainerAction = async (action: ContainerAction): Promise<void> => {
-    if (env === 'host' && transport) {
-      await transport.sendContainerAction(action);
+    if (hostTransport) {
+      await hostTransport.sendContainerAction(action);
       return;
     }
-    if (env === 'browser' || env === 'mock') {
-      dispatchMockContainerAction(action, options.onMockContainerAction);
-    }
+    mockTransport?.sendContainerAction(action);
   };
 
   const onHostEvent = (event: string, listener: HostEventListener): (() => void) => {
-    if (transport) {
-      return transport.subscribe(event, listener);
+    if (hostTransport) {
+      return hostTransport.subscribe(event, listener);
     }
-    return () => {};
+    if (mockTransport) {
+      return mockTransport.subscribe(event, listener);
+    }
+    return () => { };
   };
 
   const onPluginEvent = <T = unknown>(
@@ -165,14 +187,12 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     };
   };
 
-  const onPluginBackendState = (
-    listener: (state: import('./types.ts').PluginBackendState) => void,
-  ): (() => void) => {
+  const onPluginBackendState = (listener: (state: PluginBackendState) => void): (() => void) => {
     return onHostEvent('plugin.backendState', (data) => {
       if (data && typeof data === 'object') {
         const payloadObj = data as {
           pluginId?: string;
-          state?: import('./types.ts').PluginBackendState;
+          state?: PluginBackendState;
         };
         if (payloadObj.state) {
           listener(payloadObj.state);
@@ -188,7 +208,10 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   };
 
   const dispose = (): void => {
-    transport?.dispose();
+    hostTransport?.dispose();
+    if (ownsMockTransport) {
+      mockTransport?.dispose();
+    }
   };
 
   return {
@@ -235,6 +258,7 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
 
   const pluginId = options?.pluginId;
   const forceEnv = options?.forceEnv;
+  const mockTransport = options?.mockTransport;
   const allowUrlOverride = options?.allowUrlOverride ?? options?.allowQueryOverride;
   const wsUrl = options?.wsUrl;
   const mockNamespace = options?.mockNamespace;
@@ -246,6 +270,7 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
     return createBridge({
       pluginId,
       forceEnv,
+      mockTransport,
       allowUrlOverride,
       wsUrl,
       mockNamespace,
@@ -277,6 +302,7 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
     client,
     pluginId,
     forceEnv,
+    mockTransport,
     allowUrlOverride,
     wsUrl,
     mockNamespace,

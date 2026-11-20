@@ -108,20 +108,35 @@ export interface MockTransportOptions {
   namespace?: string;
   handlers?: Record<string, (params?: unknown) => unknown | Promise<unknown>>;
   initialFiles?: Record<string, string>;
+  persistToLocalStorage?: boolean;
+  onExec?: MockExecHandler;
+  onRpc?: MockRpcHandler;
+  onPluginInvoke?: MockRpcHandler;
+  onContainerAction?: (action: ContainerAction) => void;
 }
 
 /**
- * Standalone mock transport simulating the host bridge and RPC endpoints
- * for testing and isolated browser execution.
+ * Standalone mock transport simulating the host bridge, filesystem, exec, and RPC endpoints
+ * for testing and isolated browser preview execution.
  */
 export class MockTransport {
   private readonly namespace: string;
+  private readonly persistToLocalStorage: boolean;
+  private readonly onExec?: MockExecHandler;
+  private readonly onRpc?: MockRpcHandler;
+  private readonly onPluginInvoke?: MockRpcHandler;
+  private readonly onContainerAction?: (action: ContainerAction) => void;
   private readonly listeners = new Map<string, Set<HostEventListener>>();
   private readonly storage = new Map<string, string>();
   private readonly handlers = new Map<string, (params?: unknown) => unknown | Promise<unknown>>();
 
   constructor(options: MockTransportOptions = {}) {
     this.namespace = options.namespace ?? 'default';
+    this.persistToLocalStorage = options.persistToLocalStorage ?? false;
+    this.onExec = options.onExec;
+    this.onRpc = options.onRpc;
+    this.onPluginInvoke = options.onPluginInvoke;
+    this.onContainerAction = options.onContainerAction;
     if (options.initialFiles) {
       for (const [filePath, content] of Object.entries(options.initialFiles)) {
         this.storage.set(filePath, content);
@@ -146,10 +161,17 @@ export class MockTransport {
     };
   }
 
+  async exec(cmd: string, options?: ExecOptions): Promise<ExecResult> {
+    return runMockExec(this.namespace, cmd, options, this.onExec);
+  }
+
   async invoke<T = unknown>(method: string, params?: unknown): Promise<T> {
     const custom = this.handlers.get(method);
     if (custom) {
       return (await custom(params)) as T;
+    }
+    if (this.onRpc) {
+      return (await this.onRpc(method, params)) as T;
     }
     if (method === 'ping' || method === 'daemon.ping') {
       return { pong: true, timestampMs: Date.now() } as T;
@@ -157,12 +179,32 @@ export class MockTransport {
     return runMockRpc(this.namespace, method, params) as Promise<T>;
   }
 
+  async invokePlugin<T = unknown>(method: string, params?: unknown): Promise<T> {
+    if (this.onPluginInvoke) {
+      return (await this.onPluginInvoke(method, params)) as T;
+    }
+    return this.invoke<T>(`plugin.invoke:${method}`, params);
+  }
+
+  sendContainerAction(action: ContainerAction): void {
+    dispatchMockContainerAction(action, this.onContainerAction);
+  }
+
   async readFile(path: string): Promise<string | null> {
-    return this.storage.get(path) ?? null;
+    if (this.storage.has(path)) {
+      return this.storage.get(path) ?? null;
+    }
+    if (this.persistToLocalStorage) {
+      return mockReadFile(this.namespace, path);
+    }
+    return null;
   }
 
   async writeFile(path: string, content: string): Promise<ExecResult> {
     this.storage.set(path, content);
+    if (this.persistToLocalStorage && typeof window !== 'undefined' && window.localStorage) {
+      return mockWriteFile(this.namespace, path, content);
+    }
     return { errno: 0, stdout: 'OK', stderr: '' };
   }
 
@@ -191,5 +233,9 @@ export class MockTransport {
 
   getListenerCount(event: string): number {
     return this.listeners.get(event)?.size ?? 0;
+  }
+
+  dispose(): void {
+    this.listeners.clear();
   }
 }

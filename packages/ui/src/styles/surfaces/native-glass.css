@@ -1,0 +1,69 @@
+/* Transparent outer canvas & refined translucent tile tokens for native hardware-blurred WebView hosts */
+:root[data-surface="native-glass"],
+:root[data-surface="native-glass"][data-theme] {
+  --surface-canvas-light: transparent;
+  --surface-canvas-dark: transparent;
+  --surface-canvas: transparent;
+  --surface-panel-light: transparent;
+  --surface-panel-dark: transparent;
+  --surface-panel: transparent;
+
+  --surface-toast: light-dark(rgba(255, 255, 255, 0.88), rgba(22, 26, 36, 0.88));
+
+  --surface-card-light: rgba(255, 255, 255, 0.28);
+  --surface-card-dark: rgba(255, 255, 255, 0.085);
+  --surface-elevated-light: rgba(255, 255, 255, 0.44);
+  --surface-elevated-dark: rgba(255, 255, 255, 0.14);
+
+  --text-primary-light: #0f1522;
+  --text-primary-dark: #f6f8fc;
+  --text-secondary-light: rgba(15, 21, 34, 0.74);
+  --text-secondary-dark: rgba(240, 244, 252, 0.78);
+
+  --border-hairline-light: rgba(255, 255, 255, 0.42);
+  --border-hairline-dark: rgba(255, 255, 255, 0.14);
+  --glass-divider-light: rgba(15, 21, 34, 0.08);
+  --glass-divider-dark: rgba(255, 255, 255, 0.1);
+
+  --card-shadow-light: inset 0 0.5px 0 rgba(255, 255, 255, 0.65);
+  --card-shadow-dark: inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
+}
+
+:root[data-surface="native-glass"][data-theme="modern-saas-dark"] {
+  --surface-card-light: rgba(255, 255, 255, 0.44);
+  --surface-card-dark: rgba(22, 23, 30, 0.46);
+  --surface-elevated-light: rgba(241, 245, 249, 0.58);
+  --surface-elevated-dark: rgba(34, 36, 46, 0.56);
+  --border-hairline-light: rgba(15, 23, 42, 0.11);
+  --border-hairline-dark: rgba(255, 255, 255, 0.12);
+  --card-shadow-light: none;
+  --card-shadow-dark: none;
+}
+
+html[data-surface="native-glass"],
+html[data-surface="native-glass"] body {
+  background-color: transparent;
+}
+
+@layer components {
+  :root[data-surface="native-glass"] .pochita-shell-backdrop {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  :root[data-surface="native-glass"] .pochita-card {
+    border-color: transparent;
+  }
+
+  :root[data-surface="native-glass"][data-theme="modern-saas-dark"] .pochita-card {
+    border-color: var(--border-hairline);
+  }
+
+  :root[data-surface="native-glass"] .pochita-setting-row {
+    border-color: transparent;
+  }
+}

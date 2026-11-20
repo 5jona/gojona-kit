@@ -35,11 +35,11 @@ export type ContainerAction =
   | { type: 'dismiss' }
   | { type: 'requestImeFocus'; focused: boolean }
   | {
-      type: 'setPreferredSize';
-      widthDp?: number;
-      heightDp?: number;
-      heightPercent?: number;
-    }
+    type: 'setPreferredSize';
+    widthDp?: number;
+    heightDp?: number;
+    heightPercent?: number;
+  }
   | { type: 'syncTheme'; payload: ContainerThemeSyncPayload }
   | { type: 'setBackIntercept'; enabled: boolean }
   | { type: 'setSurfaceBackdrop'; backdrop: ContainerBackdrop };
@@ -115,6 +115,8 @@ export interface BridgeOptions {
   pluginId?: string;
   /** Force a specific runtime environment (useful in preview sandboxes). */
   forceEnv?: RuntimeEnv;
+  /** Optional shared MockTransport instance used when running in `mock` or `browser` mode. */
+  mockTransport?: import('./mock.ts').MockTransport;
   /** Allow `?env=host|ksu|mock|browser` query parameter override (defaults to DEV only when native globals are absent). */
   allowUrlOverride?: boolean;
   /** Legacy alias for allowUrlOverride */
