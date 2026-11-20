@@ -5,5 +5,5 @@ import type { ThemeSyncPayload } from './types.ts';
  * to deduplicate host synchronization events.
  */
 export function buildThemeSyncKey(payload: ThemeSyncPayload): string {
-    return `${payload.themeId}|${payload.colorScheme}|${payload.wantsNativeBlur}|${payload.cornerRadiusPx}`;
+  return `${payload.themeId}|${payload.colorScheme}|${payload.wantsNativeBlur}|${payload.cornerRadiusPx}`;
 }

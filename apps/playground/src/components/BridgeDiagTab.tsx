@@ -1,4 +1,3 @@
-import { TerminalSquare } from 'lucide-react';
 import { useBridge } from '@pochita/bridge';
 import {
   Badge,
@@ -9,9 +8,10 @@ import {
   CardHeader,
   CardTitle,
   LogConsole,
-  useToast,
   type LogEntry,
+  useToast,
 } from '@pochita/ui';
+import { TerminalSquare } from 'lucide-react';
 
 export interface BridgeDiagTabProps {
   logs: readonly LogEntry[];
@@ -73,7 +73,9 @@ export function BridgeDiagTab({ logs, onLog, onClearLogs }: BridgeDiagTabProps) 
     }
   };
 
-  const handleContainerAction = async (type: 'dismiss' | 'requestImeFocus' | 'setPreferredSize') => {
+  const handleContainerAction = async (
+    type: 'dismiss' | 'requestImeFocus' | 'setPreferredSize',
+  ) => {
     try {
       if (type === 'dismiss') {
         await bridge.sendContainerAction({ type: 'dismiss' });
@@ -122,13 +124,25 @@ export function BridgeDiagTab({ logs, onLog, onClearLogs }: BridgeDiagTabProps) 
             <Button size="sm" variant="secondary" onClick={() => void handleRpcInvoke()}>
               测试 RPC 回环
             </Button>
-            <Button size="sm" variant="pill" onClick={() => void handleContainerAction('requestImeFocus')}>
+            <Button
+              size="sm"
+              variant="pill"
+              onClick={() => void handleContainerAction('requestImeFocus')}
+            >
               请求输入法焦点
             </Button>
-            <Button size="sm" variant="pill" onClick={() => void handleContainerAction('setPreferredSize')}>
+            <Button
+              size="sm"
+              variant="pill"
+              onClick={() => void handleContainerAction('setPreferredSize')}
+            >
               调整容器尺寸
             </Button>
-            <Button size="sm" variant="danger" onClick={() => void handleContainerAction('dismiss')}>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => void handleContainerAction('dismiss')}
+            >
               请求收起面板
             </Button>
           </div>

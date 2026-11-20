@@ -13,10 +13,7 @@ export function shellQuote(value: string): string {
  * Executes a shell command through KernelSU Manager's `window.ksu.exec` bridge
  * with timeout protection and deterministic callback cleanup.
  */
-export function ksuExec(
-  cmd: string,
-  options: ExecOptions = {},
-): Promise<ExecResult> {
+export function ksuExec(cmd: string, options: ExecOptions = {}): Promise<ExecResult> {
   return new Promise((resolve) => {
     const ksu = typeof window !== 'undefined' ? window.ksu : undefined;
     if (!ksu || typeof ksu.exec !== 'function') {
@@ -122,19 +119,17 @@ export async function ksuWriteFileAtomic(
   const quotedTmpPrefix = shellQuote(`${path}.tmp.${suffix}.`);
   const mode = options.mode && /^[0-7]{3,4}$/.test(options.mode) ? options.mode : '0644';
   const owner =
-    options.owner && /^[0-9a-zA-Z_.-]+:[0-9a-zA-Z_.-]+$/.test(options.owner)
-      ? options.owner
-      : null;
+    options.owner && /^[0-9a-zA-Z_.-]+:[0-9a-zA-Z_.-]+$/.test(options.owner) ? options.owner : null;
   const preserveMetadata = options.preserveMetadata ?? true;
 
   const writeBlock =
     content.length === 0
       ? ': > "$TMP_FILE"'
       : [
-        `cat <<'${delimiter}' > "$TMP_FILE"`,
-        content.endsWith('\n') ? content.slice(0, -1) : content,
-        delimiter,
-      ].join('\n');
+          `cat <<'${delimiter}' > "$TMP_FILE"`,
+          content.endsWith('\n') ? content.slice(0, -1) : content,
+          delimiter,
+        ].join('\n');
 
   const ownerCmd = owner
     ? `chown ${shellQuote(owner)} "$TMP_FILE" 2>/dev/null || true`

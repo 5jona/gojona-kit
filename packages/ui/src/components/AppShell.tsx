@@ -46,7 +46,7 @@ export function AppShell({
           className,
         )}
       >
-        <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-hairline)] bg-[color-mix(in_srgb,var(--surface-canvas)_88%,transparent)] backdrop-blur-md">
+        <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-hairline)] bg-[color-mix(in_oklab,var(--surface-canvas)_88%,transparent)] backdrop-blur-md">
           <div
             className={cn(
               'pochita-shell-header mx-auto w-full px-4 py-3 sm:px-6',
@@ -169,13 +169,7 @@ export function AppShell({
         ) : null}
       </header>
 
-      <div
-        className={cn(
-          'min-h-0 flex-1 p-4',
-          isScrollable && 'pochita-scroller',
-          bodyClassName,
-        )}
-      >
+      <div className={cn('min-h-0 flex-1 p-4', isScrollable && 'pochita-scroller', bodyClassName)}>
         {children}
       </div>
 

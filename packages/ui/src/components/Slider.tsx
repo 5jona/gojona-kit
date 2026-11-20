@@ -62,7 +62,7 @@ export function Slider({
           <SliderPrimitive.Range className="absolute h-full rounded-[var(--radius-pill)] bg-[var(--accent)]" />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
-          aria-label={label}
+          aria-label={label ?? 'Slider'}
           className="block size-5 cursor-grab rounded-full border-2 border-[var(--accent)] bg-[var(--thumb-bg,#ffffff)] shadow-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:cursor-grabbing"
         />
       </SliderPrimitive.Root>

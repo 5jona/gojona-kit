@@ -88,7 +88,7 @@
   --border-hairline-light: rgba(255, 255, 255, 0.42);
   --border-hairline-dark: rgba(255, 255, 255, 0.14);
   --glass-divider-light: rgba(15, 21, 34, 0.08);
-  --glass-divider-dark: rgba(255, 255, 255, 0.10);
+  --glass-divider-dark: rgba(255, 255, 255, 0.1);
 
   --card-shadow-light: inset 0 0.5px 0 rgba(255, 255, 255, 0.65);
   --card-shadow-dark: inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
@@ -154,15 +154,6 @@ html[data-surface="native-glass"] body {
   .pochita-shell-main {
     flex: 1 1 0%;
     min-height: 0;
-  }
-
-  /* Hide intrusive scrollbars inside compact touch-driven glass drawers while keeping scroll-edge fades */
-  .pochita-shell-drawer .pochita-scroller {
-    scrollbar-width: none;
-  }
-
-  .pochita-shell-drawer .pochita-scroller::-webkit-scrollbar {
-    display: none;
   }
 
   .pochita-shell-header {
@@ -246,7 +237,9 @@ html[data-surface="native-glass"] body {
 
   .pochita-card-interactive {
     cursor: pointer;
-    transition: transform 150ms ease, box-shadow 150ms ease;
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease;
   }
 
   :root[data-surface="native-glass"] .pochita-card {
@@ -286,17 +279,23 @@ html[data-surface="native-glass"] body {
       scroll-padding-block: var(--fade-size);
       mask:
         linear-gradient(black, black) no-clip subtract,
-        linear-gradient(to bottom, black, transparent) 0 0 / 100% var(--fade-start) no-repeat no-clip,
-        linear-gradient(to bottom, transparent, black) 0 100% / 100% var(--fade-end) no-repeat no-clip;
+        linear-gradient(to bottom, black, transparent) 0 0 / 100% var(--fade-start) no-repeat
+        no-clip,
+        linear-gradient(to bottom, transparent, black) 0 100% / 100% var(--fade-end) no-repeat
+        no-clip;
       -webkit-mask:
         linear-gradient(black, black) no-clip subtract,
-        linear-gradient(to bottom, black, transparent) 0 0 / 100% var(--fade-start) no-repeat no-clip,
-        linear-gradient(to bottom, transparent, black) 0 100% / 100% var(--fade-end) no-repeat no-clip;
+        linear-gradient(to bottom, black, transparent) 0 0 / 100% var(--fade-start) no-repeat
+        no-clip,
+        linear-gradient(to bottom, transparent, black) 0 100% / 100% var(--fade-end) no-repeat
+        no-clip;
       animation:
         pochita-reveal-fade-start linear both,
         pochita-hide-fade-end linear both;
       animation-timeline: scroll(self block);
-      animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+      animation-range:
+        0 var(--fade-size),
+        calc(100% - var(--fade-size)) 100%;
     }
   }
 
@@ -318,6 +317,15 @@ html[data-surface="native-glass"] body {
     .pochita-scroller::-webkit-scrollbar-track {
       background: var(--scrollbar-track);
     }
+  }
+
+  /* Hide intrusive scrollbars inside compact touch-driven glass drawers while keeping scroll-edge fades */
+  .pochita-shell-drawer .pochita-scroller {
+    scrollbar-width: none;
+  }
+
+  .pochita-shell-drawer .pochita-scroller::-webkit-scrollbar {
+    display: none;
   }
 }
 

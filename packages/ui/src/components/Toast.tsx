@@ -1,12 +1,12 @@
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import { cn } from '../lib/cn.ts';
 
@@ -31,7 +31,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const timers = timersRef.current;
     return () => {
-      timers.forEach((timerId) => window.clearTimeout(timerId));
+      for (const timerId of timers) {
+        window.clearTimeout(timerId);
+      }
       timers.clear();
     };
   }, []);
@@ -61,8 +63,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             className={cn(
               'pointer-events-auto flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-toast)] px-4 py-2 text-xs font-medium text-[var(--text-primary)] shadow-lg backdrop-blur-md',
-              item.tone === 'success' && 'border-[color-mix(in_srgb,var(--success)_40%,transparent)]',
-              item.tone === 'warning' && 'border-[color-mix(in_srgb,var(--warning)_40%,transparent)]',
+              item.tone === 'success' &&
+                'border-[color-mix(in_oklab,var(--success)_40%,transparent)]',
+              item.tone === 'warning' &&
+                'border-[color-mix(in_oklab,var(--warning)_40%,transparent)]',
               item.tone === 'danger' && 'border-[var(--danger)] text-[var(--text-primary)]',
             )}
           >
@@ -89,7 +93,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) {
-    return { pushToast: () => { } };
+    return { pushToast: () => {} };
   }
   return ctx;
 }

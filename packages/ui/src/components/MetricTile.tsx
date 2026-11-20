@@ -42,7 +42,9 @@ export function MetricTile({
         <span className="tabular-nums text-xl font-semibold tracking-tight text-[var(--text-primary)]">
           {value}
         </span>
-        {unit ? <span className="text-xs font-medium text-[var(--text-secondary)]">{unit}</span> : null}
+        {unit ? (
+          <span className="text-xs font-medium text-[var(--text-secondary)]">{unit}</span>
+        ) : null}
       </div>
 
       {hint ? <p className="truncate text-[11px] text-[var(--text-secondary)]">{hint}</p> : null}

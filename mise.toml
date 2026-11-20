@@ -4,12 +4,20 @@ pnpm = "12.22.0"
 [task_config]
 dir = "{{config_root}}"
 
+[tasks.lint]
+description = "Run Biome lint and format check across workspace"
+run = "pnpm lint"
+
+[tasks.format]
+description = "Format workspace files with Biome"
+run = "pnpm format"
+
 [tasks.typecheck]
 description = "Run TypeScript typecheck across all workspace packages"
 run = "pnpm typecheck"
 
 [tasks.test]
-description = "Run Vitest unit tests across workspace packages"
+description = "Run Node unit tests across workspace packages"
 run = "pnpm test"
 
 [tasks.build]
@@ -17,5 +25,5 @@ description = "Build playground application"
 run = "pnpm build"
 
 [tasks.check]
-description = "Run typecheck, unit tests, and playground build"
-run = "pnpm typecheck && pnpm test && pnpm build"
+description = "Run Biome check, typecheck, unit tests, and playground build"
+run = "pnpm check"

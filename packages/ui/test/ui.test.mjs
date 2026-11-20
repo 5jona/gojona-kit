@@ -1,5 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
+import { cn } from '../src/lib/cn.ts';
 import { isValidThemeId, THEME_REGISTRY } from '../src/theme/registry.ts';
 import { buildThemeSyncKey } from '../src/theme/sync.ts';
 import {
@@ -9,7 +10,6 @@ import {
   STORAGE_KEY_THEME,
   THEME_BOOTSTRAP_SCRIPT,
 } from '../src/theme/tokens.ts';
-import { cn } from '../src/lib/cn.ts';
 
 test('isValidThemeId and THEME_REGISTRY definitions', () => {
   // Theme identifier validation
@@ -90,7 +90,10 @@ test('readThemeToken fallback behavior and scheme-specific token resolution', ()
     // Resolves scheme-specific custom properties
     assert.equal(readThemeToken('accent', 'dark', '#fallback', mockElement), '#3b82f6');
     assert.equal(readThemeToken('--accent', 'light', '#fallback', mockElement), '#0066ff');
-    assert.equal(readThemeToken('surface', 'dark', '#fallback', mockElement), 'rgba(30, 36, 48, 0.85)');
+    assert.equal(
+      readThemeToken('surface', 'dark', '#fallback', mockElement),
+      'rgba(30, 36, 48, 0.85)',
+    );
 
     // Falls back to direct custom property when available and not light-dark expression
     assert.equal(readThemeToken('direct-token', 'dark', '#fallback', mockElement), '#123456');
@@ -121,10 +124,7 @@ test('THEME_BOOTSTRAP_SCRIPT contains STORAGE_KEY_THEME and STORAGE_KEY_SCHEME',
 test('cn merges Tailwind classes cleanly', () => {
   assert.equal(cn('px-2 py-1', 'px-4'), 'py-1 px-4');
   assert.equal(cn('bg-red-500', 'bg-blue-500'), 'bg-blue-500');
-  assert.equal(
-    cn('text-sm font-medium', false && 'opacity-50', 'text-lg'),
-    'font-medium text-lg',
-  );
+  assert.equal(cn('text-sm font-medium', false && 'opacity-50', 'text-lg'), 'font-medium text-lg');
 });
 
 test('buildThemeSyncKey produces distinct keys for any field change and identical keys for equal payloads', () => {

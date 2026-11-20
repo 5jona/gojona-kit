@@ -1,25 +1,3 @@
-export { cn } from './lib/cn.ts';
-
-export {
-  STORAGE_KEY_SCHEME,
-  STORAGE_KEY_THEME,
-  ThemeProvider,
-  buildThemeSyncKey,
-  useTheme,
-  type ThemeContextValue,
-  type ThemeProviderProps,
-} from './theme/ThemeProvider.tsx';
-export { isValidThemeId, THEME_LIST, THEME_REGISTRY } from './theme/registry.ts';
-export { colorWithAlpha, readThemeToken, THEME_BOOTSTRAP_SCRIPT } from './theme/tokens.ts';
-export type {
-  ColorMode,
-  ResolvedColorScheme,
-  SurfaceMode,
-  ThemeDefinition,
-  ThemeId,
-  ThemeSyncPayload,
-} from './theme/types.ts';
-
 export { AppShell, type AppShellProps, type AppShellVariant } from './components/AppShell.tsx';
 export { Badge, type BadgeProps } from './components/Badge.tsx';
 export { Button, type ButtonProps } from './components/Button.tsx';
@@ -38,4 +16,24 @@ export { Slider, type SliderPreset, type SliderProps } from './components/Slider
 export { Switch, type SwitchProps } from './components/Switch.tsx';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs.tsx';
 export { ThemeSwitcher, type ThemeSwitcherProps } from './components/ThemeSwitcher.tsx';
-export { ToastProvider, useToast, type ToastItem, type ToastTone } from './components/Toast.tsx';
+export { type ToastItem, ToastProvider, type ToastTone, useToast } from './components/Toast.tsx';
+export { cn } from './lib/cn.ts';
+export { isValidThemeId, THEME_LIST, THEME_REGISTRY } from './theme/registry.ts';
+export {
+  buildThemeSyncKey,
+  STORAGE_KEY_SCHEME,
+  STORAGE_KEY_THEME,
+  type ThemeContextValue,
+  ThemeProvider,
+  type ThemeProviderProps,
+  useTheme,
+} from './theme/ThemeProvider.tsx';
+export { colorWithAlpha, readThemeToken, THEME_BOOTSTRAP_SCRIPT } from './theme/tokens.ts';
+export type {
+  ColorMode,
+  ResolvedColorScheme,
+  SurfaceMode,
+  ThemeDefinition,
+  ThemeId,
+  ThemeSyncPayload,
+} from './theme/types.ts';

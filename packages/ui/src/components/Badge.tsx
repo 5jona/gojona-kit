@@ -10,13 +10,13 @@ const badgeVariants = cva(
         neutral:
           'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border-[var(--border-hairline)]',
         accent:
-          'bg-[var(--accent-soft)] text-[var(--accent)] border-[color-mix(in_srgb,var(--accent)_30%,transparent)]',
+          'bg-[var(--accent-soft)] text-[var(--accent)] border-[color-mix(in_oklab,var(--accent)_30%,transparent)]',
         success:
-          'bg-[color-mix(in_srgb,var(--success)_14%,transparent)] text-[var(--success)] border-[color-mix(in_srgb,var(--success)_30%,transparent)]',
+          'bg-[color-mix(in_oklab,var(--success)_14%,transparent)] text-[var(--success)] border-[color-mix(in_oklab,var(--success)_30%,transparent)]',
         warning:
-          'bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] text-[var(--warning)] border-[color-mix(in_srgb,var(--warning)_30%,transparent)]',
+          'bg-[color-mix(in_oklab,var(--warning)_14%,transparent)] text-[var(--warning)] border-[color-mix(in_oklab,var(--warning)_30%,transparent)]',
         danger:
-          'bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] text-[var(--danger)] border-[color-mix(in_srgb,var(--danger)_30%,transparent)]',
+          'bg-[color-mix(in_oklab,var(--danger)_14%,transparent)] text-[var(--danger)] border-[color-mix(in_oklab,var(--danger)_30%,transparent)]',
       },
     },
     defaultVariants: {
@@ -32,15 +32,19 @@ export interface BadgeProps
   pulse?: boolean;
 }
 
-export function Badge({ className, variant, dot = false, pulse = false, children, ...props }: BadgeProps) {
+export function Badge({
+  className,
+  variant,
+  dot = false,
+  pulse = false,
+  children,
+  ...props
+}: BadgeProps) {
   return (
     <span className={cn(badgeVariants({ variant }), className)} {...props}>
       {dot ? (
         <span
-          className={cn(
-            'inline-block size-1.5 rounded-full bg-current',
-            pulse && 'animate-pulse',
-          )}
+          className={cn('inline-block size-1.5 rounded-full bg-current', pulse && 'animate-pulse')}
           aria-hidden="true"
         />
       ) : null}

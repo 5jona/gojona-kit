@@ -4,7 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./index.mjs"
+    ".": "./index.mjs",
+    "./biome.json": "./biome.base.json",
+    "./register-ts": "./register-ts.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.5",

@@ -46,7 +46,7 @@ export function ThemeSwitcher({
   if (compact) {
     return (
       <div className={cn('space-y-2', className)}>
-        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="界面主题">
+        <fieldset className="m-0 grid grid-cols-2 gap-1.5 border-0 p-0" aria-label="界面主题">
           {THEME_LIST.map((item) => {
             const active = themeId === item.id;
             return (
@@ -58,7 +58,7 @@ export function ThemeSwitcher({
                 className={cn(
                   'pochita-switcher-pill flex cursor-pointer items-center justify-between gap-1 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-[11px] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                   active
-                    ? 'pochita-switcher-pill-active bg-[var(--accent-soft)] text-[var(--text-primary)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--accent)_45%,transparent)]'
+                    ? 'pochita-switcher-pill-active bg-[var(--accent-soft)] text-[var(--text-primary)] ring-1 ring-inset ring-[color-mix(in_oklab,var(--accent)_45%,transparent)]'
                     : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
                 )}
               >
@@ -71,12 +71,11 @@ export function ThemeSwitcher({
               </button>
             );
           })}
-        </div>
+        </fieldset>
 
-        <div
-          role="group"
+        <fieldset
           aria-label="明暗色彩模式"
-          className="pochita-switcher-group inline-flex w-full items-center gap-1 rounded-[var(--radius-control)] bg-[var(--surface-elevated)] p-1"
+          className="pochita-switcher-group m-0 inline-flex w-full items-center gap-1 rounded-[var(--radius-control)] border-0 bg-[var(--surface-elevated)] p-1"
         >
           {colorOptions.map((opt) => {
             const Icon = opt.icon;
@@ -99,14 +98,17 @@ export function ThemeSwitcher({
               </button>
             );
           })}
-        </div>
+        </fieldset>
       </div>
     );
   }
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2" role="group" aria-label="界面主题">
+      <fieldset
+        className="m-0 grid grid-cols-1 gap-2.5 border-0 p-0 sm:grid-cols-2"
+        aria-label="界面主题"
+      >
         {THEME_LIST.map((item) => {
           const active = themeId === item.id;
           return (
@@ -150,12 +152,11 @@ export function ThemeSwitcher({
             </button>
           );
         })}
-      </div>
+      </fieldset>
 
-      <div
-        role="group"
+      <fieldset
         aria-label="明暗色彩模式"
-        className="inline-flex w-full items-center gap-1 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1"
+        className="m-0 inline-flex w-full items-center gap-1 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1"
       >
         {colorOptions.map((opt) => {
           const Icon = opt.icon;
@@ -178,7 +179,7 @@ export function ThemeSwitcher({
             </button>
           );
         })}
-      </div>
+      </fieldset>
     </div>
   );
 }

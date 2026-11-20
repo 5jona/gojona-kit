@@ -1,12 +1,12 @@
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import { isValidThemeId, THEME_REGISTRY } from './registry.ts';
 import { buildThemeSyncKey } from './sync.ts';
@@ -20,8 +20,7 @@ import type {
   ThemeSyncPayload,
 } from './types.ts';
 
-export { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
-export { buildThemeSyncKey };
+export { buildThemeSyncKey, STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
 
 function readStoredTheme(fallback: ThemeId): ThemeId {
   if (typeof window === 'undefined') return fallback;

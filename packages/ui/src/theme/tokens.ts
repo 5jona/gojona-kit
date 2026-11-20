@@ -14,25 +14,25 @@ export const THEME_BOOTSTRAP_SCRIPT = `try{var s=localStorage.getItem('${STORAGE
  * evaluate CSS `light-dark(...)` expressions directly.
  */
 export function readThemeToken(
-    tokenName: string,
-    scheme: ResolvedColorScheme,
-    fallback: string,
-    root: Element | null = typeof document !== 'undefined' ? document.documentElement : null,
+  tokenName: string,
+  scheme: ResolvedColorScheme,
+  fallback: string,
+  root: Element | null = typeof document !== 'undefined' ? document.documentElement : null,
 ): string {
-    if (!root || typeof getComputedStyle !== 'function') {
-        return fallback;
-    }
-    const normalized = tokenName.startsWith('--') ? tokenName.slice(2) : tokenName;
-    const styles = getComputedStyle(root);
-    const schemeSpecific = styles.getPropertyValue(`--${normalized}-${scheme}`).trim();
-    if (schemeSpecific) {
-        return schemeSpecific;
-    }
-    const direct = styles.getPropertyValue(`--${normalized}`).trim();
-    if (direct && !direct.includes('light-dark')) {
-        return direct;
-    }
+  if (!root || typeof getComputedStyle !== 'function') {
     return fallback;
+  }
+  const normalized = tokenName.startsWith('--') ? tokenName.slice(2) : tokenName;
+  const styles = getComputedStyle(root);
+  const schemeSpecific = styles.getPropertyValue(`--${normalized}-${scheme}`).trim();
+  if (schemeSpecific) {
+    return schemeSpecific;
+  }
+  const direct = styles.getPropertyValue(`--${normalized}`).trim();
+  if (direct && !direct.includes('light-dark')) {
+    return direct;
+  }
+  return fallback;
 }
 
 /**
@@ -40,31 +40,31 @@ export function readThemeToken(
  * `rgba(r, g, b, alpha)` string suitable for Canvas 2D fill/stroke styles.
  */
 export function colorWithAlpha(color: string, alpha: number): string {
-    const clampedAlpha = Math.max(0, Math.min(1, alpha));
-    const trimmed = color.trim();
-    if (trimmed.startsWith('#')) {
-        const hex = trimmed.slice(1);
-        const full =
-            hex.length === 3
-                ? hex
-                    .split('')
-                    .map((c) => c + c)
-                    .join('')
-                : hex;
-        if (full.length === 6) {
-            const r = Number.parseInt(full.slice(0, 2), 16);
-            const g = Number.parseInt(full.slice(2, 4), 16);
-            const b = Number.parseInt(full.slice(4, 6), 16);
-            if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
-                return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
-            }
-        }
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  const trimmed = color.trim();
+  if (trimmed.startsWith('#')) {
+    const hex = trimmed.slice(1);
+    const full =
+      hex.length === 3
+        ? hex
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : hex;
+    if (full.length === 6) {
+      const r = Number.parseInt(full.slice(0, 2), 16);
+      const g = Number.parseInt(full.slice(2, 4), 16);
+      const b = Number.parseInt(full.slice(4, 6), 16);
+      if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
+        return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
+      }
     }
-    if (trimmed.startsWith('rgb(') || trimmed.startsWith('rgba(')) {
-        const parts = trimmed.match(/[\d.]+/g);
-        if (parts && parts.length >= 3) {
-            return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampedAlpha})`;
-        }
+  }
+  if (trimmed.startsWith('rgb(') || trimmed.startsWith('rgba(')) {
+    const parts = trimmed.match(/[\d.]+/g);
+    if (parts && parts.length >= 3) {
+      return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampedAlpha})`;
     }
-    return trimmed;
+  }
+  return trimmed;
 }

@@ -14,8 +14,8 @@ const buttonVariants = cva(
         ghost:
           'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-elevated)] hover:text-[var(--text-primary)] rounded-[var(--radius-control)]',
         danger:
-          'bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] text-[var(--danger)] border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_24%,transparent)] rounded-[var(--radius-control)]',
-        pill: 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_28%,transparent)] hover:brightness-110 rounded-[var(--radius-pill)]',
+          'bg-[color-mix(in_oklab,var(--danger)_16%,transparent)] text-[var(--danger)] border border-[color-mix(in_oklab,var(--danger)_30%,transparent)] hover:bg-[color-mix(in_oklab,var(--danger)_24%,transparent)] rounded-[var(--radius-control)]',
+        pill: 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[color-mix(in_oklab,var(--accent)_28%,transparent)] hover:brightness-110 rounded-[var(--radius-pill)]',
       },
       size: {
         sm: 'h-8 px-3 text-xs',
@@ -33,14 +33,10 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof buttonVariants> { }
+    VariantProps<typeof buttonVariants> {}
 
 export function Button({ className, variant, size, type = 'button', ...props }: ButtonProps) {
   return (
-    <button
-      type={type}
-      className={cn(buttonVariants({ variant, size }), className)}
-      {...props}
-    />
+    <button type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />
   );
 }

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { colorWithAlpha, readThemeToken, useTheme } from '@pochita/ui';
+import { useEffect, useRef } from 'react';
 
 export interface EdgeHotzoneCanvasProps {
   edge: 'left' | 'right';
@@ -19,7 +19,7 @@ export function EdgeHotzoneCanvas({
   widthDp,
 }: EdgeHotzoneCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { themeId, resolvedScheme } = useTheme();
+  const { resolvedScheme } = useTheme();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,7 +108,7 @@ export function EdgeHotzoneCanvas({
     return () => {
       observer.disconnect();
     };
-  }, [edge, topPercent, heightPercent, widthDp, themeId, resolvedScheme]);
+  }, [edge, topPercent, heightPercent, widthDp, resolvedScheme]);
 
   return (
     <canvas

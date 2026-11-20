@@ -1,5 +1,3 @@
-import { Activity, BatteryCharging, Cpu, Flame } from 'lucide-react';
-import { useState } from 'react';
 import { useBridge } from '@pochita/bridge';
 import {
   Button,
@@ -14,6 +12,8 @@ import {
   Switch,
   useToast,
 } from '@pochita/ui';
+import { Activity, BatteryCharging, Cpu, Flame } from 'lucide-react';
+import { useState } from 'react';
 
 const CEILING_PRESETS = [
   { label: '80%', value: 80 },
@@ -116,7 +116,9 @@ export function TelemetryTab({ onLog }: TelemetryTabProps) {
         <CardHeader>
           <div>
             <CardTitle>策略与控件示例</CardTitle>
-            <CardDescription>验证窄屏抽屉与宽屏管理容器下的开关、行项及预设滑块表现</CardDescription>
+            <CardDescription>
+              验证窄屏抽屉与宽屏管理容器下的开关、行项及预设滑块表现
+            </CardDescription>
           </div>
         </CardHeader>
 

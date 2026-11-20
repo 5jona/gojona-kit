@@ -193,4 +193,3 @@ export class MockTransport {
     return this.listeners.get(event)?.size ?? 0;
   }
 }
-

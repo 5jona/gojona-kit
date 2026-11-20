@@ -1,5 +1,3 @@
-import { ShieldCheck, SlidersHorizontal } from 'lucide-react';
-import { useState } from 'react';
 import {
   Badge,
   Button,
@@ -12,6 +10,8 @@ import {
   Switch,
   useToast,
 } from '@pochita/ui';
+import { ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { useState } from 'react';
 import { EdgeHotzoneCanvas } from './EdgeHotzoneCanvas.tsx';
 
 interface ExtensionEntry {

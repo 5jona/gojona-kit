@@ -1,11 +1,12 @@
-import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BridgeProvider, createBridge, createThemeSyncDeduplicator } from '@pochita/bridge';
 import {
   AppShell,
+  type AppShellVariant,
   Badge,
   Button,
   Card,
+  type LogEntry,
+  type SurfaceMode,
   Tabs,
   TabsContent,
   TabsList,
@@ -13,10 +14,9 @@ import {
   ThemeProvider,
   ThemeSwitcher,
   ToastProvider,
-  type AppShellVariant,
-  type LogEntry,
-  type SurfaceMode,
 } from '@pochita/ui';
+import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BridgeDiagTab } from './components/BridgeDiagTab.tsx';
 import { ExtensionsTab } from './components/ExtensionsTab.tsx';
 import { TelemetryTab } from './components/TelemetryTab.tsx';
@@ -92,7 +92,11 @@ export default function App() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
-                      variant={viewportMode === 'manager' && shellVariant === 'floating' ? 'primary' : 'secondary'}
+                      variant={
+                        viewportMode === 'manager' && shellVariant === 'floating'
+                          ? 'primary'
+                          : 'secondary'
+                      }
                       onClick={() => {
                         setViewportMode('manager');
                         setShellVariant('floating');

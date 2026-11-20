@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Copy, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '../lib/cn.ts';
 import { Button } from './Button.tsx';
 

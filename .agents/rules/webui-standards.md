@@ -1,6 +1,7 @@
 # Pochita WebUI Kit — Frontend Engineering Standards
 
 ## 1. Stack, Exports & Package Boundaries
+
 - Tooling: `mise` (`pnpm`), Vite, React 19, TypeScript, Tailwind CSS v4, Radix UI primitives.
 - **Source-Direct Workspace Exports**: `@pochita/ui` and `@pochita/bridge` export `./src/index.ts` directly without a separate `dist/` build step. Always use explicit `import type` for type-only symbols so Node's native TypeScript test runner can execute modules without bundling.
 - **Bridge Abstraction**: Do not call `window.ksu.exec` or raw host `postMessage` APIs directly inside feature code. Always use `@pochita/bridge` (`useBridge()` / `createBridge()`).
@@ -9,11 +10,13 @@
 - **Vite Config Sharing**: Share Vite build settings through `@pochita/config` (`createWebUiViteConfig()`), preserving relative `./assets/` output (`base: './'`) for offline WebView compatibility. Cross-repository consumers should support `POCHITA_KIT_ROOT` to override relative workspace paths.
 
 ## 2. Language & Privacy Policy
+
 - **Engineering Internals (English Only)**: Write all source code, identifiers, comments, JSDoc, developer error messages, and documentation (`README.md`, rules) in objective, professional English.
 - **User-Facing UI Copy (Simplified Chinese)**: Display all visible web UI text (titles, labels, descriptions, button copy, toasts, theme taglines) in concise, natural Simplified Chinese (`zh-CN`).
 - **Generic Showcase Data**: Keep the shared workbench and component examples strictly free of downstream project names, private file paths, or personal environment identifiers.
 
 ## 3. Theming, CSS Layers & Accessibility Invariants
+
 - **Semantic Tokens Only**: Never hardcode surface, border, or text hex values in consumer components. Bind semantic custom properties exposed by `@pochita/ui` (`--surface-*`, `--text-*`, `--border-hairline`, `--glass-divider`, `--accent`, `--radius-*`).
 - **Tailwind v4 `@layer` Discipline**: All custom component classes in `base.css` or feature stylesheets must reside inside `@layer components` (or `@layer base`) so Tailwind v4 `@layer utilities` classes passed via `className` override them deterministically.
 - **Dynamic Color & Canvas 2D Compatibility**: Because theme tokens use CSS `light-dark(...)`, never append hex alpha suffixes in JS (e.g., `` `${accent}33` ``). Use `color-mix(in oklab, var(--accent) 20%, transparent)` in CSS, and use `readThemeToken()` + `colorWithAlpha()` from `@pochita/ui` when drawing to Canvas 2D contexts.
@@ -23,13 +26,16 @@
 - **Accessibility (a11y)**: Every interactive control (`Slider` thumb, `Switch`, `Input`, icon-only `Button`, `Tabs`) must expose an accessible name via `aria-label` or `aria-labelledby`.
 
 ## 4. Android Native Host Integration (`native-glass`)
+
 - **Window Blur vs. Optical Backdrop Layer Separation**: Never bind stateful custom `Drawable`s (`RuntimeShader`, dynamic tints/rims) to `Window.setBackgroundDrawable(...)` on windows using `Window.setBackgroundBlurRadius(...)`, because AOSP `DecorView` wraps the window background in a `LayerDrawable` with `BackgroundBlurDrawable` and clears the original drawable's `Drawable.Callback`, breaking `invalidateSelf()` on live theme switches. Always bind a pure-transparent, immutable `BlurMaskDrawable` (implementing only `Outline.setRoundRect`) to `Window.setBackgroundDrawable(...)`, attach the optical glass `Drawable` (`GlassBackdropDrawable`) to the regular content container (`contentContainer.background`), rebind `RuntimeShader` to `Paint` after uniform updates, and propagate `updateDensity()` on `onConfigurationChanged`.
 - **Theme Authority & Deferred Host Sync**: Daemon-backed `native-glass` hosts must pass `syncEnabled={hydrated}` to `<ThemeProvider>` and use `useContainerThemeSync({ includeAppearanceHints: false })` from `@pochita/bridge` so stale `localStorage` preferences never race ahead of daemon config on cold start, and appearance controls must send minimal partial RPC patches (`{ themeId }`, `{ colorMode }`, `{ nativeBlurEnabled }`).
 
 ## 5. Verification Workflow
-Before finalizing any UI or bridge change:
-1. Run `pnpm typecheck` and resolve all TypeScript diagnostics.
-2. Run `pnpm test` and ensure all unit tests across workspace packages pass.
-3. Run `pnpm build` and confirm relative asset paths in generated `dist/index.html`.
-4. Inspect the running preview across both wide manager mode and `340px` narrow drawer mode across themes (`coloros-glass`, `modern-saas-dark`), color schemes (`system`, `light`, `dark`), and surface modes (`standalone`, `native-glass`), confirming zero console errors and zero horizontal overflow.
 
+Before finalizing any UI or bridge change:
+
+1. Run `pnpm lint` (Biome lint + format + import organization via `@pochita/config/biome.json`) and resolve all diagnostics.
+2. Run `pnpm typecheck` and resolve all TypeScript diagnostics.
+3. Run `pnpm test` and ensure all Node unit tests across workspace packages pass.
+4. Run `pnpm build` (or run `pnpm check` for steps 1–4 together) and confirm relative asset paths and early `<meta name="color-scheme">` bootstrap injection order in generated `dist/index.html`.
+5. Inspect the running preview across both wide manager mode and `340px` narrow drawer mode across themes (`coloros-glass`, `modern-saas-dark`), color schemes (`system`, `light`, `dark`), and surface modes (`standalone`, `native-glass`), confirming zero console errors and zero horizontal overflow.
