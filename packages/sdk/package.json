@@ -1,30 +1,38 @@
 {
-  "name": "@pochita/sideveil-sdk",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "files": [
-    "src"
-  ],
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import @pochita/config/register-ts --test test/*.test.mjs"
-  },
-  "dependencies": {
-    "@pochita/bridge": "file:../bridge"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0"
-  },
-  "devDependencies": {
-    "@pochita/config": "workspace:*",
-    "@types/react": "^19.3.0",
-    "react": "^19.3.1",
-    "typescript": "^7.0.2"
-  }
+    "name": "@pochita/sideveil-sdk",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist",
+        "src"
+    ],
+    "exports": {
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "prepack": "pnpm build",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "test": "node --import @pochita/config/register-ts --test test/*.test.mjs"
+    },
+    "dependencies": {
+        "@pochita/bridge": "file:../bridge"
+    },
+    "peerDependencies": {
+        "react": "^19.0.0"
+    },
+    "devDependencies": {
+        "@pochita/config": "workspace:*",
+        "@types/react": "^19.3.0",
+        "react": "^19.3.1",
+        "typescript": "^7.0.2"
+    }
 }

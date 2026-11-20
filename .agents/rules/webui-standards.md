@@ -3,7 +3,7 @@
 ## 1. Stack, Exports & Package Boundaries
 
 - Tooling: `mise` (`pnpm`), Vite, React 19, TypeScript, Tailwind CSS v4, Radix UI primitives.
-- **Source-Direct Workspace Exports**: `@pochita/ui` and `@pochita/bridge` export `./src/index.ts` directly without a separate `dist/` build step. Always use explicit `import type` for type-only symbols so Node's native TypeScript test runner can execute modules without bundling.
+- **Compiled Package Exports & Source Condition**: `@pochita/ui`, `@pochita/bridge`, and `@pochita/sideveil-sdk` emit standard ESM `dist/*.js` and `dist/*.d.ts` artifacts for external consumers while exposing a `"source": "./src/index.ts"` export condition for zero-build monorepo development. Always use explicit `import type` for type-only symbols so Node's native TypeScript test runner can execute source modules without bundling.
 - **Bridge Abstraction**: Do not call `window.ksu.exec` or raw host `postMessage` APIs directly inside feature code. Always use `@pochita/bridge` (`useBridge()` / `createBridge()`).
 - **Origin & Runtime Isolation**: Keep `allowUrlOverride: false` in production builds and restrict `HostTransport` to explicit `allowedOrigins` (default `https://appassets.androidplatform.net`), never wildcard `'*'`.
 - **Safe Config Persistence**: Treat `bridge.readFile()` returning `null` (`ENOENT`) as first-run initialization, but treat thrown errors as transient failures—never overwrite disk files with defaults on read errors. Never invoke Bridge RPC or file writes inside React `setState` updaters.

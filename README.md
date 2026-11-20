@@ -63,8 +63,9 @@ pnpm dev
 
 ## Integrating External Repositories
 
-1. **Local linking during active development**: reference `@pochita/ui`, `@pochita/bridge`, and `@pochita/config` via local workspace or relative file dependencies from a consumer repository's `package.json`.
-2. **Configuring Kit Path with `POCHITA_KIT_ROOT`**: consumer repositories utilizing `createPochitaViteConfig` (or `createWebUiViteConfig`) can override the default relative monorepo path using the `POCHITA_KIT_ROOT` environment variable:
+1. **Compiled `dist/` package exports**: `@pochita/ui`, `@pochita/bridge`, and `@pochita/sideveil-sdk` build standard ESM `dist/*.js` and `dist/*.d.ts` artifacts via `pnpm build` (automatically executed during `prepack` and `pnpm check`), while exposing a `"source": "./src/index.ts"` condition for zero-build monorepo development. External plugins can consume published tarballs/packages directly without relative source path aliases.
+2. **Local linking during active development**: reference `@pochita/ui`, `@pochita/bridge`, `@pochita/sideveil-sdk`, and `@pochita/config` via local workspace or relative file dependencies from a consumer repository's `package.json`.
+3. **Configuring Kit Path with `POCHITA_KIT_ROOT`**: consumer repositories utilizing `createPochitaViteConfig` (or `createWebUiViteConfig`) can override the default relative monorepo path using the `POCHITA_KIT_ROOT` environment variable:
 
    ```javascript
    import path from 'node:path';
@@ -81,8 +82,8 @@ pnpm dev
      server: { fs: { allow: [__dirname, kitRoot] } },
    });
    ```
-3. **Versioned releases**: push this repository to a remote Git origin and pin consumer dependencies to release tags (e.g., `v0.1.0`).
-4. **Adding a theme**: define semantic light/dark CSS custom properties under `packages/ui/src/styles/themes/` and register the theme metadata in `packages/ui/src/theme/registry.ts`.
+4. **Versioned releases**: push this repository to a remote Git origin and pin consumer dependencies to release tags (e.g., `v0.1.0`).
+5. **Adding a theme**: define semantic light/dark CSS custom properties under `packages/ui/src/styles/themes/` and register the theme metadata in `packages/ui/src/theme/registry.ts`.
 
 ## Security Defaults
 
