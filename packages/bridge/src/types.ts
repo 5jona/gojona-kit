@@ -1,4 +1,6 @@
 export type RuntimeEnv = 'host' | 'ksu' | 'mock' | 'browser';
+export type PluginBackendState = 'none' | 'online' | 'offline';
+export type ContainerBackdrop = 'native-glass' | 'transparent' | 'opaque';
 
 export interface ExecResult {
   errno: number;
@@ -32,8 +34,15 @@ export interface ContainerThemeSyncPayload {
 export type ContainerAction =
   | { type: 'dismiss' }
   | { type: 'requestImeFocus'; focused: boolean }
-  | { type: 'setPreferredSize'; widthDp: number; heightDp: number }
-  | { type: 'syncTheme'; payload: ContainerThemeSyncPayload };
+  | {
+      type: 'setPreferredSize';
+      widthDp?: number;
+      heightDp?: number;
+      heightPercent?: number;
+    }
+  | { type: 'syncTheme'; payload: ContainerThemeSyncPayload }
+  | { type: 'setBackIntercept'; enabled: boolean }
+  | { type: 'setSurfaceBackdrop'; backdrop: ContainerBackdrop };
 
 export interface RpcRequest {
   jsonrpc: '2.0';
@@ -65,10 +74,7 @@ export type MockExecHandler = (
   options?: ExecOptions,
 ) => ExecResult | Promise<ExecResult>;
 
-export type MockRpcHandler = (
-  method: string,
-  params?: unknown,
-) => unknown | Promise<unknown>;
+export type MockRpcHandler = (method: string, params?: unknown) => unknown | Promise<unknown>;
 
 export interface EmbeddedHostGlobal {
   postMessage?: (message: string) => void;
@@ -93,7 +99,20 @@ export interface WriteFileAtomicOptions {
   preserveMetadata?: boolean;
 }
 
+export interface PluginScopedEventPayload<T = unknown> {
+  pluginId: string;
+  event: string;
+  payload?: T;
+}
+
+export interface PluginBackendStatePayload {
+  pluginId: string;
+  state: PluginBackendState;
+}
+
 export interface BridgeOptions {
+  /** Explicit plugin ID when running inside a plugin sandbox. */
+  pluginId?: string;
   /** Force a specific runtime environment (useful in preview sandboxes). */
   forceEnv?: RuntimeEnv;
   /** Allow `?env=host|ksu|mock|browser` query parameter override (defaults to DEV only when native globals are absent). */
@@ -112,6 +131,8 @@ export interface BridgeOptions {
   onMockExec?: MockExecHandler;
   /** Custom RPC fallback handler in browser mock mode. */
   onMockRpc?: MockRpcHandler;
+  /** Custom handler for plugin.invoke in browser mock mode. */
+  onMockPluginInvoke?: (method: string, params?: unknown) => unknown | Promise<unknown>;
   /** Optional custom RPC handler when `invoke()` is called in KernelSU mode. */
   onKsuRpc?: MockRpcHandler;
   /** Optional observer invoked whenever container actions occur in browser mock mode. */
@@ -120,6 +141,7 @@ export interface BridgeOptions {
 
 export interface BridgeClient {
   readonly env: RuntimeEnv;
+  readonly pluginId: string | null;
   exec: (cmd: string, options?: ExecOptions) => Promise<ExecResult>;
   readFile: (path: string) => Promise<string | null>;
   writeFileAtomic: (
@@ -128,9 +150,13 @@ export interface BridgeClient {
     options?: WriteFileAtomicOptions,
   ) => Promise<ExecResult>;
   invoke: <T = unknown>(method: string, params?: unknown) => Promise<T>;
+  invokePlugin: <T = unknown>(method: string, params?: unknown) => Promise<T>;
   toast: (message: string) => void;
   sendContainerAction: (action: ContainerAction) => Promise<void>;
   onHostEvent: (event: string, listener: HostEventListener) => () => void;
+  onPluginEvent: <T = unknown>(event: string, listener: (payload: T) => void) => () => void;
+  onPluginBackendState: (listener: (state: PluginBackendState) => void) => () => void;
+  onBackPressed: (listener: () => void) => () => void;
   dispose: () => void;
 }
 

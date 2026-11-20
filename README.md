@@ -7,8 +7,9 @@ Reusable React UI kit, multi-theme design system, host runtime bridge, and share
 ```text
 pochita-webui-kit/
 ├── packages/
-│   ├── config/      # @pochita/config: shared Vite + React + Tailwind v4 preset (base: './')
+│   ├── config/      # @pochita/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
 │   ├── bridge/      # @pochita/bridge: Host WebView / KernelSU / Browser Mock transport SDK
+│   ├── sdk/         # @pochita/sideveil-sdk: optional React plugin SDK for Sideveil sidebar plugins
 │   └── ui/          # @pochita/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
 ├── apps/
 │   └── playground/  # @pochita/playground: dual-viewport and live theme workbench
@@ -18,6 +19,7 @@ pochita-webui-kit/
 ### `@pochita/ui`
 
 Tailwind- and Radix-based UI component library and theme management primitives:
+
 - **Components & Providers**: `AppShell`, `Button`, `Input`, `Card`, `SettingRow`, `Slider`, `Switch`, `Tabs`, `Badge`, `LogConsole`, `MetricTile`, `ThemeSwitcher`, `ToastProvider`, and `ThemeProvider`.
   - `ThemeProvider`: Manages theme and color mode. Supports `syncEnabled?: boolean` (defaults to `true`); daemon-backed embedded WebViews should pass `syncEnabled={hydrated}` so stale `localStorage` values do not flash the native container backdrop before authoritative config loads.
 - **Canvas & Theme Helpers**:
@@ -29,10 +31,19 @@ Tailwind- and Radix-based UI component library and theme management primitives:
 ### `@pochita/bridge`
 
 Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, and browser mock environments:
-- **Core APIs**: `createBridge`, `BridgeProvider`, `useBridge`, and `detectRuntime`.
+
+- **Core APIs**: `createBridge`, `BridgeProvider`, `useBridge`, `detectRuntime`, and `detectPluginId`.
+- **Plugin Messaging & Container Control**: `invokePlugin` (`plugin.invoke` JSON-RPC multiplexing), `onPluginEvent`, `onPluginBackendState`, `onBackPressed`, and `sendContainerAction` (`dismiss`, `setPreferredSize`, `requestImeFocus`, `setBackIntercept`, `setSurfaceBackdrop`, `syncTheme`).
 - **Host Theme Synchronization**:
   - `useContainerThemeSync(options?)`: React hook providing a stable callback for `<ThemeProvider onThemeSync={...} />` with zero boilerplate, wrapping `createThemeSyncDeduplicator` and delegating to `bridge.sendContainerAction({ type: 'syncTheme', payload })`.
   - `createThemeSyncDeduplicator(send, options?)`: Pure deduplicator suppressing consecutive identical theme payloads. With `includeAppearanceHints: false`, appearance hints (`wantsNativeBlur`, `cornerRadiusPx`) are stripped to preserve daemon authority.
+
+### `@pochita/sideveil-sdk`
+
+Optional React SDK built on top of `@pochita/bridge` for authoring Sideveil sidebar plugins with minimal boilerplate:
+
+- **Provider & Manifest**: `SideveilPluginProvider`, `useSideveilPlugin`, `definePluginManifest`, and `BUILTIN_DIAG_PLUGIN_ID`.
+- **Hooks**: `useContainerAction`, `useBackPress`, `usePluginRpc`, `usePluginStorage`, `usePluginEvent`, and `usePluginBackendState`.
 
 ## Prerequisites
 
@@ -42,9 +53,11 @@ Tool versions are pinned in [`mise.toml`](./mise.toml). Ensure `mise` is active 
 
 ```bash
 pnpm install
+pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm check
 pnpm dev
 ```
 
@@ -52,6 +65,7 @@ pnpm dev
 
 1. **Local linking during active development**: reference `@pochita/ui`, `@pochita/bridge`, and `@pochita/config` via local workspace or relative file dependencies from a consumer repository's `package.json`.
 2. **Configuring Kit Path with `POCHITA_KIT_ROOT`**: consumer repositories utilizing `createPochitaViteConfig` (or `createWebUiViteConfig`) can override the default relative monorepo path using the `POCHITA_KIT_ROOT` environment variable:
+
    ```javascript
    import path from 'node:path';
    import { fileURLToPath } from 'node:url';
@@ -74,4 +88,3 @@ pnpm dev
 
 - **`detectRuntime({ allowUrlOverride })`**: URL query parameter overrides (`?env=host|ksu|mock|browser`) are disabled by default in production and only accepted in development builds when no native bridge global exists. Set `allowUrlOverride: false` to enforce strict denial of query overrides, or `allowUrlOverride: true` in controlled test harnesses.
 - **`HostTransport({ allowedOrigins })`**: Embedded WebView postMessage communication strictly validates event origins against configured `allowedOrigins`. Message payloads and port transfers from untrusted origins are immediately discarded. In Android environments, pin origins to trusted endpoints such as `https://appassets.androidplatform.net`.
-

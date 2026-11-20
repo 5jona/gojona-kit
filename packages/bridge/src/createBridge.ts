@@ -1,13 +1,13 @@
 import {
   createContext,
   createElement,
+  type ReactNode,
   useContext,
   useEffect,
   useMemo,
   useRef,
-  type ReactNode,
 } from 'react';
-import { detectRuntime } from './detect.ts';
+import { detectPluginId, detectRuntime } from './detect.ts';
 import { HostTransport } from './host.ts';
 import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
 import {
@@ -33,16 +33,16 @@ import type {
  */
 export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const allowUrlOverride = options.allowUrlOverride ?? options.allowQueryOverride;
-  const env =
-    options.forceEnv ?? detectRuntime({ allowUrlOverride });
+  const env = options.forceEnv ?? detectRuntime({ allowUrlOverride });
+  const pluginId = detectPluginId(options.pluginId);
   const mockNamespace = options.mockNamespace ?? 'default';
   const transport =
     env === 'host'
       ? new HostTransport({
-        wsUrl: options.wsUrl,
-        timeoutMs: options.timeoutMs,
-        allowedOrigins: options.allowedOrigins,
-      })
+          wsUrl: options.wsUrl,
+          timeoutMs: options.timeoutMs,
+          allowedOrigins: options.allowedOrigins,
+        })
       : null;
 
   const exec = async (cmd: string, execOpts?: ExecOptions): Promise<ExecResult> => {
@@ -95,12 +95,35 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     return runMockRpc(mockNamespace, method, params, options.onMockRpc) as Promise<T>;
   };
 
+  const invokePlugin = async <T = unknown>(method: string, params?: unknown): Promise<T> => {
+    if (env === 'host' && transport) {
+      return transport.invoke<T>('plugin.invoke', { method, params });
+    }
+    if (options.onMockPluginInvoke) {
+      return (await options.onMockPluginInvoke(method, params)) as T;
+    }
+    if (env === 'ksu') {
+      if (options.onKsuRpc) {
+        return (await options.onKsuRpc(`plugin.invoke:${method}`, params)) as T;
+      }
+      throw new Error(
+        `invokePlugin("${method}") is not supported in KernelSU mode unless onMockPluginInvoke or onKsuRpc is provided`,
+      );
+    }
+    return runMockRpc(
+      mockNamespace,
+      `plugin.invoke:${method}`,
+      params,
+      options.onMockRpc,
+    ) as Promise<T>;
+  };
+
   const toast = (message: string): void => {
     if (env === 'ksu' && ksuToast(message)) {
       return;
     }
     if (env === 'host' && transport) {
-      void transport.invoke('ui.toast', { message }).catch(() => { });
+      void transport.invoke('ui.toast', { message }).catch(() => {});
     }
   };
 
@@ -118,7 +141,50 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     if (transport) {
       return transport.subscribe(event, listener);
     }
-    return () => { };
+    return () => {};
+  };
+
+  const onPluginEvent = <T = unknown>(
+    event: string,
+    listener: (payload: T) => void,
+  ): (() => void) => {
+    const unsubScoped = onHostEvent('plugin.event', (data) => {
+      if (data && typeof data === 'object') {
+        const payloadObj = data as { pluginId?: string; event?: string; payload?: T };
+        if (payloadObj.event === event) {
+          listener(payloadObj.payload as T);
+        }
+      }
+    });
+    const unsubDirect = onHostEvent(event, (data) => {
+      listener(data as T);
+    });
+    return () => {
+      unsubScoped();
+      unsubDirect();
+    };
+  };
+
+  const onPluginBackendState = (
+    listener: (state: import('./types.ts').PluginBackendState) => void,
+  ): (() => void) => {
+    return onHostEvent('plugin.backendState', (data) => {
+      if (data && typeof data === 'object') {
+        const payloadObj = data as {
+          pluginId?: string;
+          state?: import('./types.ts').PluginBackendState;
+        };
+        if (payloadObj.state) {
+          listener(payloadObj.state);
+        }
+      }
+    });
+  };
+
+  const onBackPressed = (listener: () => void): (() => void) => {
+    return onHostEvent('panel.backPressed', () => {
+      listener();
+    });
   };
 
   const dispose = (): void => {
@@ -127,13 +193,18 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
 
   return {
     env,
+    pluginId,
     exec,
     readFile,
     writeFileAtomic,
     invoke,
+    invokePlugin,
     toast,
     sendContainerAction,
     onHostEvent,
+    onPluginEvent,
+    onPluginBackendState,
+    onBackPressed,
     dispose,
   };
 }
@@ -143,23 +214,26 @@ const BridgeContext = createContext<BridgeClient | null>(null);
 export interface BridgeProviderProps {
   options?: BridgeOptions;
   client?: BridgeClient;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function BridgeProvider({ options, client, children }: BridgeProviderProps) {
   const callbacksRef = useRef({
     onMockExec: options?.onMockExec,
     onMockRpc: options?.onMockRpc,
+    onMockPluginInvoke: options?.onMockPluginInvoke,
     onKsuRpc: options?.onKsuRpc,
     onMockContainerAction: options?.onMockContainerAction,
   });
   callbacksRef.current = {
     onMockExec: options?.onMockExec,
     onMockRpc: options?.onMockRpc,
+    onMockPluginInvoke: options?.onMockPluginInvoke,
     onKsuRpc: options?.onKsuRpc,
     onMockContainerAction: options?.onMockContainerAction,
   };
 
+  const pluginId = options?.pluginId;
   const forceEnv = options?.forceEnv;
   const allowUrlOverride = options?.allowUrlOverride ?? options?.allowQueryOverride;
   const wsUrl = options?.wsUrl;
@@ -170,6 +244,7 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
   const bridge = useMemo(() => {
     if (client) return client;
     return createBridge({
+      pluginId,
       forceEnv,
       allowUrlOverride,
       wsUrl,
@@ -184,6 +259,10 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
         callbacksRef.current.onMockRpc
           ? callbacksRef.current.onMockRpc(method, params)
           : runMockRpc(mockNamespace ?? 'default', method, params),
+      onMockPluginInvoke: (method, params) =>
+        callbacksRef.current.onMockPluginInvoke
+          ? callbacksRef.current.onMockPluginInvoke(method, params)
+          : runMockRpc(mockNamespace ?? 'default', `plugin.invoke:${method}`, params),
       onKsuRpc: (method, params) => {
         if (callbacksRef.current.onKsuRpc) {
           return callbacksRef.current.onKsuRpc(method, params);
@@ -196,6 +275,7 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
     });
   }, [
     client,
+    pluginId,
     forceEnv,
     allowUrlOverride,
     wsUrl,

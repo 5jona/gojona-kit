@@ -1,11 +1,13 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
-  shellQuote,
+  createBridge,
+  createThemeSyncDeduplicator,
+  detectPluginId,
   detectRuntime,
   HostTransport,
   MockTransport,
-  createThemeSyncDeduplicator,
+  shellQuote,
 } from '../src/index.ts';
 
 test('shellQuote properly escapes single quotes and shell metacharacters', () => {
@@ -226,6 +228,88 @@ test('HostTransport rejects untrusted origins and accepts valid responses/events
   }
 });
 
+test('HostTransport accepts native WebView MessagePort transfer even when allowedOrigins is configured', async () => {
+  const originalWindow = globalThis.window;
+
+  class FakeWindow extends EventTarget {
+    constructor() {
+      super();
+      this.location = {
+        origin: 'https://sideveil.diagnostic.plugins.sideveil.local',
+        search: '',
+      };
+      this.setTimeout = setTimeout;
+      this.clearTimeout = clearTimeout;
+    }
+  }
+
+  const fakeWindow = new FakeWindow();
+  globalThis.window = fakeWindow;
+
+  try {
+    const transport = new HostTransport({
+      allowedOrigins: ['https://sideveil.diagnostic.plugins.sideveil.local'],
+      timeoutMs: 1500,
+    });
+
+    const channel = new MessageChannel();
+    const hostPort = channel.port1;
+    const pagePort = channel.port2;
+    const receivedOnHost = [];
+
+    hostPort.onmessage = (ev) => {
+      const parsed = JSON.parse(String(ev.data));
+      receivedOnHost.push(parsed);
+      hostPort.postMessage(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: parsed.id,
+          result: { pong: true, viaPort: true },
+        }),
+      );
+    };
+    hostPort.start();
+
+    // Untrusted origin attempting port transfer must be rejected
+    const bogusChannel = new MessageChannel();
+    fakeWindow.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://malicious.example.com',
+        source: null,
+        data: '',
+        ports: [bogusChannel.port2],
+      }),
+    );
+
+    // Native Android WebView postWebMessage delivers origin="" and source=null
+    fakeWindow.dispatchEvent(
+      new MessageEvent('message', {
+        origin: '',
+        source: null,
+        data: '',
+        ports: [pagePort],
+      }),
+    );
+
+    const res = await transport.invoke('daemon.ping');
+    assert.deepEqual(res, { pong: true, viaPort: true });
+    assert.equal(receivedOnHost.length, 1);
+    assert.equal(receivedOnHost[0].method, 'daemon.ping');
+
+    hostPort.close();
+    pagePort.close();
+    bogusChannel.port1.close();
+    bogusChannel.port2.close();
+    transport.dispose();
+  } finally {
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
+});
+
 test('createThemeSyncDeduplicator deduplicates consecutive identical payloads, respects includeAppearanceHints, and resets', () => {
   const sent = [];
   const deduplicator = createThemeSyncDeduplicator((payload) => {
@@ -314,4 +398,89 @@ test('createThemeSyncDeduplicator deduplicates consecutive identical payloads, r
     themeId: 'coloros-glass',
     colorScheme: 'dark',
   });
+});
+
+test('detectPluginId detects id from override, window.__POCHITA_HOST__, and query params', () => {
+  const originalWindow = globalThis.window;
+
+  try {
+    delete globalThis.window;
+    assert.equal(detectPluginId(), null);
+    assert.equal(detectPluginId('custom.plugin'), 'custom.plugin');
+
+    globalThis.window = {
+      location: { search: '?pluginId=query.plugin' },
+    };
+    assert.equal(detectPluginId(), 'query.plugin');
+
+    globalThis.window.__POCHITA_HOST__ = {
+      pluginId: 'global.plugin',
+    };
+    assert.equal(detectPluginId(), 'global.plugin');
+
+    globalThis.window.__POCHITA_HOST__.getPluginId = () => 'func.plugin';
+    assert.equal(detectPluginId(), 'func.plugin');
+
+    // Explicit override takes precedence over window
+    assert.equal(detectPluginId('override.plugin'), 'override.plugin');
+  } finally {
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
+});
+
+test('createBridge supports pluginId, invokePlugin, onPluginEvent, onPluginBackendState, onBackPressed, and container actions', async () => {
+  const containerActions = [];
+  const customPluginCalls = [];
+
+  const bridge = createBridge({
+    forceEnv: 'mock',
+    pluginId: 'sideveil.diagnostic',
+    onMockPluginInvoke: (method, params) => {
+      customPluginCalls.push({ method, params });
+      return { ok: true, method };
+    },
+    onMockContainerAction: (action) => {
+      containerActions.push(action);
+    },
+  });
+
+  assert.equal(bridge.pluginId, 'sideveil.diagnostic');
+
+  // invokePlugin
+  const res = await bridge.invokePlugin('status.get', { detailed: true });
+  assert.deepEqual(res, { ok: true, method: 'status.get' });
+  assert.equal(customPluginCalls.length, 1);
+  assert.equal(customPluginCalls[0].method, 'status.get');
+
+  // container actions
+  await bridge.sendContainerAction({ type: 'dismiss' });
+  await bridge.sendContainerAction({ type: 'setBackIntercept', enabled: true });
+  await bridge.sendContainerAction({
+    type: 'setSurfaceBackdrop',
+    backdrop: 'native-glass',
+  });
+  await bridge.sendContainerAction({
+    type: 'setPreferredSize',
+    widthDp: 360,
+    heightPercent: 80,
+  });
+
+  assert.equal(containerActions.length, 4);
+  assert.deepEqual(containerActions[0], { type: 'dismiss' });
+  assert.deepEqual(containerActions[1], { type: 'setBackIntercept', enabled: true });
+  assert.deepEqual(containerActions[2], {
+    type: 'setSurfaceBackdrop',
+    backdrop: 'native-glass',
+  });
+  assert.deepEqual(containerActions[3], {
+    type: 'setPreferredSize',
+    widthDp: 360,
+    heightPercent: 80,
+  });
+
+  bridge.dispose();
 });

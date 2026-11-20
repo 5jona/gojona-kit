@@ -1,7 +1,20 @@
+export { BridgeProvider, createBridge, useBridge } from './createBridge.ts';
+
+export { type DetectRuntimeOptions, detectPluginId, detectRuntime } from './detect.ts';
+export { HostTransport } from './host.ts';
+export { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic, shellQuote } from './ksu.ts';
+export { MockTransport, registerMockExec, registerMockRpc } from './mock.ts';
+export {
+  type ContainerThemeSyncOptions,
+  createThemeSyncDeduplicator,
+  type ThemeSyncDeduplicator,
+  useContainerThemeSync,
+} from './themeSync.ts';
 export type {
   BridgeClient,
   BridgeOptions,
   ContainerAction,
+  ContainerBackdrop,
   ContainerThemeSyncPayload,
   EmbeddedHostGlobal,
   ExecOptions,
@@ -11,20 +24,11 @@ export type {
   KsuHostGlobal,
   MockExecHandler,
   MockRpcHandler,
+  PluginBackendState,
+  PluginBackendStatePayload,
+  PluginScopedEventPayload,
   RpcRequest,
   RpcResponse,
   RuntimeEnv,
   WriteFileAtomicOptions,
 } from './types.ts';
-
-export { detectRuntime, type DetectRuntimeOptions } from './detect.ts';
-export { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic, shellQuote } from './ksu.ts';
-export { HostTransport } from './host.ts';
-export { MockTransport, registerMockExec, registerMockRpc } from './mock.ts';
-export { BridgeProvider, createBridge, useBridge } from './createBridge.ts';
-export {
-  createThemeSyncDeduplicator,
-  useContainerThemeSync,
-  type ContainerThemeSyncOptions,
-  type ThemeSyncDeduplicator,
-} from './themeSync.ts';

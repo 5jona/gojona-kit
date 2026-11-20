@@ -67,3 +67,40 @@ export function detectRuntime(options: DetectRuntimeOptions = {}): RuntimeEnv {
 
   return 'mock';
 }
+
+/**
+ * Detects the active plugin identifier if running inside a Sideveil plugin container.
+ * Inspects explicit override, window.__POCHITA_HOST__, and ?pluginId= URL parameter.
+ */
+export function detectPluginId(override?: string): string | null {
+  if (override && override.trim().length > 0) {
+    return override.trim();
+  }
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const host = window.__POCHITA_HOST__;
+  if (host) {
+    if (typeof host.getPluginId === 'function') {
+      try {
+        const id = host.getPluginId();
+        if (id && id.trim().length > 0) return id.trim();
+      } catch {
+        // ignore
+      }
+    }
+    if (typeof host.pluginId === 'string' && host.pluginId.trim().length > 0) {
+      return host.pluginId.trim();
+    }
+  }
+  try {
+    if (window.location?.search) {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('pluginId');
+      if (q && q.trim().length > 0) return q.trim();
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}

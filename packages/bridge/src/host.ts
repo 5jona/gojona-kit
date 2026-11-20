@@ -43,15 +43,19 @@ export class HostTransport {
   }
 
   private isTrustedMessageEvent(event: MessageEvent): boolean {
-    if (this.allowedOrigins && this.allowedOrigins.length > 0) {
-      return this.allowedOrigins.includes(event.origin);
-    }
-
     const hasTransferredPort = Boolean(event.ports && event.ports.length > 0);
     const isNativePortTransfer =
-      !this.port && hasTransferredPort && event.origin === '' && event.source === null;
+      !this.port &&
+      hasTransferredPort &&
+      event.origin === '' &&
+      event.source === null &&
+      (event.data === '' || event.data === null || event.data === undefined);
     if (isNativePortTransfer) {
       return true;
+    }
+
+    if (this.allowedOrigins && this.allowedOrigins.length > 0) {
+      return this.allowedOrigins.includes(event.origin);
     }
 
     const currentOrigin = typeof window !== 'undefined' ? window.location?.origin : '';
@@ -136,12 +140,13 @@ export class HostTransport {
     if (this.wsConnectPromise) {
       return this.wsConnectPromise;
     }
-    if (!this.wsUrl) {
+    const wsUrl = this.wsUrl;
+    if (!wsUrl) {
       throw new Error('Embedded host transport unavailable');
     }
 
     this.wsConnectPromise = new Promise<WebSocket>((resolve, reject) => {
-      const socket = new WebSocket(this.wsUrl!);
+      const socket = new WebSocket(wsUrl);
       this.connectingWs = socket;
       let settled = false;
 
