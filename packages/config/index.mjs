@@ -75,7 +75,7 @@ export function pochitaThemeBootstrapPlugin(surface = 'standalone') {
  * @param {object} [options.server={}]
  * @param {object} [options.resolve={}]
  */
-export function createWebUiViteConfig(options = {}) {
+export function createPochitaViteConfig(options = {}) {
   const {
     outDir = 'dist',
     port = 5173,
@@ -116,4 +116,5 @@ export function createWebUiViteConfig(options = {}) {
   });
 }
 
-export const createPochitaViteConfig = createWebUiViteConfig;
+export const createWebUIViteConfig = createPochitaViteConfig;
+export const createWebUiViteConfig = createPochitaViteConfig;

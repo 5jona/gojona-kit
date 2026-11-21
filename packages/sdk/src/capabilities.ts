@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSideveilPlugin } from './PluginContext.ts';
+import { useSideVeilPlugin } from './PluginContext.ts';
 import type { GraphicsCapabilities, PluginBusEventPayload, TelemetrySnapshot } from './types.ts';
 
 interface NavigatorWithGpu {
@@ -87,7 +87,7 @@ export function useInterPluginBus<T = unknown>(
   topic: string,
   onMessage?: (event: PluginBusEventPayload<T>) => void,
 ): { publish: (payload: T) => Promise<void> } {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
   const handlerRef = useRef(onMessage);
   handlerRef.current = onMessage;
 
@@ -120,7 +120,7 @@ export function useTelemetry(intervalMs = 0): {
   snapshot: TelemetrySnapshot | null;
   refresh: () => Promise<TelemetrySnapshot | null>;
 } {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
   const [snapshot, setSnapshot] = useState<TelemetrySnapshot | null>(null);
 
   const refresh = useCallback(async (): Promise<TelemetrySnapshot | null> => {

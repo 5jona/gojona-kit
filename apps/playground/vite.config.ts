@@ -1,3 +1,3 @@
-import { createWebUiViteConfig } from '@pochita/config';
+import { createPochitaViteConfig } from '@pochita/config';
 
-export default createWebUiViteConfig({ port: 5173 });
+export default createPochitaViteConfig({ port: 5173 });

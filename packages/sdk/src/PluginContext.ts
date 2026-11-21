@@ -17,7 +17,7 @@ import {
 } from 'react';
 import type { PluginContextValue, PluginManifest } from './types.ts';
 
-const SideveilPluginContext = createContext<PluginContextValue | null>(null);
+const SideVeilPluginContext = createContext<PluginContextValue | null>(null);
 
 function PluginContextInner({
   pluginId,
@@ -49,10 +49,10 @@ function PluginContextInner({
     [pluginId, manifest, bridge, backendState],
   );
 
-  return createElement(SideveilPluginContext.Provider, { value }, children);
+  return createElement(SideVeilPluginContext.Provider, { value }, children);
 }
 
-export interface SideveilPluginProviderProps {
+export interface SideVeilPluginProviderProps {
   pluginId?: string;
   manifest?: PluginManifest;
   bridgeOptions?: BridgeOptions;
@@ -60,15 +60,15 @@ export interface SideveilPluginProviderProps {
 }
 
 /**
- * Root context provider for a Sideveil plugin WebView application.
+ * Root context provider for a SideVeil plugin WebView application.
  * Manages plugin identity, backend connection state, and bridge RPC multiplexing.
  */
-export function SideveilPluginProvider({
+export function SideVeilPluginProvider({
   pluginId,
   manifest,
   bridgeOptions,
   children,
-}: SideveilPluginProviderProps): ReactElement {
+}: SideVeilPluginProviderProps): ReactElement {
   const resolvedPluginId =
     pluginId ?? manifest?.id ?? detectPluginId(bridgeOptions?.pluginId) ?? 'unknown.plugin';
 
@@ -88,12 +88,12 @@ export function SideveilPluginProvider({
 }
 
 /**
- * Access the active Sideveil plugin context.
+ * Access the active SideVeil plugin context.
  */
-export function useSideveilPlugin(): PluginContextValue {
-  const ctx = useContext(SideveilPluginContext);
+export function useSideVeilPlugin(): PluginContextValue {
+  const ctx = useContext(SideVeilPluginContext);
   if (!ctx) {
-    throw new Error('useSideveilPlugin must be used within a SideveilPluginProvider');
+    throw new Error('useSideVeilPlugin must be used within a SideVeilPluginProvider');
   }
   return ctx;
 }

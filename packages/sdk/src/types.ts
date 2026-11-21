@@ -170,7 +170,7 @@ export interface PluginDescriptor {
   entry: string;
   builtin: boolean;
   enabled: boolean;
-  priority: i32Number;
+  priority: number;
   packages: string[];
   activities?: string[];
   global: boolean;
@@ -181,8 +181,6 @@ export interface PluginDescriptor {
   capabilities: PluginCapability[];
   surface: PluginSurfacePrefs;
 }
-
-type i32Number = number;
 
 export interface PluginOverrideEntry {
   enabled?: boolean;
@@ -304,7 +302,7 @@ export interface UseContainerActionApi {
 }
 
 /**
- * Type-safe helper for defining a Sideveil plugin manifest with sensible defaults.
+ * Type-safe helper for defining a SideVeil plugin manifest with sensible defaults.
  */
 export function definePluginManifest(manifest: PluginManifest): PluginManifest {
   return {

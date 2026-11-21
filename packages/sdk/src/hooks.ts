@@ -6,7 +6,7 @@ import type {
   ContainerThemeSyncPayload,
 } from '@pochita/bridge';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSideveilPlugin } from './PluginContext.ts';
+import { useSideVeilPlugin } from './PluginContext.ts';
 import type {
   NativeHudScene,
   PluginBackendState,
@@ -19,7 +19,7 @@ import type {
  * Access container control actions for the host window overlay.
  */
 export function useContainerAction(): UseContainerActionApi {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
 
   const dismiss = useCallback(async () => {
     await bridge.sendContainerAction({ type: 'dismiss' });
@@ -112,7 +112,7 @@ export function useContainerAction(): UseContainerActionApi {
  * When enabled, the host delegates back presses to this callback instead of dismissing the panel.
  */
 export function useBackPress(handler: () => void, enabled = true): void {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
@@ -136,7 +136,7 @@ export function useBackPress(handler: () => void, enabled = true): void {
  * Perform type-safe JSON-RPC calls against the plugin's dedicated native/app UDS backend.
  */
 export function usePluginRpc<TParams = unknown, TResult = unknown>(method: string) {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
   const [state, setState] = useState<PluginRpcState<TResult>>({
     data: null,
     loading: false,
@@ -175,7 +175,7 @@ export function usePluginStorage<T = string>(
   path: string,
   initialValue?: T,
 ): UsePluginStorageResult<T> {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
   const cleanPath = useMemo(() => path.replace(/^\/+/, ''), [path]);
   const isJson = useMemo(() => cleanPath.endsWith('.json'), [cleanPath]);
 
@@ -247,7 +247,7 @@ export function usePluginStorage<T = string>(
  * Subscribe to plugin-scoped events pushed by daemon or UDS backend.
  */
 export function usePluginEvent<T = unknown>(event: string, handler: (payload: T) => void): void {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
@@ -262,19 +262,19 @@ export function usePluginEvent<T = unknown>(event: string, handler: (payload: T)
  * Returns the current backend connection status of this plugin.
  */
 export function usePluginBackendState(): PluginBackendState {
-  const { backendState } = useSideveilPlugin();
+  const { backendState } = useSideVeilPlugin();
   return backendState;
 }
 
 /**
- * Updates live micro-status badges/progress displayed on the Sideveil edge handle,
+ * Updates live micro-status badges/progress displayed on the SideVeil edge handle,
  * automatically clearing status when the component unmounts.
  */
 export function useEdgeStatus(): {
   setStatus: (status: ContainerEdgeStatus) => Promise<void>;
   clearStatus: () => Promise<void>;
 } {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
 
   const setStatus = useCallback(
     async (status: ContainerEdgeStatus) => {
@@ -306,7 +306,7 @@ export function useNativeHud(): {
   updateScene: (scene: NativeHudScene) => Promise<void>;
   dismiss: () => Promise<void>;
 } {
-  const { bridge, pluginId } = useSideveilPlugin();
+  const { bridge, pluginId } = useSideVeilPlugin();
 
   const updateScene = useCallback(
     async (scene: NativeHudScene) => {
@@ -330,7 +330,7 @@ export function useNativeHud(): {
  * directly to `document.documentElement`, cleaning up injected overrides on unmount.
  */
 export function useDynamicThemeTokens(enabled = true): void {
-  const { bridge } = useSideveilPlugin();
+  const { bridge } = useSideVeilPlugin();
 
   useEffect(() => {
     if (!enabled || typeof document === 'undefined') return;

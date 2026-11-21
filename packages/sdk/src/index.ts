@@ -15,9 +15,9 @@ export {
   usePluginStorage,
 } from './hooks.ts';
 export {
-  SideveilPluginProvider,
-  type SideveilPluginProviderProps,
-  useSideveilPlugin,
+  SideVeilPluginProvider,
+  type SideVeilPluginProviderProps,
+  useSideVeilPlugin,
 } from './PluginContext.ts';
 export {
   BUILTIN_DIAG_PLUGIN_ID,

@@ -9,11 +9,11 @@ pochita-webui-kit/
 ├── packages/
 │   ├── config/      # @pochita/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
 │   ├── bridge/      # @pochita/bridge: Host WebView / KernelSU / Browser Mock transport SDK
-│   ├── sdk/         # @pochita/sideveil-sdk: optional React plugin SDK for Sideveil sidebar plugins
+│   ├── sdk/         # @pochita/sideveil-sdk: optional React plugin SDK for SideVeil sidebar plugins
 │   └── ui/          # @pochita/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
 ├── apps/
 │   └── playground/  # @pochita/playground: dual-viewport and live theme workbench
-└── .agents/rules/   # Repository engineering rules
+└── .agent/rules.md  # Repository engineering rules
 ```
 
 ### `@pochita/ui`
@@ -41,9 +41,9 @@ Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, a
 
 ### `@pochita/sideveil-sdk`
 
-Optional React SDK built on top of `@pochita/bridge` for authoring Sideveil sidebar plugins with minimal boilerplate:
+Optional React SDK built on top of `@pochita/bridge` for authoring SideVeil sidebar plugins with minimal boilerplate:
 
-- **Provider & Manifest**: `SideveilPluginProvider`, `useSideveilPlugin`, `definePluginManifest`, and `BUILTIN_DIAG_PLUGIN_ID`.
+- **Provider & Manifest**: `SideVeilPluginProvider`, `useSideVeilPlugin`, `definePluginManifest`, and `BUILTIN_DIAG_PLUGIN_ID`.
 - **Hooks**: `useContainerAction`, `useBackPress`, `usePluginRpc`, `usePluginStorage`, `usePluginEvent`, `usePluginBackendState`, `useEdgeStatus`, `useNativeHud`, `useDynamicThemeTokens`, `useGraphicsCapabilities`, `useInterPluginBus`, and `useTelemetry`.
 
 ## Prerequisites
@@ -66,7 +66,7 @@ pnpm dev
 
 1. **Compiled `dist/` package exports**: `@pochita/ui`, `@pochita/bridge`, and `@pochita/sideveil-sdk` build standard ESM `dist/*.js` and `dist/*.d.ts` artifacts via `pnpm build` (automatically executed during `prepack` and `pnpm check`), while exposing a `"source": "./src/index.ts"` condition for zero-build monorepo development. External plugins can consume published tarballs/packages directly without relative source path aliases.
 2. **Local linking during active development**: reference `@pochita/ui`, `@pochita/bridge`, `@pochita/sideveil-sdk`, and `@pochita/config` via local workspace or relative file dependencies from a consumer repository's `package.json`.
-3. **Configuring Kit Path with `POCHITA_KIT_ROOT`**: consumer repositories utilizing `createPochitaViteConfig` (or `createWebUiViteConfig`) can override the default relative monorepo path using the `POCHITA_KIT_ROOT` environment variable:
+3. **Configuring Kit Path with `POCHITA_KIT_ROOT`**: consumer repositories utilizing `createPochitaViteConfig` (or `createWebUIViteConfig`) can override the default relative monorepo path using the `POCHITA_KIT_ROOT` environment variable:
 
    ```javascript
    import path from 'node:path';

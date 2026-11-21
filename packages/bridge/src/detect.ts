@@ -69,7 +69,7 @@ export function detectRuntime(options: DetectRuntimeOptions = {}): RuntimeEnv {
 }
 
 /**
- * Detects the active plugin identifier if running inside a Sideveil plugin container.
+ * Detects the active plugin identifier if running inside a SideVeil plugin container.
  * Inspects explicit override, window.__POCHITA_HOST__, and ?pluginId= URL parameter.
  */
 export function detectPluginId(override?: string): string | null {
