@@ -39,6 +39,11 @@ export interface ExecOptions {
   timeoutMs?: number;
 }
 
+export interface InvokeOptions {
+  /** Optional per-call timeout in milliseconds overriding the transport default. */
+  timeoutMs?: number;
+}
+
 export interface ContainerThemeSyncPayload {
   themeId: string;
   colorScheme: 'light' | 'dark';
@@ -179,8 +184,12 @@ export interface BridgeClient {
     content: string,
     options?: WriteFileAtomicOptions,
   ) => Promise<ExecResult>;
-  invoke: <T = unknown>(method: string, params?: unknown) => Promise<T>;
-  invokePlugin: <T = unknown>(method: string, params?: unknown) => Promise<T>;
+  invoke: <T = unknown>(method: string, params?: unknown, options?: InvokeOptions) => Promise<T>;
+  invokePlugin: <T = unknown>(
+    method: string,
+    params?: unknown,
+    options?: InvokeOptions,
+  ) => Promise<T>;
   toast: (message: string) => void;
   sendContainerAction: (action: ContainerAction) => Promise<void>;
   onHostEvent: (event: string, listener: HostEventListener) => () => void;

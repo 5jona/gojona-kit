@@ -531,3 +531,69 @@ test('createBridge routes mock mode storage and event subscriptions through Mock
   unsubPluginEvent();
   bridge.dispose();
 });
+
+test('createBridge forwards per-call timeoutMs in invokePlugin payload and honors custom timeout', async () => {
+  const originalWindow = globalThis.window;
+
+  class FakeWindow extends EventTarget {
+    constructor() {
+      super();
+      this.location = { origin: 'https://demo.plugins.sideveil.local', search: '' };
+      this.setTimeout = setTimeout;
+      this.clearTimeout = clearTimeout;
+      this.sentPayloads = [];
+      this.__POCHITA_HOST__ = {
+        postMessage: (msg) => {
+          this.sentPayloads.push(JSON.parse(msg));
+        },
+      };
+    }
+  }
+
+  const fakeWindow = new FakeWindow();
+  globalThis.window = fakeWindow;
+
+  try {
+    const bridge = createBridge({
+      forceEnv: 'host',
+      pluginId: 'demo',
+      allowedOrigins: ['https://demo.plugins.sideveil.local'],
+      timeoutMs: 5000,
+    });
+
+    const callPromise = bridge.invokePlugin(
+      'maintenance.run',
+      { op: 'fsck' },
+      { timeoutMs: 25000 },
+    );
+    assert.equal(fakeWindow.sentPayloads.length, 1);
+    const req = fakeWindow.sentPayloads[0];
+    assert.equal(req.method, 'plugin.invoke');
+    assert.deepEqual(req.params, {
+      method: 'maintenance.run',
+      params: { op: 'fsck' },
+      timeoutMs: 25000,
+    });
+
+    fakeWindow.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://demo.plugins.sideveil.local',
+        data: JSON.stringify({ jsonrpc: '2.0', id: req.id, result: { ok: true } }),
+      }),
+    );
+    assert.deepEqual(await callPromise, { ok: true });
+
+    await assert.rejects(
+      () => bridge.invokePlugin('slow.op', {}, { timeoutMs: 40 }),
+      /timed out after 40ms/,
+    );
+
+    bridge.dispose();
+  } finally {
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
+});

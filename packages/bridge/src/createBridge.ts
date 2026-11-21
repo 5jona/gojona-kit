@@ -19,6 +19,7 @@ import type {
   ExecOptions,
   ExecResult,
   HostEventListener,
+  InvokeOptions,
   PluginBackendState,
   WriteFileAtomicOptions,
 } from './types.ts';
@@ -97,9 +98,13 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       : { errno: -1, stdout: '', stderr: 'No mock transport available' };
   };
 
-  const invoke = async <T = unknown>(method: string, params?: unknown): Promise<T> => {
+  const invoke = async <T = unknown>(
+    method: string,
+    params?: unknown,
+    callOpts?: InvokeOptions,
+  ): Promise<T> => {
     if (hostTransport) {
-      return hostTransport.invoke<T>(method, params);
+      return hostTransport.invoke<T>(method, params, callOpts?.timeoutMs);
     }
     if (env === 'ksu') {
       if (options.onKsuRpc) {
@@ -114,9 +119,16 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       : (runMockRpc(mockNamespace, method, params, options.onMockRpc) as Promise<T>);
   };
 
-  const invokePlugin = async <T = unknown>(method: string, params?: unknown): Promise<T> => {
+  const invokePlugin = async <T = unknown>(
+    method: string,
+    params?: unknown,
+    callOpts?: InvokeOptions,
+  ): Promise<T> => {
     if (hostTransport) {
-      return hostTransport.invoke<T>('plugin.invoke', { method, params });
+      const timeoutMs = callOpts?.timeoutMs;
+      const invokePayload =
+        timeoutMs !== undefined ? { method, params, timeoutMs } : { method, params };
+      return hostTransport.invoke<T>('plugin.invoke', invokePayload, timeoutMs);
     }
     if (env === 'ksu') {
       if (options.onMockPluginInvoke) {

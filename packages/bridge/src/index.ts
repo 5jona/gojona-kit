@@ -25,6 +25,7 @@ export type {
   ExecResult,
   HostEvent,
   HostEventListener,
+  InvokeOptions,
   KsuHostGlobal,
   MockExecHandler,
   MockRpcHandler,
