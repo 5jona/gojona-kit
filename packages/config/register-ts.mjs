@@ -8,7 +8,6 @@ function findPackagesRoot() {
     path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     path.resolve(process.cwd(), '../../../../pochita-webui-kit/packages'),
     path.resolve(process.cwd(), '../pochita-webui-kit/packages'),
-    path.resolve('/home/pochita/project/pochita-webui-kit/packages'),
   ];
   for (const c of candidates) {
     if (existsSync(path.resolve(c, 'bridge/src/index.ts'))) {
