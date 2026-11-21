@@ -45,7 +45,7 @@ export function ThemeSwitcher({
 
   if (compact) {
     return (
-      <div className={cn('space-y-2', className)}>
+      <div className={cn('flex flex-col gap-2', className)}>
         <fieldset className="m-0 grid grid-cols-2 gap-1.5 border-0 p-0" aria-label="界面主题">
           {THEME_LIST.map((item) => {
             const active = themeId === item.id;
@@ -104,7 +104,7 @@ export function ThemeSwitcher({
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('flex flex-col gap-3', className)}>
       <fieldset
         className="m-0 grid grid-cols-1 gap-2.5 border-0 p-0 sm:grid-cols-2"
         aria-label="界面主题"

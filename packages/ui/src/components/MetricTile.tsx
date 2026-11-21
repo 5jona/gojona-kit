@@ -26,16 +26,20 @@ export function MetricTile({
   return (
     <div
       className={cn(
-        'pochita-card flex flex-col justify-between gap-2 p-3 transition-colors duration-150',
+        'pochita-card flex min-w-0 flex-col justify-between gap-2 overflow-hidden p-3 transition-colors duration-150',
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-1.5">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-secondary)]">
-          {icon}
+      <div className="flex min-w-0 items-center justify-between gap-1">
+        <span className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium text-[var(--text-secondary)]">
+          {icon ? <span className="shrink-0">{icon}</span> : null}
           <span className="truncate">{label}</span>
         </span>
-        {statusLabel ? <Badge variant={statusVariant}>{statusLabel}</Badge> : null}
+        {statusLabel ? (
+          <Badge variant={statusVariant} className="shrink-0">
+            {statusLabel}
+          </Badge>
+        ) : null}
       </div>
 
       <div className="flex items-baseline gap-1">

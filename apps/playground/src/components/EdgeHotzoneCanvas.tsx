@@ -102,7 +102,7 @@ export function EdgeHotzoneCanvas({
     const observer = new MutationObserver(draw);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['data-theme', 'data-color-scheme', 'class'],
+      attributeFilter: ['data-theme', 'data-surface', 'style'],
     });
 
     return () => {
