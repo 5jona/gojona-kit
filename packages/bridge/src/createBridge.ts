@@ -15,6 +15,7 @@ import type {
   BridgeClient,
   BridgeOptions,
   ContainerAction,
+  DynamicThemePalettePayload,
   ExecOptions,
   ExecResult,
   HostEventListener,
@@ -207,6 +208,16 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     });
   };
 
+  const onThemePalette = (
+    listener: (palette: DynamicThemePalettePayload) => void,
+  ): (() => void) => {
+    return onHostEvent('theme.paletteUpdated', (data) => {
+      if (data && typeof data === 'object' && 'cssTokens' in data) {
+        listener(data as DynamicThemePalettePayload);
+      }
+    });
+  };
+
   const dispose = (): void => {
     hostTransport?.dispose();
     if (ownsMockTransport) {
@@ -228,6 +239,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     onPluginEvent,
     onPluginBackendState,
     onBackPressed,
+    onThemePalette,
     dispose,
   };
 }

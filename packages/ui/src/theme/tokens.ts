@@ -47,9 +47,9 @@ export function colorWithAlpha(color: string, alpha: number): string {
     const full =
       hex.length === 3
         ? hex
-            .split('')
-            .map((c) => c + c)
-            .join('')
+          .split('')
+          .map((c) => c + c)
+          .join('')
         : hex;
     if (full.length === 6) {
       const r = Number.parseInt(full.slice(0, 2), 16);
@@ -67,4 +67,38 @@ export function colorWithAlpha(color: string, alpha: number): string {
     }
   }
   return trimmed;
+}
+
+/**
+ * Applies host-synthesized dynamic CSS custom properties (e.g. Material You Oklch tokens)
+ * to the document root, strictly filtering to `--*` custom property names.
+ */
+export function applyDynamicCssTokens(
+  tokens: Record<string, string>,
+  root: HTMLElement | null = typeof document !== 'undefined' ? document.documentElement : null,
+): string[] {
+  if (!root) return [];
+  const applied: string[] = [];
+  for (const [key, value] of Object.entries(tokens)) {
+    if (key.startsWith('--') && typeof value === 'string' && value.trim().length > 0) {
+      root.style.setProperty(key, value.trim());
+      applied.push(key);
+    }
+  }
+  return applied;
+}
+
+/**
+ * Removes previously injected dynamic CSS custom properties from the document root.
+ */
+export function clearDynamicCssTokens(
+  tokenNames: readonly string[],
+  root: HTMLElement | null = typeof document !== 'undefined' ? document.documentElement : null,
+): void {
+  if (!root) return;
+  for (const key of tokenNames) {
+    if (key.startsWith('--')) {
+      root.style.removeProperty(key);
+    }
+  }
 }

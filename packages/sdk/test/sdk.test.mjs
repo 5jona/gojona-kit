@@ -27,6 +27,7 @@ test('definePluginManifest fills default fields gracefully', () => {
   });
   assert.deepEqual(manifest.surface, {
     backdrop: 'native-glass',
+    presentation: 'drawer',
     widthDp: undefined,
     heightPercent: undefined,
   });
@@ -39,7 +40,7 @@ test('definePluginManifest preserves explicit properties', () => {
     version: '2.0.0',
     entry: 'dist/index.html',
     backend: 'uds-native',
-    capabilities: ['storage', 'toast', 'system-exec'],
+    capabilities: ['storage', 'toast', 'system-exec', 'native-hud'],
     triggers: {
       packages: ['com.android.settings'],
       global: false,
@@ -47,16 +48,18 @@ test('definePluginManifest preserves explicit properties', () => {
     },
     surface: {
       backdrop: 'opaque',
+      presentation: 'pinned',
       widthDp: 400,
       heightPercent: 85,
     },
   });
 
   assert.equal(manifest.backend, 'uds-native');
-  assert.deepEqual(manifest.capabilities, ['storage', 'toast', 'system-exec']);
+  assert.deepEqual(manifest.capabilities, ['storage', 'toast', 'system-exec', 'native-hud']);
   assert.equal(manifest.triggers?.priority, 50);
   assert.deepEqual(manifest.triggers?.packages, ['com.android.settings']);
   assert.equal(manifest.surface?.backdrop, 'opaque');
+  assert.equal(manifest.surface?.presentation, 'pinned');
   assert.equal(manifest.surface?.widthDp, 400);
   assert.equal(manifest.surface?.heightPercent, 85);
 });

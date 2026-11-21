@@ -1,6 +1,31 @@
 export type RuntimeEnv = 'host' | 'ksu' | 'mock' | 'browser';
 export type PluginBackendState = 'none' | 'online' | 'offline';
 export type ContainerBackdrop = 'native-glass' | 'transparent' | 'opaque';
+export type ContainerPresentationMode = 'drawer' | 'peek' | 'pinned' | 'wide' | 'native-hud';
+
+export interface ContainerPinnedBounds {
+  widthDp?: number;
+  heightDp?: number;
+  xPercent?: number;
+  yPercent?: number;
+  clickThrough?: boolean;
+}
+
+export interface ContainerEdgeStatus {
+  badgeText?: string;
+  accentColor?: string;
+  pulse?: boolean;
+  progress?: number;
+  clear?: boolean;
+}
+
+export interface DynamicThemePalettePayload {
+  themeId: string;
+  isDark: boolean;
+  seedArgb: number;
+  lumaHint: number;
+  cssTokens: Record<string, string>;
+}
 
 export interface ExecResult {
   errno: number;
@@ -42,7 +67,10 @@ export type ContainerAction =
   }
   | { type: 'syncTheme'; payload: ContainerThemeSyncPayload }
   | { type: 'setBackIntercept'; enabled: boolean }
-  | { type: 'setSurfaceBackdrop'; backdrop: ContainerBackdrop };
+  | { type: 'setSurfaceBackdrop'; backdrop: ContainerBackdrop }
+  | { type: 'setPresentationMode'; mode: ContainerPresentationMode }
+  | ({ type: 'setPinnedBounds' } & ContainerPinnedBounds)
+  | { type: 'setEdgeStatus'; status: ContainerEdgeStatus | null };
 
 export interface RpcRequest {
   jsonrpc: '2.0';
@@ -159,6 +187,7 @@ export interface BridgeClient {
   onPluginEvent: <T = unknown>(event: string, listener: (payload: T) => void) => () => void;
   onPluginBackendState: (listener: (state: PluginBackendState) => void) => () => void;
   onBackPressed: (listener: () => void) => () => void;
+  onThemePalette: (listener: (palette: DynamicThemePalettePayload) => void) => () => void;
   dispose: () => void;
 }
 

@@ -28,7 +28,13 @@ export {
   type ThemeProviderProps,
   useTheme,
 } from './theme/ThemeProvider.tsx';
-export { colorWithAlpha, readThemeToken, THEME_BOOTSTRAP_SCRIPT } from './theme/tokens.ts';
+export {
+  applyDynamicCssTokens,
+  clearDynamicCssTokens,
+  colorWithAlpha,
+  readThemeToken,
+  THEME_BOOTSTRAP_SCRIPT,
+} from './theme/tokens.ts';
 export type {
   ColorMode,
   ResolvedColorScheme,
