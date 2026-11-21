@@ -2,7 +2,13 @@
   "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/pnpm-lock.yaml"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/pnpm-lock.yaml",
+      "!**/*.instructions.md"
+    ]
   },
   "formatter": {
     "enabled": true,

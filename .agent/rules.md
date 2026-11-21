@@ -12,14 +12,16 @@
 - **CSS Layering & Color Mixing**: Place custom component styles inside `@layer components` or `@layer base` so utility classes passed via `className` override them deterministically. Never append hex alpha suffixes to CSS variables in JavaScript; use `color-mix(in oklab, ...)` in CSS and `readThemeToken()` + `colorWithAlpha()` for 2D Canvas drawing.
 - **Zero-Flash Hydration**: Every HTML entry must include `<meta name="color-scheme" content="light dark">` followed immediately by the synchronous theme bootstrap script (`injectTo: 'head-prepend'`) before first paint.
 - **Native Glass & Responsive Containers**: Under `data-surface="native-glass"`, page backgrounds resolve to `transparent` while floating overlays bind `--surface-toast`. Wrap views in `<AppShell>` for `@container` responsiveness across narrow drawers and wide viewports. Every interactive control must provide an accessible name (`aria-label` or `aria-labelledby`).
+- **Uncapped Frame Timing**: Never clamp `requestAnimationFrame` metrics or animation loops to arbitrary hardcoded FPS ceilings. Measure and render at the host display's native refresh cadence.
 
 ## 3. Runtime Safety & Bridge Discipline
 
-- **Transport Abstraction**: Never invoke `window.ksu` or raw `window.postMessage` directly in feature code; route all host I/O through `@pochita/bridge`.
+- **Transport Abstraction**: Never invoke `window.ksu`, `window.__POCHITA_HOST__`, or raw `window.postMessage` directly in feature or plugin code; route all host I/O through `@pochita/bridge` and `@pochita/sideveil-sdk`.
 - **Origin & Environment Isolation**: Keep `allowUrlOverride: false` in production builds and restrict `HostTransport` to explicit `allowedOrigins` (never wildcard `'*'`).
 - **State & Persistence Safety**: Treat `ENOENT` (`null`) as first-run initialization, but never overwrite disk configuration with defaults on transient read errors. Never perform bridge I/O inside React `setState` updaters. Daemon-backed hosts must defer theme synchronization (`syncEnabled={hydrated}`) until authoritative config is loaded.
 
-## 4. Language, Privacy & Verification
+## 4. Language, Privacy, Commits & Verification
 
-- **Language & Privacy**: Write all code, identifiers, comments, commit messages, and documentation in objective English. Write user-facing UI copy in Simplified Chinese (`zh-CN`). Keep code, mocks, and tests free of personal paths, device serials, or private identifiers.
+- **Language & Privacy**: Write all code, identifiers, comments, commit messages, and documentation in objective English. Write user-facing UI copy in Simplified Chinese (`zh-CN`). Keep code, mocks, and tests free of personal paths, device serials, device-specific hardware specs, or private identifiers.
+- **Commit Messages**: Use Conventional Commits (`<type>(<scope>): <imperative summary>`, <= 72 chars). Small single-purpose changes may stay single-line; multi-file, cross-module, or architectural/bug-fix commits must include 2–5 concise bullet points summarizing key changes and non-obvious rationale (Why).
 - **Verification**: Every change must pass `pnpm check` with zero warnings or errors.
