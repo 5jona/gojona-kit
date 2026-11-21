@@ -47,9 +47,9 @@ export function colorWithAlpha(color: string, alpha: number): string {
     const full =
       hex.length === 3
         ? hex
-          .split('')
-          .map((c) => c + c)
-          .join('')
+            .split('')
+            .map((c) => c + c)
+            .join('')
         : hex;
     if (full.length === 6) {
       const r = Number.parseInt(full.slice(0, 2), 16);

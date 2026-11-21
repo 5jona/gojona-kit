@@ -26,6 +26,7 @@ Tailwind- and Radix-based UI component library and theme management primitives:
   - `buildThemeSyncKey(payload)`: Computes a deterministic serialization key to deduplicate container theme synchronization events.
   - `readThemeToken(tokenName, scheme, fallback, root?)`: Resolves concrete scheme-qualified CSS custom properties (`--${name}-${scheme}`) for 2D Canvas or WebGL contexts where CSS `light-dark(...)` is unsupported.
   - `colorWithAlpha(color, alpha)`: Converts `#rgb`, `#rrggbb`, `rgb(...)`, or `rgba(...)` color values into an `rgba(r, g, b, alpha)` string with clamped alpha in the `[0, 1]` range.
+  - `applyDynamicCssTokens(tokens, root?)` & `clearDynamicCssTokens(tokenNames, root?)`: Inject and clean up host-synthesized Material You `Oklch` CSS custom properties (`--*`).
   - `THEME_BOOTSTRAP_SCRIPT`: Synchronous inline script for `<head>` to hydrate saved theme and color-scheme attributes before first paint, eliminating theme flash.
 
 ### `@pochita/bridge`
@@ -33,7 +34,7 @@ Tailwind- and Radix-based UI component library and theme management primitives:
 Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, and browser mock environments:
 
 - **Core APIs**: `createBridge`, `BridgeProvider`, `useBridge`, `detectRuntime`, and `detectPluginId`.
-- **Plugin Messaging & Container Control**: `invokePlugin` (`plugin.invoke` JSON-RPC multiplexing), `onPluginEvent`, `onPluginBackendState`, `onBackPressed`, and `sendContainerAction` (`dismiss`, `setPreferredSize`, `requestImeFocus`, `setBackIntercept`, `setSurfaceBackdrop`, `syncTheme`).
+- **Plugin Messaging & Container Control**: `invokePlugin` (`plugin.invoke` JSON-RPC multiplexing), `onPluginEvent`, `onPluginBackendState`, `onBackPressed`, `onThemePalette`, and `sendContainerAction` (`dismiss`, `setPreferredSize`, `requestImeFocus`, `setBackIntercept`, `setSurfaceBackdrop`, `setPresentationMode`, `setPinnedBounds`, `setEdgeStatus`, `syncTheme`).
 - **Host Theme Synchronization**:
   - `useContainerThemeSync(options?)`: React hook providing a stable callback for `<ThemeProvider onThemeSync={...} />` with zero boilerplate, wrapping `createThemeSyncDeduplicator` and delegating to `bridge.sendContainerAction({ type: 'syncTheme', payload })`.
   - `createThemeSyncDeduplicator(send, options?)`: Pure deduplicator suppressing consecutive identical theme payloads. With `includeAppearanceHints: false`, appearance hints (`wantsNativeBlur`, `cornerRadiusPx`) are stripped to preserve daemon authority.
@@ -43,7 +44,7 @@ Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, a
 Optional React SDK built on top of `@pochita/bridge` for authoring Sideveil sidebar plugins with minimal boilerplate:
 
 - **Provider & Manifest**: `SideveilPluginProvider`, `useSideveilPlugin`, `definePluginManifest`, and `BUILTIN_DIAG_PLUGIN_ID`.
-- **Hooks**: `useContainerAction`, `useBackPress`, `usePluginRpc`, `usePluginStorage`, `usePluginEvent`, and `usePluginBackendState`.
+- **Hooks**: `useContainerAction`, `useBackPress`, `usePluginRpc`, `usePluginStorage`, `usePluginEvent`, `usePluginBackendState`, `useEdgeStatus`, `useNativeHud`, `useDynamicThemeTokens`, `useGraphicsCapabilities`, `useInterPluginBus`, and `useTelemetry`.
 
 ## Prerequisites
 

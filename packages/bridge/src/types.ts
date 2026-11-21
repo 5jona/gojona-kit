@@ -60,11 +60,11 @@ export type ContainerAction =
   | { type: 'dismiss' }
   | { type: 'requestImeFocus'; focused: boolean }
   | {
-    type: 'setPreferredSize';
-    widthDp?: number;
-    heightDp?: number;
-    heightPercent?: number;
-  }
+      type: 'setPreferredSize';
+      widthDp?: number;
+      heightDp?: number;
+      heightPercent?: number;
+    }
   | { type: 'syncTheme'; payload: ContainerThemeSyncPayload }
   | { type: 'setBackIntercept'; enabled: boolean }
   | { type: 'setSurfaceBackdrop'; backdrop: ContainerBackdrop }

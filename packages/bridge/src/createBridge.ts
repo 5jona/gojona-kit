@@ -35,10 +35,10 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const hostTransport =
     env === 'host'
       ? new HostTransport({
-        wsUrl: options.wsUrl,
-        timeoutMs: options.timeoutMs,
-        allowedOrigins: options.allowedOrigins,
-      })
+          wsUrl: options.wsUrl,
+          timeoutMs: options.timeoutMs,
+          allowedOrigins: options.allowedOrigins,
+        })
       : null;
   const ownsMockTransport = !options.mockTransport;
   const mockTransport =
@@ -145,7 +145,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return;
     }
     if (hostTransport) {
-      void hostTransport.invoke('ui.toast', { message }).catch(() => { });
+      void hostTransport.invoke('ui.toast', { message }).catch(() => {});
     }
   };
 
@@ -164,7 +164,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     if (mockTransport) {
       return mockTransport.subscribe(event, listener);
     }
-    return () => { };
+    return () => {};
   };
 
   const onPluginEvent = <T = unknown>(
