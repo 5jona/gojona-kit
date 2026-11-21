@@ -15,7 +15,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { PluginContextValue, PluginManifest } from './types.ts';
+import type { PluginContextValue, PluginManifest, PluginsSnapshotPayload } from './types.ts';
 
 const SideVeilPluginContext = createContext<PluginContextValue | null>(null);
 
@@ -29,15 +29,35 @@ function PluginContextInner({
   children?: ReactNode;
 }) {
   const bridge = useBridge();
+  const hasBackend = Boolean(manifest?.backend && manifest.backend !== 'none');
   const [backendState, setBackendState] = useState<PluginBackendState>(
-    manifest?.backend && manifest.backend !== 'none' ? 'offline' : 'none',
+    hasBackend ? 'offline' : 'none',
   );
 
   useEffect(() => {
-    return bridge.onPluginBackendState((state) => {
-      setBackendState(state);
+    let active = true;
+    const unsubscribe = bridge.onPluginBackendState((state) => {
+      if (active) setBackendState(state);
     });
-  }, [bridge]);
+
+    if (hasBackend && bridge.env === 'host') {
+      void bridge
+        .invoke<PluginsSnapshotPayload>('plugins.list')
+        .then((snapshot) => {
+          if (!active || !snapshot || !Array.isArray(snapshot.plugins)) return;
+          const entry = snapshot.plugins.find((item) => item.id === pluginId);
+          if (entry?.backendState) {
+            setBackendState(entry.backendState);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [bridge, hasBackend, pluginId]);
 
   const value = useMemo<PluginContextValue>(
     () => ({

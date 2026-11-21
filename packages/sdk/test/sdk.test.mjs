@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { BUILTIN_DIAG_PLUGIN_ID, definePluginManifest } from '../src/index.ts';
+import {
+  BUILTIN_DIAG_PLUGIN_ID,
+  definePluginManifest,
+  parseClickThroughChangedEvent,
+  parsePresentationChangedEvent,
+} from '../src/index.ts';
 
 test('BUILTIN_DIAG_PLUGIN_ID is canonical', () => {
   assert.equal(BUILTIN_DIAG_PLUGIN_ID, 'sideveil.diagnostic');
@@ -62,4 +67,20 @@ test('definePluginManifest preserves explicit properties', () => {
   assert.equal(manifest.surface?.presentation, 'pinned');
   assert.equal(manifest.surface?.widthDp, 400);
   assert.equal(manifest.surface?.heightPercent, 85);
+});
+
+test('parsePresentationChangedEvent validates known presentation modes', () => {
+  assert.equal(parsePresentationChangedEvent({ mode: 'pinned' }), 'pinned');
+  assert.equal(parsePresentationChangedEvent({ mode: 'drawer' }), 'drawer');
+  assert.equal(parsePresentationChangedEvent({ mode: 'native-hud' }), 'native-hud');
+  assert.equal(parsePresentationChangedEvent({ mode: 'unknown' }), null);
+  assert.equal(parsePresentationChangedEvent(null), null);
+  assert.equal(parsePresentationChangedEvent({}), null);
+});
+
+test('parseClickThroughChangedEvent validates boolean clickThrough payloads', () => {
+  assert.equal(parseClickThroughChangedEvent({ clickThrough: true }), true);
+  assert.equal(parseClickThroughChangedEvent({ clickThrough: false }), false);
+  assert.equal(parseClickThroughChangedEvent({ clickThrough: 'true' }), null);
+  assert.equal(parseClickThroughChangedEvent(undefined), null);
 });

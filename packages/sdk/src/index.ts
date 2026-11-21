@@ -20,6 +20,16 @@ export {
   useSideVeilPlugin,
 } from './PluginContext.ts';
 export {
+  type ContainerClickThroughChangedPayload,
+  type ContainerPresentationChangedPayload,
+  type HapticKind,
+  parseClickThroughChangedEvent,
+  parsePresentationChangedEvent,
+  type UsePresentationModeApi,
+  useHaptics,
+  usePresentationMode,
+} from './presentation.ts';
+export {
   BUILTIN_DIAG_PLUGIN_ID,
   type ContainerEdgeStatus,
   type ContainerPinnedBounds,
