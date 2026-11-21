@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   BUILTIN_DIAG_PLUGIN_ID,
   definePluginManifest,
+  extractPluginAppearance,
   parseClickThroughChangedEvent,
   parsePresentationChangedEvent,
 } from '../src/index.ts';
@@ -83,4 +84,17 @@ test('parseClickThroughChangedEvent validates boolean clickThrough payloads', ()
   assert.equal(parseClickThroughChangedEvent({ clickThrough: false }), false);
   assert.equal(parseClickThroughChangedEvent({ clickThrough: 'true' }), null);
   assert.equal(parseClickThroughChangedEvent(undefined), null);
+});
+
+test('extractPluginAppearance parses valid panel themeId and colorMode safely', () => {
+  assert.deepEqual(
+    extractPluginAppearance({ panel: { themeId: 'coloros-glass', colorMode: 'dark' } }),
+    { themeId: 'coloros-glass', colorMode: 'dark' },
+  );
+  assert.deepEqual(
+    extractPluginAppearance({ panel: { themeId: '  modern-saas-dark  ', colorMode: 'invalid' } }),
+    { themeId: 'modern-saas-dark', colorMode: null },
+  );
+  assert.deepEqual(extractPluginAppearance(null), { themeId: null, colorMode: null });
+  assert.deepEqual(extractPluginAppearance({}), { themeId: null, colorMode: null });
 });

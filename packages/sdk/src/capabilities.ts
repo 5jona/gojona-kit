@@ -147,3 +147,78 @@ export function useTelemetry(intervalMs = 0): {
 
   return useMemo(() => ({ snapshot, refresh }), [snapshot, refresh]);
 }
+
+export interface UseClipboardApi {
+  /** Reads plain text via host `clipboard.get` RPC (`clipboard` capability) with Web Clipboard fallback. */
+  readText: () => Promise<string | null>;
+  /** Writes plain text via host `clipboard.set` RPC (`clipboard` capability) with Web Clipboard fallback. */
+  writeText: (text: string) => Promise<boolean>;
+}
+
+/**
+ * Provides host-backed clipboard access (`clipboard.get` / `clipboard.set`) suitable for
+ * unfocused Android overlay WebViews where `navigator.clipboard` may reject.
+ */
+export function useClipboard(): UseClipboardApi {
+  const { bridge } = useSideVeilPlugin();
+
+  const writeText = useCallback(
+    async (text: string): Promise<boolean> => {
+      if (bridge.env === 'host') {
+        try {
+          await bridge.invoke('clipboard.set', { text });
+          return true;
+        } catch {
+          // Fall through to browser Clipboard API if capability or host RPC fails.
+        }
+      }
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch {
+        // Fall through to mock/non-host bridge invocation below.
+      }
+      if (bridge.env !== 'host') {
+        try {
+          await bridge.invoke('clipboard.set', { text });
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    },
+    [bridge],
+  );
+
+  const readText = useCallback(async (): Promise<string | null> => {
+    if (bridge.env === 'host') {
+      try {
+        const res = await bridge.invoke<{ text?: unknown }>('clipboard.get');
+        return typeof res?.text === 'string' ? res.text : '';
+      } catch {
+        // Fall through to browser Clipboard API.
+      }
+    }
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+        return await navigator.clipboard.readText();
+      }
+    } catch {
+      // Fall through to mock/non-host bridge invocation below.
+    }
+    if (bridge.env !== 'host') {
+      try {
+        const res = await bridge.invoke<{ text?: unknown }>('clipboard.get');
+        return typeof res?.text === 'string' ? res.text : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [bridge]);
+
+  return useMemo(() => ({ readText, writeText }), [readText, writeText]);
+}

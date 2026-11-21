@@ -13,6 +13,11 @@ export interface LogEntry {
 export interface LogConsoleProps {
   entries: readonly LogEntry[];
   onClear?: () => void;
+  /**
+   * Optional custom copy handler (for example SideVeil's `useClipboard().writeText`).
+   * Overrides the default `navigator.clipboard` fallback so unfocused embedded WebViews can copy reliably.
+   */
+  onCopy?: (text: string) => boolean | Promise<boolean>;
   title?: string;
   maxHeightClassName?: string;
   className?: string;
@@ -46,6 +51,7 @@ function copyTextFallback(text: string): boolean {
 export function LogConsole({
   entries,
   onClear,
+  onCopy,
   title = '诊断日志',
   maxHeightClassName = 'max-h-52',
   className,
@@ -64,15 +70,23 @@ export function LogConsole({
   const handleCopy = async () => {
     const text = entries.map((e) => `[${e.timestamp}] ${e.message}`).join('\n');
     let success = false;
-    try {
-      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-        await navigator.clipboard.writeText(text);
-        success = true;
-      } else {
+    if (onCopy) {
+      try {
+        success = Boolean(await onCopy(text));
+      } catch {
+        success = false;
+      }
+    } else {
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(text);
+          success = true;
+        } else {
+          success = copyTextFallback(text);
+        }
+      } catch {
         success = copyTextFallback(text);
       }
-    } catch {
-      success = copyTextFallback(text);
     }
 
     setCopyStatus(success ? 'copied' : 'error');

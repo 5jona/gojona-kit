@@ -4,6 +4,7 @@ import type {
   ContainerPinnedBounds,
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
+  InvokeOptions,
 } from '@pochita/bridge';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSideVeilPlugin } from './PluginContext.ts';
@@ -134,9 +135,14 @@ export function useBackPress(handler: () => void, enabled = true): void {
 
 /**
  * Perform type-safe JSON-RPC calls against the plugin's dedicated native/app UDS backend.
+ * Accepts an optional default `timeoutMs` (overrideable per call) for long-running backend RPCs.
  */
-export function usePluginRpc<TParams = unknown, TResult = unknown>(method: string) {
+export function usePluginRpc<TParams = unknown, TResult = unknown>(
+  method: string,
+  defaultOptions?: InvokeOptions,
+) {
   const { bridge } = useSideVeilPlugin();
+  const defaultTimeoutMs = defaultOptions?.timeoutMs;
   const [state, setState] = useState<PluginRpcState<TResult>>({
     data: null,
     loading: false,
@@ -144,10 +150,12 @@ export function usePluginRpc<TParams = unknown, TResult = unknown>(method: strin
   });
 
   const invoke = useCallback(
-    async (params?: TParams): Promise<TResult> => {
+    async (params?: TParams, callOptions?: InvokeOptions): Promise<TResult> => {
       setState((prev) => ({ ...prev, loading: true, error: null }));
+      const timeoutMs = callOptions?.timeoutMs ?? defaultTimeoutMs;
+      const invokeOpts = timeoutMs !== undefined ? { timeoutMs } : undefined;
       try {
-        const res = await bridge.invokePlugin<TResult>(method, params);
+        const res = await bridge.invokePlugin<TResult>(method, params, invokeOpts);
         setState({ data: res, loading: false, error: null });
         return res;
       } catch (err) {
@@ -156,7 +164,7 @@ export function usePluginRpc<TParams = unknown, TResult = unknown>(method: strin
         throw error;
       }
     },
-    [bridge, method],
+    [bridge, defaultTimeoutMs, method],
   );
 
   return {

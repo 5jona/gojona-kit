@@ -1,4 +1,6 @@
 export {
+  type UseClipboardApi,
+  useClipboard,
   useGraphicsCapabilities,
   useInterPluginBus,
   useTelemetry,
@@ -30,6 +32,15 @@ export {
   usePresentationMode,
 } from './presentation.ts';
 export {
+  extractPluginAppearance,
+  type PluginAppearanceSnapshot,
+  type PluginColorMode,
+  type PluginThemeController,
+  type UseSyncedPluginThemeOptions,
+  type UseSyncedPluginThemeResult,
+  useSyncedPluginTheme,
+} from './theme.ts';
+export {
   BUILTIN_DIAG_PLUGIN_ID,
   type ContainerEdgeStatus,
   type ContainerPinnedBounds,
@@ -42,6 +53,7 @@ export {
   type HudPrimitive,
   type HudTextAlign,
   type HudTextOverlay,
+  type InvokeOptions,
   type NativeHudScene,
   type PluginActiveChangedPayload,
   type PluginAuditEntry,

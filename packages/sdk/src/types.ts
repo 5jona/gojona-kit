@@ -8,6 +8,7 @@ import type {
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
   DynamicThemePalettePayload,
+  InvokeOptions,
   PluginBackendState,
 } from '@pochita/bridge';
 
@@ -333,5 +334,6 @@ export type {
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
   DynamicThemePalettePayload,
+  InvokeOptions,
   PluginBackendState,
 };
