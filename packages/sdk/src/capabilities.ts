@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parsePanelVisibilityEvent } from './lifecycleHooks.ts';
 import { useSideVeilPlugin } from './PluginContext.ts';
 import type { GraphicsCapabilities, PluginBusEventPayload, TelemetrySnapshot } from './types.ts';
 
@@ -90,9 +91,10 @@ export function useInterPluginBus<T = unknown>(
   const { bridge } = useSideVeilPlugin();
   const handlerRef = useRef(onMessage);
   handlerRef.current = onMessage;
+  const hasHandler = Boolean(onMessage);
 
   useEffect(() => {
-    if (!onMessage) return;
+    if (!hasHandler) return;
     return bridge.onHostEvent('plugin.busMessage', (raw) => {
       if (raw && typeof raw === 'object') {
         const msg = raw as PluginBusEventPayload<T>;
@@ -101,7 +103,7 @@ export function useInterPluginBus<T = unknown>(
         }
       }
     });
-  }, [bridge, topic, onMessage]);
+  }, [bridge, topic, hasHandler]);
 
   const publish = useCallback(
     async (payload: T) => {
@@ -114,7 +116,19 @@ export function useInterPluginBus<T = unknown>(
 }
 
 /**
- * Polls zero-subprocess Linux host telemetry (`telemetry` capability).
+ * Pure helper computing whether periodic telemetry polling should stay active.
+ */
+export function shouldPollTelemetry(
+  intervalMs: number,
+  panelVisible: boolean,
+  documentHidden: boolean,
+): boolean {
+  return intervalMs > 0 && panelVisible && !documentHidden;
+}
+
+/**
+ * Polls zero-subprocess Linux host telemetry (`telemetry` capability), automatically
+ * pausing periodic polling whenever the SideVeil panel or document is hidden.
  */
 export function useTelemetry(intervalMs = 0): {
   snapshot: TelemetrySnapshot | null;
@@ -122,19 +136,55 @@ export function useTelemetry(intervalMs = 0): {
 } {
   const { bridge } = useSideVeilPlugin();
   const [snapshot, setSnapshot] = useState<TelemetrySnapshot | null>(null);
+  const [panelVisible, setPanelVisible] = useState(true);
+  const [documentHidden, setDocumentHidden] = useState(() =>
+    typeof document === 'undefined' ? false : Boolean(document.hidden),
+  );
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    return bridge.onHostEvent('panel.visibility', (raw) => {
+      const next = parsePanelVisibilityEvent(raw);
+      if (next !== null) {
+        setPanelVisible(next);
+      }
+    });
+  }, [bridge]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisibilityChange = () => {
+      setDocumentHidden(Boolean(document.hidden));
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
 
   const refresh = useCallback(async (): Promise<TelemetrySnapshot | null> => {
     try {
       const next = await bridge.invoke<TelemetrySnapshot>('telemetry.snapshot');
-      setSnapshot(next);
+      if (mountedRef.current) {
+        setSnapshot(next);
+      }
       return next;
     } catch {
       return null;
     }
   }, [bridge]);
 
+  const active = shouldPollTelemetry(intervalMs, panelVisible, documentHidden);
+
   useEffect(() => {
-    if (intervalMs <= 0) return;
+    if (!active) return;
     void refresh();
     const timer = setInterval(
       () => {
@@ -143,7 +193,7 @@ export function useTelemetry(intervalMs = 0): {
       Math.max(250, intervalMs),
     );
     return () => clearInterval(timer);
-  }, [intervalMs, refresh]);
+  }, [active, intervalMs, refresh]);
 
   return useMemo(() => ({ snapshot, refresh }), [snapshot, refresh]);
 }

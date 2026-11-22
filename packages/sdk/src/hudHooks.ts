@@ -1,0 +1,145 @@
+import type { BridgeClient, ContainerEdgeStatus } from '@pochita/bridge';
+import { applyDynamicCssTokens, clearDynamicCssTokens } from '@pochita/ui/theme-tokens';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSideVeilPlugin } from './PluginContext.ts';
+import type { NativeHudScene } from './types.ts';
+
+export interface EdgeStatusController {
+  setStatus: (status: ContainerEdgeStatus) => Promise<void>;
+  clearStatus: () => Promise<void>;
+  cleanupOnUnmount: () => void;
+}
+
+/**
+ * Tracks whether a specific caller owns an active edge status so unmount cleanup
+ * only clears status if this controller actually set a non-null, non-clear status.
+ */
+export function createEdgeStatusController(
+  bridge: Pick<BridgeClient, 'sendContainerAction'>,
+): EdgeStatusController {
+  let hasActiveStatus = false;
+
+  const setStatus = async (status: ContainerEdgeStatus): Promise<void> => {
+    hasActiveStatus = !status.clear;
+    await bridge.sendContainerAction({ type: 'setEdgeStatus', status });
+  };
+
+  const clearStatus = async (): Promise<void> => {
+    hasActiveStatus = false;
+    await bridge.sendContainerAction({ type: 'setEdgeStatus', status: { clear: true } });
+  };
+
+  const cleanupOnUnmount = (): void => {
+    if (!hasActiveStatus) return;
+    hasActiveStatus = false;
+    void bridge
+      .sendContainerAction({ type: 'setEdgeStatus', status: { clear: true } })
+      .catch(() => {});
+  };
+
+  return { setStatus, clearStatus, cleanupOnUnmount };
+}
+
+/**
+ * Updates live micro-status badges/progress displayed on the SideVeil edge handle,
+ * clearing status on unmount only if this hook instance set an active status.
+ */
+export function useEdgeStatus(): {
+  setStatus: (status: ContainerEdgeStatus) => Promise<void>;
+  clearStatus: () => Promise<void>;
+} {
+  const { bridge } = useSideVeilPlugin();
+  const controller = useMemo(() => createEdgeStatusController(bridge), [bridge]);
+
+  const setStatus = useCallback(
+    async (status: ContainerEdgeStatus) => {
+      await controller.setStatus(status);
+    },
+    [controller],
+  );
+
+  const clearStatus = useCallback(async () => {
+    await controller.clearStatus();
+  }, [controller]);
+
+  useEffect(() => {
+    return () => {
+      controller.cleanupOnUnmount();
+    };
+  }, [controller]);
+
+  return useMemo(() => ({ setStatus, clearStatus }), [setStatus, clearStatus]);
+}
+
+/**
+ * Pushes declarative `NativeHudScene` updates to the zero-WebView `vello_cpu` NEON native HUD
+ * (requires `native-hud` capability in `manifest.json`).
+ */
+export function useNativeHud(): {
+  updateScene: (scene: NativeHudScene) => Promise<void>;
+  dismiss: () => Promise<void>;
+} {
+  const { bridge, pluginId } = useSideVeilPlugin();
+
+  const updateScene = useCallback(
+    async (scene: NativeHudScene) => {
+      await bridge.invoke('hud.updateScene', {
+        ...scene,
+        pluginId: scene.pluginId ?? pluginId,
+      });
+    },
+    [bridge, pluginId],
+  );
+
+  const dismiss = useCallback(async () => {
+    await bridge.invoke('hud.dismiss', { pluginId });
+  }, [bridge, pluginId]);
+
+  return useMemo(() => ({ updateScene, dismiss }), [updateScene, dismiss]);
+}
+
+/**
+ * Applies host-synthesized Material You `Oklch` CSS custom properties (`theme.paletteUpdated`)
+ * via `@pochita/ui`'s `applyDynamicCssTokens`/`clearDynamicCssTokens` and returns the
+ * currently active dynamic token map.
+ */
+export function useDynamicThemeState(enabled = true): Readonly<Record<string, string>> {
+  const { bridge } = useSideVeilPlugin();
+  const [tokens, setTokens] = useState<Readonly<Record<string, string>>>({});
+
+  useEffect(() => {
+    if (!enabled) {
+      setTokens({});
+      return;
+    }
+    const appliedKeys = new Set<string>();
+    const unsubscribe = bridge.onThemePalette((palette) => {
+      const applied = applyDynamicCssTokens(palette.cssTokens);
+      for (const key of applied) {
+        appliedKeys.add(key);
+      }
+      const nextMap: Record<string, string> = {};
+      for (const [key, value] of Object.entries(palette.cssTokens)) {
+        if (key.startsWith('--') && typeof value === 'string' && value.trim().length > 0) {
+          nextMap[key] = value.trim();
+        }
+      }
+      setTokens(nextMap);
+    });
+    return () => {
+      unsubscribe();
+      clearDynamicCssTokens(Array.from(appliedKeys));
+      setTokens({});
+    };
+  }, [bridge, enabled]);
+
+  return tokens;
+}
+
+/**
+ * Applies host-synthesized Material You `Oklch` CSS custom properties (`theme.paletteUpdated`)
+ * directly to `document.documentElement`, cleaning up injected overrides on unmount.
+ */
+export function useDynamicThemeTokens(enabled = true): void {
+  useDynamicThemeState(enabled);
+}

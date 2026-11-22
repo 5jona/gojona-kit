@@ -81,6 +81,8 @@ function applyDomAppearance(appearance: PluginAppearanceSnapshot): void {
     document.documentElement.dataset.theme = appearance.themeId;
   }
   if (appearance.colorMode) {
+    const resolved = appearance.colorMode === 'system' ? getSystemScheme() : appearance.colorMode;
+    document.documentElement.dataset.colorScheme = resolved;
     const content = appearance.colorMode === 'system' ? 'light dark' : appearance.colorMode;
     let meta = document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
     if (!meta) {

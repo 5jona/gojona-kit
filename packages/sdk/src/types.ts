@@ -11,189 +11,59 @@ import type {
   InvokeOptions,
   PluginBackendState,
 } from '@pochita/bridge';
+import type { PluginDescriptor, PluginManifest } from './manifest.ts';
 
-export const BUILTIN_DIAG_PLUGIN_ID = 'sideveil.diagnostic';
+export type {
+  HudBackdropKind,
+  HudPrimitive,
+  HudTextAlign,
+  HudTextOverlay,
+  NativeHudScene,
+} from './hud.ts';
+export {
+  BUILTIN_DIAG_PLUGIN_ID,
+  DEFAULT_PLUGIN_INVOKE_TIMEOUT_MS,
+  definePluginManifest,
+  MAX_PLUGIN_INVOKE_TIMEOUT_MS,
+  MIN_PLUGIN_INVOKE_TIMEOUT_MS,
+  PLUGIN_EVENT_LAGGED_EVENT,
+  type PluginBackendKind,
+  type PluginCapability,
+  type PluginDescriptor,
+  type PluginEmbedPrefs,
+  type PluginManifest,
+  type PluginNetworkPrefs,
+  type PluginOverrideEntry,
+  type PluginOverridesFile,
+  type PluginPresentationMode,
+  type PluginSummary,
+  type PluginSurfaceBackdrop,
+  type PluginSurfacePrefs,
+  type PluginTriggers,
+  resolvePluginOrigin,
+} from './manifest.ts';
 
-export type PluginCapability =
-  | 'storage'
-  | 'toast'
-  | 'system-exec'
-  | 'native-hud'
-  | 'clipboard'
-  | 'haptics'
-  | 'telemetry'
-  | 'inter-plugin-bus';
+export type NetworkTransportKind = 'wifi' | 'cellular' | 'ethernet' | 'other' | 'none';
 
-export type PluginBackendKind = 'none' | 'uds-native' | 'uds-app';
-
-export type PluginSurfaceBackdrop = ContainerBackdrop;
-export type PluginPresentationMode = ContainerPresentationMode;
-export type HudBackdropKind = ContainerBackdrop;
-export type HudTextAlign = 'start' | 'center' | 'end';
-
-export type HudPrimitive =
-  | {
-      kind: 'roundedPill';
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-      radius?: number;
-      fillArgb: number;
-      strokeArgb?: number;
-      strokeWidth?: number;
-    }
-  | {
-      kind: 'progressBar';
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-      radius?: number;
-      value: number;
-      trackArgb: number;
-      fillStartArgb: number;
-      fillEndArgb?: number;
-    }
-  | {
-      kind: 'sparkline';
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-      values: number[];
-      min?: number;
-      max?: number;
-      strokeArgb: number;
-      strokeWidth?: number;
-      fillTopArgb?: number;
-      fillBottomArgb?: number;
-      smooth?: boolean;
-    }
-  | {
-      kind: 'radialGauge';
-      cx: number;
-      cy: number;
-      radius: number;
-      thickness: number;
-      value: number;
-      startAngleDeg?: number;
-      sweepAngleDeg?: number;
-      trackArgb: number;
-      fillStartArgb: number;
-      fillEndArgb?: number;
-    }
-  | {
-      kind: 'crosshair';
-      cx: number;
-      cy: number;
-      size: number;
-      gap?: number;
-      thickness?: number;
-      colorArgb: number;
-      outlineArgb?: number;
-    }
-  | {
-      kind: 'path';
-      d: string;
-      fillArgb?: number;
-      strokeArgb?: number;
-      strokeWidth?: number;
-    };
-
-export interface HudTextOverlay {
-  x: number;
-  y: number;
-  text: string;
-  sizeSp?: number;
-  colorArgb: number;
-  align?: HudTextAlign;
-  bold?: boolean;
-  tabularNums?: boolean;
-  maxWidthDp?: number;
+export interface NetworkContextSnapshot {
+  transport: NetworkTransportKind;
+  vpnActive: boolean;
+  validated: boolean;
+  metered: boolean;
+  interfaceName?: string | null;
+  ssid?: string | null;
+  gateway?: string | null;
+  localIpv4?: string | null;
 }
 
-export interface NativeHudScene {
-  pluginId?: string;
-  widthDp: number;
-  heightDp: number;
-  cornerRadiusDp?: number;
-  backdrop?: HudBackdropKind;
-  clickThrough?: boolean;
-  anchorXPercent?: number;
-  anchorYPercent?: number;
-  primitives: HudPrimitive[];
-  texts?: HudTextOverlay[];
+export interface PanelVisibilityState {
+  visible: boolean;
 }
 
-export interface PluginTriggers {
-  packages: string[];
-  activities?: string[];
-  global: boolean;
-  priority: number;
-}
-
-export interface PluginSurfacePrefs {
-  backdrop: PluginSurfaceBackdrop;
-  presentation?: PluginPresentationMode;
-  crossOriginIsolated?: boolean;
-  widthDp?: number;
-  heightPercent?: number;
-}
-
-export interface PluginManifest {
-  id: string;
-  name: string;
-  version: string;
-  icon?: string;
-  triggers?: Partial<PluginTriggers>;
-  entry: string;
-  backend?: PluginBackendKind;
-  capabilities?: PluginCapability[];
-  surface?: Partial<PluginSurfacePrefs>;
-}
-
-export interface PluginSummary {
-  id: string;
-  name: string;
-  version: string;
-  enabled: boolean;
-  backend: PluginBackendKind;
-  backendState: PluginBackendState;
-  triggers: PluginTriggers;
-}
-
-export interface PluginDescriptor {
-  id: string;
-  name: string;
-  version: string;
-  icon?: string;
-  entry: string;
-  builtin: boolean;
-  enabled: boolean;
-  priority: number;
-  packages: string[];
-  activities?: string[];
-  global: boolean;
-  hasScopeOverride: boolean;
-  devServerUrl?: string;
-  backend: PluginBackendKind;
-  backendState: PluginBackendState;
-  capabilities: PluginCapability[];
-  surface: PluginSurfacePrefs;
-}
-
-export interface PluginOverrideEntry {
-  enabled?: boolean;
-  priority?: number;
-  packagesOverride?: string[];
-  globalOverride?: boolean;
-  devServerUrl?: string;
-}
-
-export interface PluginOverridesFile {
-  overrides: Record<string, PluginOverrideEntry>;
-  mruByPackage: Record<string, string>;
+export interface ScopeChangedState {
+  foregroundPackage: string;
+  foregroundActivity: string;
+  scopeActive: boolean;
 }
 
 export interface PluginsSnapshotPayload {
@@ -300,28 +170,6 @@ export interface UseContainerActionApi {
   setPinnedBounds: (bounds: ContainerPinnedBounds) => Promise<void>;
   setEdgeStatus: (status: ContainerEdgeStatus | null) => Promise<void>;
   syncTheme: (payload: ContainerThemeSyncPayload) => Promise<void>;
-}
-
-/**
- * Type-safe helper for defining a SideVeil plugin manifest with sensible defaults.
- */
-export function definePluginManifest(manifest: PluginManifest): PluginManifest {
-  return {
-    ...manifest,
-    backend: manifest.backend ?? 'none',
-    capabilities: manifest.capabilities ?? [],
-    triggers: {
-      packages: manifest.triggers?.packages ?? [],
-      global: manifest.triggers?.global ?? false,
-      priority: manifest.triggers?.priority ?? 0,
-    },
-    surface: {
-      backdrop: manifest.surface?.backdrop ?? 'native-glass',
-      presentation: manifest.surface?.presentation ?? 'drawer',
-      widthDp: manifest.surface?.widthDp,
-      heightPercent: manifest.surface?.heightPercent,
-    },
-  };
 }
 
 export type {

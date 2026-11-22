@@ -24,7 +24,8 @@
     "test": "node --import @pochita/config/register-ts --test test/*.test.mjs"
   },
   "dependencies": {
-    "@pochita/bridge": "file:../bridge"
+    "@pochita/bridge": "file:../bridge",
+    "@pochita/ui": "file:../ui"
   },
   "peerDependencies": {
     "react": "^19.0.0"
