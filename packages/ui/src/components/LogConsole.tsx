@@ -21,6 +21,7 @@ export interface LogConsoleProps {
   title?: string;
   maxHeightClassName?: string;
   className?: string;
+  'data-testid'?: string;
 }
 
 const LEVEL_STYLES: Record<NonNullable<LogEntry['level']>, string> = {
@@ -55,6 +56,7 @@ export function LogConsole({
   title = '诊断日志',
   maxHeightClassName = 'max-h-52',
   className,
+  'data-testid': dataTestId,
 }: LogConsoleProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const timerRef = useRef<number | null>(null);
@@ -99,7 +101,11 @@ export function LogConsole({
   };
 
   return (
-    <div className={cn('pochita-card overflow-hidden p-0', className)}>
+    <div
+      data-pochita="log-console"
+      data-testid={dataTestId}
+      className={cn('pochita-card overflow-hidden p-0', className)}
+    >
       <div className="flex items-center justify-between border-b border-[var(--border-hairline)] px-3.5 py-2">
         <span className="text-xs font-medium text-[var(--text-secondary)]">
           {title} ({entries.length})
@@ -154,7 +160,11 @@ export function LogConsole({
           <div className="py-3 text-center text-[var(--text-secondary)]">暂无日志记录</div>
         ) : (
           entries.map((entry) => (
-            <div key={entry.id} className={cn('break-all', LEVEL_STYLES[entry.level ?? 'info'])}>
+            <div
+              key={entry.id}
+              data-log-level={entry.level ?? 'info'}
+              className={cn('break-all', LEVEL_STYLES[entry.level ?? 'info'])}
+            >
               <span className="mr-2 text-[var(--text-secondary)]">[{entry.timestamp}]</span>
               <span>{entry.message}</span>
             </div>

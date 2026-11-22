@@ -9,6 +9,7 @@ export interface ThemeSwitcherProps {
   className?: string;
   onThemeChange?: (themeId: ThemeId) => void;
   onColorModeChange?: (mode: ColorMode) => void;
+  'data-testid'?: string;
 }
 
 /**
@@ -20,6 +21,7 @@ export function ThemeSwitcher({
   className,
   onThemeChange,
   onColorModeChange,
+  'data-testid': dataTestId,
 }: ThemeSwitcherProps) {
   const { themeId, colorMode, systemScheme, setThemeId, setColorMode } = useTheme();
 
@@ -45,7 +47,12 @@ export function ThemeSwitcher({
 
   if (compact) {
     return (
-      <div className={cn('flex flex-col gap-2', className)}>
+      <div
+        data-pochita="theme-switcher"
+        data-variant="compact"
+        data-testid={dataTestId}
+        className={cn('flex flex-col gap-2', className)}
+      >
         <fieldset className="m-0 grid grid-cols-2 gap-1.5 border-0 p-0" aria-label="界面主题">
           {THEME_LIST.map((item) => {
             const active = themeId === item.id;
@@ -55,6 +62,8 @@ export function ThemeSwitcher({
                 type="button"
                 onClick={() => handleSelectTheme(item.id)}
                 aria-pressed={active}
+                data-theme-option={item.id}
+                data-state={active ? 'active' : 'inactive'}
                 className={cn(
                   'pochita-switcher-pill flex cursor-pointer items-center justify-between gap-1 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-[11px] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                   active
@@ -85,6 +94,8 @@ export function ThemeSwitcher({
                 key={opt.mode}
                 type="button"
                 aria-pressed={active}
+                data-color-mode={opt.mode}
+                data-state={active ? 'active' : 'inactive'}
                 onClick={() => handleSelectColorMode(opt.mode)}
                 className={cn(
                   'inline-flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-control)-3px)] px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
@@ -104,7 +115,12 @@ export function ThemeSwitcher({
   }
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    <div
+      data-pochita="theme-switcher"
+      data-variant="full"
+      data-testid={dataTestId}
+      className={cn('flex flex-col gap-3', className)}
+    >
       <fieldset
         className="m-0 grid grid-cols-1 gap-2.5 border-0 p-0 sm:grid-cols-2"
         aria-label="界面主题"
@@ -117,6 +133,8 @@ export function ThemeSwitcher({
               type="button"
               onClick={() => handleSelectTheme(item.id)}
               aria-pressed={active}
+              data-theme-option={item.id}
+              data-state={active ? 'active' : 'inactive'}
               className={cn(
                 'flex cursor-pointer items-start justify-between gap-3 rounded-[var(--radius-card)] border p-3 text-left transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                 active
@@ -166,6 +184,8 @@ export function ThemeSwitcher({
               key={opt.mode}
               type="button"
               aria-pressed={active}
+              data-color-mode={opt.mode}
+              data-state={active ? 'active' : 'inactive'}
               onClick={() => handleSelectColorMode(opt.mode)}
               className={cn(
                 'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[calc(var(--radius-control)-3px)] px-2.5 py-1.5 text-xs font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',

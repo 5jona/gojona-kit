@@ -1,12 +1,14 @@
-import type { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 
 export type AppShellVariant = 'floating' | 'page' | 'drawer';
+export type AppShellHeaderMode = 'default' | 'compact' | 'hidden';
 
-export interface AppShellProps {
-  title: string;
+export interface AppShellProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
+  title?: string;
   subtitle?: string;
   variant?: AppShellVariant;
+  headerMode?: AppShellHeaderMode;
   maxWidthClassName?: string;
   headerLeading?: ReactNode;
   headerTrailing?: ReactNode;
@@ -23,9 +25,10 @@ export interface AppShellProps {
  * Supports `floating` cards, borderless single-canvas `page` views, and compact fixed-viewport `drawer` panels.
  */
 export function AppShell({
-  title,
+  title = '',
   subtitle,
   variant = 'floating',
+  headerMode = 'default',
   maxWidthClassName = 'max-w-5xl',
   headerLeading,
   headerTrailing,
@@ -34,41 +37,58 @@ export function AppShell({
   className,
   bodyClassName,
   scrollable,
+  ...props
 }: AppShellProps) {
   const isScrollable = scrollable ?? variant !== 'page';
+  const showHeader = headerMode !== 'hidden';
+  const isCompactHeader = headerMode === 'compact';
 
   if (variant === 'page') {
     return (
       <section
+        data-pochita="app-shell"
+        data-variant="page"
         data-shell-variant="page"
+        data-header-mode={headerMode}
         className={cn(
           'pochita-shell pochita-shell-page flex min-h-dvh w-full flex-col transition-colors duration-200',
           className,
         )}
+        {...props}
       >
-        <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-hairline)] bg-[color-mix(in_oklab,var(--surface-canvas)_88%,transparent)] backdrop-blur-md">
-          <div
-            className={cn(
-              'pochita-shell-header mx-auto w-full px-4 py-3 sm:px-6',
-              maxWidthClassName,
-            )}
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold tracking-tight text-[var(--text-primary)]">
-                  {title}
-                </h1>
-                {subtitle ? (
-                  <p className="mt-0.5 truncate text-xs text-[var(--text-secondary)]">{subtitle}</p>
-                ) : null}
+        {showHeader ? (
+          <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-hairline)] bg-[color-mix(in_oklab,var(--surface-canvas)_88%,transparent)] backdrop-blur-md">
+            <div
+              className={cn(
+                'pochita-shell-header mx-auto w-full sm:px-6',
+                isCompactHeader ? 'px-3.5 py-2' : 'px-4 py-3',
+                maxWidthClassName,
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
+                <div className="min-w-0 flex-1">
+                  <h1
+                    className={cn(
+                      'truncate font-semibold tracking-tight text-[var(--text-primary)]',
+                      isCompactHeader ? 'text-sm' : 'text-base',
+                    )}
+                  >
+                    {title}
+                  </h1>
+                  {subtitle && !isCompactHeader ? (
+                    <p className="mt-0.5 truncate text-xs text-[var(--text-secondary)]">
+                      {subtitle}
+                    </p>
+                  ) : null}
+                </div>
               </div>
+              {headerTrailing ? (
+                <div className="flex shrink-0 flex-wrap items-center gap-2">{headerTrailing}</div>
+              ) : null}
             </div>
-            {headerTrailing ? (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">{headerTrailing}</div>
-            ) : null}
-          </div>
-        </header>
+          </header>
+        ) : null}
 
         <main
           className={cn(
@@ -100,30 +120,46 @@ export function AppShell({
   if (variant === 'drawer') {
     return (
       <section
+        data-pochita="app-shell"
+        data-variant="drawer"
         data-shell-variant="drawer"
+        data-header-mode={headerMode}
         className={cn(
           'pochita-shell pochita-shell-drawer flex h-dvh min-h-0 w-full flex-col overflow-hidden transition-colors duration-200',
           className,
         )}
+        {...props}
       >
-        <header className="pochita-drawer-header flex shrink-0 items-center justify-between gap-2 border-b border-[var(--glass-divider,var(--border-hairline))] px-3.5 py-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-semibold tracking-tight text-[var(--text-primary)]">
-                {title}
-              </h1>
-              {subtitle ? (
-                <p className="mt-0.5 truncate text-[11px] text-[var(--text-secondary)]">
-                  {subtitle}
-                </p>
-              ) : null}
+        {showHeader ? (
+          <header
+            className={cn(
+              'pochita-drawer-header flex shrink-0 items-center justify-between gap-2 border-b border-[var(--glass-divider,var(--border-hairline))]',
+              isCompactHeader ? 'px-3 py-1.5' : 'px-3.5 py-2.5',
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
+              <div className="min-w-0 flex-1">
+                <h1
+                  className={cn(
+                    'truncate font-semibold tracking-tight text-[var(--text-primary)]',
+                    isCompactHeader ? 'text-xs' : 'text-sm',
+                  )}
+                >
+                  {title}
+                </h1>
+                {subtitle && !isCompactHeader ? (
+                  <p className="mt-0.5 truncate text-[11px] text-[var(--text-secondary)]">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
-          {headerTrailing ? (
-            <div className="flex shrink-0 items-center gap-1.5">{headerTrailing}</div>
-          ) : null}
-        </header>
+            {headerTrailing ? (
+              <div className="flex shrink-0 items-center gap-1.5">{headerTrailing}</div>
+            ) : null}
+          </header>
+        ) : null}
 
         <div
           className={cn(
@@ -146,28 +182,44 @@ export function AppShell({
 
   return (
     <section
+      data-pochita="app-shell"
+      data-variant="floating"
       data-shell-variant="floating"
+      data-header-mode={headerMode}
       className={cn(
         'pochita-shell pochita-shell-backdrop flex min-h-0 flex-col overflow-hidden transition-[border-radius,border-color,background-color] duration-200',
         className,
       )}
+      {...props}
     >
-      <header className="pochita-shell-header shrink-0 border-b border-[var(--border-hairline)] px-4 py-3.5">
-        <div className="flex min-w-0 items-center gap-3">
-          {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold tracking-tight text-[var(--text-primary)]">
-              {title}
-            </h1>
-            {subtitle ? (
-              <p className="mt-0.5 truncate text-xs text-[var(--text-secondary)]">{subtitle}</p>
-            ) : null}
+      {showHeader ? (
+        <header
+          className={cn(
+            'pochita-shell-header shrink-0 border-b border-[var(--border-hairline)]',
+            isCompactHeader ? 'px-3.5 py-2' : 'px-4 py-3.5',
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
+            <div className="min-w-0 flex-1">
+              <h1
+                className={cn(
+                  'truncate font-semibold tracking-tight text-[var(--text-primary)]',
+                  isCompactHeader ? 'text-sm' : 'text-base',
+                )}
+              >
+                {title}
+              </h1>
+              {subtitle && !isCompactHeader ? (
+                <p className="mt-0.5 truncate text-xs text-[var(--text-secondary)]">{subtitle}</p>
+              ) : null}
+            </div>
           </div>
-        </div>
-        {headerTrailing ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">{headerTrailing}</div>
-        ) : null}
-      </header>
+          {headerTrailing ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">{headerTrailing}</div>
+          ) : null}
+        </header>
+      ) : null}
 
       <div className={cn('min-h-0 flex-1 p-4', isScrollable && 'pochita-scroller', bodyClassName)}>
         {children}

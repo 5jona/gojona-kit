@@ -1,4 +1,7 @@
+import { THEME_IDS } from '@pochita/config/themes';
 import type { ThemeDefinition, ThemeId } from './types.ts';
+
+const VALID_THEME_ID_SET: ReadonlySet<string> = new Set(THEME_IDS);
 
 export const THEME_REGISTRY: Record<ThemeId, ThemeDefinition> = {
   'coloros-glass': {
@@ -22,5 +25,5 @@ export const THEME_REGISTRY: Record<ThemeId, ThemeDefinition> = {
 export const THEME_LIST: readonly ThemeDefinition[] = Object.values(THEME_REGISTRY);
 
 export function isValidThemeId(value: string | null): value is ThemeId {
-  return value === 'coloros-glass' || value === 'modern-saas-dark';
+  return value !== null && VALID_THEME_ID_SET.has(value);
 }

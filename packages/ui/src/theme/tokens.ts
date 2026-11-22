@@ -1,17 +1,74 @@
+import {
+  createThemeBootstrapScript,
+  STORAGE_KEY_SCHEME,
+  STORAGE_KEY_THEME,
+} from '@pochita/config/themes';
 import type { ResolvedColorScheme } from './types.ts';
 
-export const STORAGE_KEY_THEME = 'pochita:theme';
-export const STORAGE_KEY_SCHEME = 'pochita:color-scheme';
+export { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
 
 /**
  * Canonical synchronous inline script for HTML `<head>` to restore theme and
  * color-scheme attributes before first paint.
  */
-export const THEME_BOOTSTRAP_SCRIPT = `try{var s=localStorage.getItem('${STORAGE_KEY_SCHEME}');if(s==='light'||s==='dark'){var m=document.querySelector('meta[name="color-scheme"]');if(m)m.content=s;}var t=localStorage.getItem('${STORAGE_KEY_THEME}');document.documentElement.dataset.theme=(t==='coloros-glass'||t==='modern-saas-dark')?t:'coloros-glass';}catch(e){}`;
+export const THEME_BOOTSTRAP_SCRIPT = createThemeBootstrapScript('standalone');
+
+/**
+ * Canonical list of semantic CSS custom properties shared across all themes.
+ */
+export const SEMANTIC_THEME_TOKENS = Object.freeze([
+  '--surface-canvas',
+  '--surface-panel',
+  '--surface-card',
+  '--surface-elevated',
+  '--surface-toast',
+  '--text-primary',
+  '--text-secondary',
+  '--border-hairline',
+  '--glass-divider',
+  '--accent',
+  '--accent-soft',
+  '--accent-fg',
+  '--success',
+  '--warning',
+  '--danger',
+  '--radius-panel',
+  '--radius-card',
+  '--radius-control',
+  '--radius-pill',
+  '--blur-amount',
+] as const);
+
+export type SemanticThemeToken = (typeof SEMANTIC_THEME_TOKENS)[number];
+
+export interface ThemeTokenEntry {
+  token: string;
+  resolved: string;
+  computed: string;
+  inlineOverride: string | null;
+}
+
+export interface ThemeTokenSnapshot {
+  themeId: string | null;
+  surface: string | null;
+  colorScheme: ResolvedColorScheme;
+  tokens: Record<string, ThemeTokenEntry>;
+  inlineOverrides: Record<string, string>;
+}
+
+function readInlineStyleProperty(root: Element, varName: string): string {
+  const style = (root as Partial<HTMLElement>).style;
+  if (!style || typeof style.getPropertyValue !== 'function') {
+    return '';
+  }
+  return style.getPropertyValue(varName).trim();
+}
 
 /**
  * Resolves a concrete CSS color value for Canvas 2D / WebGL contexts that cannot
  * evaluate CSS `light-dark(...)` expressions directly.
+ * Inline dynamic overrides (e.g. Material You Oklch tokens) take precedence over
+ * static `-light`/`-dark` suffixed theme variables.
  */
 export function readThemeToken(
   tokenName: string,
@@ -19,16 +76,26 @@ export function readThemeToken(
   fallback: string,
   root: Element | null = typeof document !== 'undefined' ? document.documentElement : null,
 ): string {
-  if (!root || typeof getComputedStyle !== 'function') {
+  if (!root) {
     return fallback;
   }
   const normalized = tokenName.startsWith('--') ? tokenName.slice(2) : tokenName;
+  const varName = `--${normalized}`;
+
+  const inlineVal = readInlineStyleProperty(root, varName);
+  if (inlineVal && !inlineVal.includes('light-dark')) {
+    return inlineVal;
+  }
+
+  if (typeof getComputedStyle !== 'function') {
+    return fallback;
+  }
   const styles = getComputedStyle(root);
-  const schemeSpecific = styles.getPropertyValue(`--${normalized}-${scheme}`).trim();
+  const schemeSpecific = styles.getPropertyValue(`${varName}-${scheme}`).trim();
   if (schemeSpecific) {
     return schemeSpecific;
   }
-  const direct = styles.getPropertyValue(`--${normalized}`).trim();
+  const direct = styles.getPropertyValue(varName).trim();
   if (direct && !direct.includes('light-dark')) {
     return direct;
   }
@@ -36,8 +103,8 @@ export function readThemeToken(
 }
 
 /**
- * Converts a `#rgb`, `#rrggbb`, `rgb(...)`, or `rgba(...)` color string into an
- * `rgba(r, g, b, alpha)` string suitable for Canvas 2D fill/stroke styles.
+ * Applies an alpha channel to `#rgb`, `#rrggbb`, `rgb(...)`, `rgba(...)`,
+ * `oklch(...)`, or CSS Color 4 `color(...)` strings for Canvas 2D and CSS styles.
  */
 export function colorWithAlpha(color: string, alpha: number): string {
   const clampedAlpha = Math.max(0, Math.min(1, alpha));
@@ -66,7 +133,77 @@ export function colorWithAlpha(color: string, alpha: number): string {
       return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampedAlpha})`;
     }
   }
+  if (trimmed.startsWith('oklch(') && trimmed.endsWith(')')) {
+    const inner = trimmed.slice(6, -1).trim();
+    const slashIdx = inner.indexOf('/');
+    const channels = (slashIdx === -1 ? inner : inner.slice(0, slashIdx)).trim();
+    if (channels.length > 0) {
+      return `oklch(${channels} / ${clampedAlpha})`;
+    }
+  }
+  if (trimmed.startsWith('color(') && trimmed.endsWith(')')) {
+    const inner = trimmed.slice(6, -1).trim();
+    const slashIdx = inner.indexOf('/');
+    const channels = (slashIdx === -1 ? inner : inner.slice(0, slashIdx)).trim();
+    if (channels.length > 0) {
+      return `color(${channels} / ${clampedAlpha})`;
+    }
+  }
   return trimmed;
+}
+
+function resolveInspectionScheme(
+  root: Element | null,
+  explicitScheme?: ResolvedColorScheme,
+): ResolvedColorScheme {
+  if (explicitScheme) return explicitScheme;
+  const datasetScheme = (root as Partial<HTMLElement> | null)?.dataset?.colorScheme;
+  if (datasetScheme === 'light' || datasetScheme === 'dark') {
+    return datasetScheme;
+  }
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'dark';
+}
+
+/**
+ * Inspects all canonical semantic CSS tokens on the target root element,
+ * returning computed values, resolved scheme values, and active inline overrides
+ * for CDP diagnostics and automated verification.
+ */
+export function inspectThemeTokens(
+  root: Element | null = typeof document !== 'undefined' ? document.documentElement : null,
+  scheme?: ResolvedColorScheme,
+): ThemeTokenSnapshot {
+  const resolvedScheme = resolveInspectionScheme(root, scheme);
+  const dataset = (root as Partial<HTMLElement> | null)?.dataset;
+  const styles = root && typeof getComputedStyle === 'function' ? getComputedStyle(root) : null;
+  const tokens: Record<string, ThemeTokenEntry> = {};
+  const inlineOverrides: Record<string, string> = {};
+
+  for (const token of SEMANTIC_THEME_TOKENS) {
+    const inlineVal = root ? readInlineStyleProperty(root, token) : '';
+    const computed = styles ? styles.getPropertyValue(token).trim() : '';
+    const resolved = readThemeToken(token, resolvedScheme, computed, root);
+    tokens[token] = {
+      token,
+      resolved,
+      computed,
+      inlineOverride: inlineVal || null,
+    };
+    if (inlineVal) {
+      inlineOverrides[token] = inlineVal;
+    }
+  }
+
+  return {
+    themeId: dataset?.theme ?? null,
+    surface: dataset?.surface ?? null,
+    colorScheme: resolvedScheme,
+    tokens,
+    inlineOverrides,
+  };
 }
 
 /**

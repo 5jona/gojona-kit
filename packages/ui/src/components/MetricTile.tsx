@@ -11,6 +11,7 @@ export interface MetricTileProps {
   hint?: string;
   icon?: ReactNode;
   className?: string;
+  'data-testid'?: string;
 }
 
 export function MetricTile({
@@ -22,9 +23,14 @@ export function MetricTile({
   hint,
   icon,
   className,
+  'data-testid': dataTestId,
 }: MetricTileProps) {
   return (
     <div
+      data-pochita="metric-tile"
+      data-metric-label={label}
+      data-metric-value={String(value)}
+      data-testid={dataTestId}
       className={cn(
         'pochita-card flex min-w-0 flex-col justify-between gap-2 overflow-hidden p-3 transition-colors duration-150',
         className,

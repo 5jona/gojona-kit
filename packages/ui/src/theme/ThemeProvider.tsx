@@ -175,6 +175,7 @@ export function ThemeProvider({
     if (typeof document !== 'undefined') {
       document.documentElement.dataset.theme = themeId;
       document.documentElement.dataset.surface = surfaceMode;
+      document.documentElement.dataset.colorScheme = resolvedScheme;
       updateMetaColorScheme(colorMode);
     }
 

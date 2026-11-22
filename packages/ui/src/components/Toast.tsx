@@ -56,11 +56,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
+        data-pochita="toast-viewport"
         className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex flex-col items-center gap-2 px-4"
       >
         {items.map((item) => (
           <div
             key={item.id}
+            data-pochita="toast"
+            data-toast-tone={item.tone ?? 'info'}
             className={cn(
               'pointer-events-auto flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-toast)] px-4 py-2 text-xs font-medium text-[var(--text-primary)] shadow-lg backdrop-blur-md',
               item.tone === 'success' &&

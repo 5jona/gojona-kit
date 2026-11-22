@@ -34,6 +34,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <input
       ref={ref}
       type={type}
+      data-pochita="input"
       className={cn(inputVariants({ size, mono }), className)}
       {...props}
     />

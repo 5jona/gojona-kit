@@ -16,6 +16,12 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./theme-tokens": {
+      "source": "./src/theme/tokens.ts",
+      "types": "./dist/theme/tokens.d.ts",
+      "import": "./dist/theme/tokens.js",
+      "default": "./dist/theme/tokens.js"
+    },
     "./styles.css": "./src/styles/index.css"
   },
   "scripts": {
@@ -25,6 +31,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@pochita/config": "file:../config",
     "@radix-ui/react-slider": "^1.6.1",
     "@radix-ui/react-switch": "^1.4.1",
     "@radix-ui/react-tabs": "^1.2.1",

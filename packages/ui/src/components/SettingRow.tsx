@@ -7,6 +7,7 @@ export interface SettingRowProps {
   control: ReactNode;
   variant?: 'elevated' | 'plain';
   className?: string;
+  'data-testid'?: string;
 }
 
 export function SettingRow({
@@ -15,9 +16,13 @@ export function SettingRow({
   control,
   variant = 'elevated',
   className,
+  'data-testid': dataTestId,
 }: SettingRowProps) {
   return (
     <div
+      data-pochita="setting-row"
+      data-variant={variant}
+      data-testid={dataTestId}
       className={cn(
         'flex items-center justify-between gap-3',
         variant === 'elevated'

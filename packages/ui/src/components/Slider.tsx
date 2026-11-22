@@ -16,7 +16,10 @@ export interface SliderProps {
   disabled?: boolean;
   presets?: readonly SliderPreset[];
   onValueChange: (value: number) => void;
+  onValueCommit?: (value: number) => void;
+  formatValue?: (value: number) => string;
   className?: string;
+  'data-testid'?: string;
 }
 
 export function Slider({
@@ -29,17 +32,24 @@ export function Slider({
   disabled = false,
   presets,
   onValueChange,
+  onValueCommit,
+  formatValue,
   className,
+  'data-testid': dataTestId,
 }: SliderProps) {
+  const displayValue = formatValue ? formatValue(value) : `${value}${unit}`;
+
   return (
-    <div className={cn('space-y-2.5', className)}>
+    <div
+      data-pochita="slider"
+      data-state={disabled ? 'disabled' : 'enabled'}
+      data-testid={dataTestId}
+      className={cn('flex flex-col gap-2.5', className)}
+    >
       {label ? (
         <div className="flex items-center justify-between gap-2 text-xs">
           <span className="font-medium text-[var(--text-secondary)]">{label}</span>
-          <span className="tabular-nums font-semibold text-[var(--accent)]">
-            {value}
-            {unit}
-          </span>
+          <span className="tabular-nums font-semibold text-[var(--accent)]">{displayValue}</span>
         </div>
       ) : null}
 
@@ -55,15 +65,25 @@ export function Slider({
             onValueChange(next);
           }
         }}
-        aria-label={label ?? 'Slider'}
+        onValueCommit={
+          onValueCommit
+            ? (vals) => {
+                const next = vals[0];
+                if (typeof next === 'number') {
+                  onValueCommit(next);
+                }
+              }
+            : undefined
+        }
+        aria-label={label ?? '滑块'}
         className="relative flex h-6 w-full touch-none select-none items-center data-[disabled]:opacity-45"
       >
         <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-[var(--radius-pill)] bg-[var(--surface-elevated)] border border-[var(--border-hairline)]">
           <SliderPrimitive.Range className="absolute h-full rounded-[var(--radius-pill)] bg-[var(--accent)]" />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
-          aria-label={label ?? 'Slider'}
-          className="block size-5 cursor-grab rounded-full border-2 border-[var(--accent)] bg-[var(--thumb-bg,#ffffff)] shadow-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:cursor-grabbing"
+          aria-label={label ?? '滑块'}
+          className="block size-5 cursor-grab rounded-full border-2 border-[var(--accent)] bg-[var(--thumb-bg)] shadow-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:cursor-grabbing"
         />
       </SliderPrimitive.Root>
 
@@ -76,7 +96,13 @@ export function Slider({
                 key={preset.label}
                 type="button"
                 disabled={disabled}
-                onClick={() => onValueChange(preset.value)}
+                aria-pressed={active}
+                aria-label={preset.label}
+                data-preset-value={String(preset.value)}
+                onClick={() => {
+                  onValueChange(preset.value);
+                  onValueCommit?.(preset.value);
+                }}
                 className={cn(
                   'cursor-pointer rounded-[var(--radius-pill)] border px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors disabled:pointer-events-none disabled:opacity-45',
                   active

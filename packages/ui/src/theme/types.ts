@@ -1,4 +1,6 @@
-export type ThemeId = 'coloros-glass' | 'modern-saas-dark';
+import type { ThemeId } from '@pochita/config/themes';
+
+export type { ThemeId };
 
 export type ColorMode = 'system' | 'light' | 'dark';
 

@@ -41,7 +41,12 @@ export function Badge({
   ...props
 }: BadgeProps) {
   return (
-    <span className={cn(badgeVariants({ variant }), className)} {...props}>
+    <span
+      data-pochita="badge"
+      data-variant={variant ?? 'neutral'}
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    >
       {dot ? (
         <span
           className={cn('inline-block size-1.5 rounded-full bg-current', pulse && 'animate-pulse')}
