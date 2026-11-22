@@ -6,7 +6,12 @@
   "exports": {
     ".": "./index.mjs",
     "./biome.json": "./biome.base.json",
-    "./register-ts": "./register-ts.mjs"
+    "./register-ts": "./register-ts.mjs",
+    "./themes": {
+      "types": "./themes.d.ts",
+      "import": "./themes.mjs",
+      "default": "./themes.mjs"
+    }
   },
   "scripts": {
     "test": "node --test test/*.test.mjs"

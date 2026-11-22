@@ -9,7 +9,7 @@
     "format": "biome check --write .",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && node --test test/*.test.mjs",
     "check": "pnpm lint && pnpm build && pnpm typecheck && pnpm test",
     "preview": "pnpm --filter @pochita/playground preview"
   },

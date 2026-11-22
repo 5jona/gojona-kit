@@ -1,17 +1,28 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import {
+  createThemeBootstrapScript,
+  DEFAULT_THEME_ID,
+  STORAGE_KEY_SCHEME,
+  STORAGE_KEY_THEME,
+  THEME_IDS,
+} from './themes.mjs';
+
+export {
+  createThemeBootstrapScript,
+  DEFAULT_THEME_ID,
+  STORAGE_KEY_SCHEME,
+  STORAGE_KEY_THEME,
+  THEME_IDS,
+};
 
 /**
- * Generates the synchronous theme/color-scheme bootstrap snippet injected into `<head>`.
- *
- * @param {'standalone' | 'native-glass'} [surface='standalone']
+ * Default root directory of the `pochita-webui-kit` monorepo, derived from `import.meta.url`.
  */
-export function createThemeBootstrapScript(surface = 'standalone') {
-  const surfaceInit =
-    surface === 'native-glass' ? "document.documentElement.dataset.surface='native-glass';" : '';
-  return `try{${surfaceInit}var s=localStorage.getItem('pochita:color-scheme');if(s==='light'||s==='dark'){var m=document.querySelector('meta[name="color-scheme"]');if(m)m.content=s;}var t=localStorage.getItem('pochita:theme');document.documentElement.dataset.theme=(t==='coloros-glass'||t==='modern-saas-dark')?t:'coloros-glass';}catch(e){}`;
-}
+export const DEFAULT_KIT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 const COLOR_SCHEME_META_RE = /<meta\s+[^>]*name=["']color-scheme["'][^>]*>/i;
 const HEAD_OPEN_RE = /<head[^>]*>/i;
@@ -70,6 +81,11 @@ export function pochitaThemeBootstrapPlugin(surface = 'standalone') {
  * @param {number} [options.port=5173]
  * @param {string} [options.kitRoot]
  * @param {'standalone' | 'native-glass'} [options.surface='standalone']
+ * @param {boolean} [options.react=true]
+ * @param {boolean} [options.tailwindcss=true]
+ * @param {boolean} [options.themeBootstrap=true]
+ * @param {boolean | { host?: string; port?: number; protocol?: 'ws' | 'wss'; clientPort?: number }} [options.devHmr]
+ * @param {boolean | 'inline' | 'hidden'} [options.sourcemap]
  * @param {Array} [options.plugins=[]]
  * @param {object} [options.build={}]
  * @param {object} [options.server={}]
@@ -81,35 +97,65 @@ export function createPochitaViteConfig(options = {}) {
     port = 5173,
     kitRoot,
     surface = 'standalone',
+    react: useReact = true,
+    tailwindcss: useTailwindcss = true,
+    themeBootstrap = true,
+    devHmr,
+    sourcemap,
     plugins = [],
     build = {},
     server = {},
     resolve = {},
   } = options;
 
+  const resolvedKitRoot = kitRoot ?? (process.env.POCHITA_KIT_ROOT?.trim() || DEFAULT_KIT_ROOT);
   const existingAllow = server?.fs?.allow ?? [];
-  const mergedFs = kitRoot
+  const mergedFs = resolvedKitRoot
     ? {
         ...server?.fs,
-        allow: Array.from(new Set(['.', kitRoot, ...existingAllow])),
+        allow: Array.from(new Set(['.', resolvedKitRoot, ...existingAllow])),
       }
     : server?.fs;
 
+  const resolvedHmr =
+    devHmr === true
+      ? { host: '127.0.0.1', port, protocol: 'ws' }
+      : devHmr && typeof devHmr === 'object'
+        ? {
+            host: devHmr.host ?? '127.0.0.1',
+            port: devHmr.port ?? port,
+            protocol: devHmr.protocol ?? 'ws',
+            ...(devHmr.clientPort !== undefined ? { clientPort: devHmr.clientPort } : {}),
+          }
+        : undefined;
+
+  const resolvedSourcemap =
+    sourcemap !== undefined ? sourcemap : process.env.POCHITA_DEBUG === '1' ? true : undefined;
+
+  const resolvedPlugins = [
+    ...(themeBootstrap ? [pochitaThemeBootstrapPlugin(surface)] : []),
+    ...(useReact ? [react()] : []),
+    ...(useTailwindcss ? [tailwindcss()] : []),
+    ...plugins,
+  ];
+
   return defineConfig({
     base: './',
-    plugins: [pochitaThemeBootstrapPlugin(surface), react(), tailwindcss(), ...plugins],
+    plugins: resolvedPlugins,
     resolve,
     build: {
       outDir,
       emptyOutDir: true,
       target: 'es2022',
       assetsDir: 'assets',
+      ...(resolvedSourcemap !== undefined ? { sourcemap: resolvedSourcemap } : {}),
       ...build,
     },
     server: {
       host: '127.0.0.1',
       port,
       strictPort: false,
+      ...(resolvedHmr ? { hmr: resolvedHmr } : {}),
       ...server,
       ...(mergedFs ? { fs: mergedFs } : {}),
     },
