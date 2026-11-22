@@ -1,7 +1,47 @@
 export type RuntimeEnv = 'host' | 'ksu' | 'mock' | 'browser';
+export type BridgeChannelKind = 'port' | 'js-interface' | 'ws' | 'ksu' | 'mock';
 export type PluginBackendState = 'none' | 'online' | 'offline';
 export type ContainerBackdrop = 'native-glass' | 'transparent' | 'opaque';
 export type ContainerPresentationMode = 'drawer' | 'peek' | 'pinned' | 'wide' | 'native-hud';
+
+export type BridgeTraceKind =
+  | 'rpc.start'
+  | 'rpc.ok'
+  | 'rpc.error'
+  | 'event.in'
+  | 'port.installed'
+  | 'port.replaced';
+
+export interface BridgeTraceEvent {
+  kind: BridgeTraceKind;
+  timestampMs: number;
+  method?: string;
+  event?: string;
+  id?: string;
+  durationMs?: number;
+  error?: string;
+  code?: number;
+}
+
+export type BridgeTraceListener = (entry: BridgeTraceEvent) => void;
+
+export interface BridgeDiagnosticsSnapshot {
+  env: RuntimeEnv;
+  pluginId: string | null;
+  channelKind: BridgeChannelKind;
+  pendingCount: number;
+  pendingMethods: string[];
+  lastError: string | null;
+  disposed: boolean;
+  traceCount: number;
+}
+
+export interface PochitaDebugHandle {
+  readonly getDiagnostics: () => BridgeDiagnosticsSnapshot;
+  readonly getRecentTraces: (limit?: number) => BridgeTraceEvent[];
+  readonly inspectThemeTokens: () => Record<string, unknown>;
+  readonly emitHostEvent?: (event: string, payload?: unknown) => void;
+}
 
 export interface ContainerPinnedBounds {
   widthDp?: number;
@@ -172,6 +212,8 @@ export interface BridgeOptions {
   onKsuRpc?: MockRpcHandler;
   /** Optional observer invoked whenever container actions occur in browser mock mode. */
   onMockContainerAction?: (action: ContainerAction) => void;
+  /** Optional observer invoked for bridge RPC, event, and port lifecycle trace events. */
+  onTrace?: BridgeTraceListener;
 }
 
 export interface BridgeClient {
@@ -197,6 +239,7 @@ export interface BridgeClient {
   onPluginBackendState: (listener: (state: PluginBackendState) => void) => () => void;
   onBackPressed: (listener: () => void) => () => void;
   onThemePalette: (listener: (palette: DynamicThemePalettePayload) => void) => () => void;
+  getDiagnostics: () => BridgeDiagnosticsSnapshot;
   dispose: () => void;
 }
 
@@ -204,5 +247,6 @@ declare global {
   interface Window {
     ksu?: KsuHostGlobal;
     __POCHITA_HOST__?: EmbeddedHostGlobal;
+    __POCHITA_DEBUG__?: PochitaDebugHandle;
   }
 }

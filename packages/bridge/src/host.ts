@@ -1,4 +1,11 @@
+import { isTrustedWindowMessage, PortChannel, WebSocketChannel } from './portChannel.ts';
+import { BridgeRpcError, dispatchEventListeners } from './rpcError.ts';
+import { BridgeTracer } from './trace.ts';
 import type {
+  BridgeChannelKind,
+  BridgeDiagnosticsSnapshot,
+  BridgeTraceEvent,
+  BridgeTraceListener,
   ContainerAction,
   HostEvent,
   HostEventListener,
@@ -6,10 +13,21 @@ import type {
   RpcResponse,
 } from './types.ts';
 
+export { BridgeRpcError };
+
 interface PendingCall {
+  method: string;
+  startedAt: number;
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
   timer: number;
+}
+
+export interface HostTransportOptions {
+  wsUrl?: string;
+  timeoutMs?: number;
+  allowedOrigins?: string[];
+  onTrace?: BridgeTraceListener;
 }
 
 /**
@@ -20,62 +38,43 @@ interface PendingCall {
 export class HostTransport {
   private readonly pending = new Map<string, PendingCall>();
   private readonly listeners = new Map<string, Set<HostEventListener>>();
-  private readonly wsUrl?: string;
+  private readonly portChannel = new PortChannel();
+  private readonly wsChannel: WebSocketChannel;
+  private readonly tracer: BridgeTracer;
   private readonly defaultTimeoutMs: number;
   private readonly allowedOrigins?: string[];
 
-  private port: MessagePort | null = null;
-  private ws: WebSocket | null = null;
-  private connectingWs: WebSocket | null = null;
-  private wsConnectPromise: Promise<WebSocket> | null = null;
   private reqSeq = 0;
   private disposed = false;
 
-  constructor(options: { wsUrl?: string; timeoutMs?: number; allowedOrigins?: string[] } = {}) {
-    this.wsUrl =
+  constructor(options: HostTransportOptions = {}) {
+    const wsUrl =
       options.wsUrl ?? (typeof window !== 'undefined' ? window.__POCHITA_HOST__?.wsUrl : undefined);
     this.defaultTimeoutMs = options.timeoutMs ?? 8000;
     this.allowedOrigins = options.allowedOrigins;
+    this.tracer = new BridgeTracer(options.onTrace);
+    this.wsChannel = new WebSocketChannel({
+      wsUrl,
+      timeoutMs: this.defaultTimeoutMs,
+      onMessage: (raw) => this.handleRawPayload(raw),
+      onClosed: () => this.rejectAllPending('Host WebSocket connection closed'),
+    });
 
     if (typeof window !== 'undefined') {
       window.addEventListener('message', this.handleWindowMessage);
     }
   }
 
-  private isTrustedMessageEvent(event: MessageEvent): boolean {
-    const hasTransferredPort = Boolean(event.ports && event.ports.length > 0);
-    const isNativePortTransfer =
-      !this.port &&
-      hasTransferredPort &&
-      event.origin === '' &&
-      event.source === null &&
-      (event.data === '' || event.data === null || event.data === undefined);
-    if (isNativePortTransfer) {
-      return true;
-    }
-
-    if (this.allowedOrigins && this.allowedOrigins.length > 0) {
-      return this.allowedOrigins.includes(event.origin);
-    }
-
-    const currentOrigin = typeof window !== 'undefined' ? window.location?.origin : '';
-    if (!currentOrigin || currentOrigin === 'null') {
-      return event.source === window;
-    }
-
-    return event.origin === currentOrigin && (event.source === window || event.source === null);
-  }
-
   private readonly handleWindowMessage = (event: MessageEvent) => {
     if (this.disposed) return;
-    if (!this.isTrustedMessageEvent(event)) return;
+    if (!isTrustedWindowMessage(event, this.allowedOrigins)) return;
 
-    // Accept an upgraded dedicated WebMessagePort transferred by an Android WebView host.
-    if (event.ports && event.ports.length > 0 && !this.port) {
+    // Accept an upgraded or reinstalled dedicated WebMessagePort transferred by an Android WebView host.
+    if (event.ports && event.ports.length > 0) {
       const [transferredPort] = event.ports;
-      this.port = transferredPort;
-      transferredPort.onmessage = (portEvent) => this.handleRawPayload(portEvent.data);
-      transferredPort.start();
+      const hadPort = this.portChannel.hasPort();
+      this.portChannel.attachPort(transferredPort, (data) => this.handleRawPayload(data));
+      this.tracer.record({ kind: hadPort ? 'port.replaced' : 'port.installed' });
     }
 
     if (
@@ -104,119 +103,60 @@ export class HostTransport {
       if (!pending) return;
       this.pending.delete(msg.id);
       window.clearTimeout(pending.timer);
+      const durationMs = Math.max(0, Date.now() - pending.startedAt);
 
       if (msg.error) {
-        pending.reject(new Error(`${msg.error.message} (code ${msg.error.code})`));
+        const rpcErr = new BridgeRpcError(
+          msg.error.code,
+          pending.method,
+          msg.error.message,
+          msg.error.data,
+        );
+        this.tracer.record({
+          kind: 'rpc.error',
+          id: msg.id,
+          method: pending.method,
+          durationMs,
+          code: msg.error.code,
+          error: rpcErr.message,
+        });
+        pending.reject(rpcErr);
       } else {
+        this.tracer.record({
+          kind: 'rpc.ok',
+          id: msg.id,
+          method: pending.method,
+          durationMs,
+        });
         pending.resolve(msg.result);
       }
       return;
     }
 
     if (typeof msg.event === 'string') {
-      const set = this.listeners.get(msg.event);
-      if (!set) return;
-      for (const listener of set) {
-        listener(msg.payload);
-      }
+      this.tracer.record({ kind: 'event.in', event: msg.event });
+      dispatchEventListeners(this.listeners, msg.event, msg.payload);
     }
   }
 
   private rejectAllPending(reason: string): void {
     for (const [id, pending] of this.pending.entries()) {
       window.clearTimeout(pending.timer);
-      pending.reject(new Error(`${reason} ("${id}")`));
+      const error = `${reason} ("${id}")`;
+      this.tracer.record({
+        kind: 'rpc.error',
+        id,
+        method: pending.method,
+        durationMs: Math.max(0, Date.now() - pending.startedAt),
+        error,
+      });
+      pending.reject(new Error(error));
     }
     this.pending.clear();
   }
 
-  private async ensureWebSocket(): Promise<WebSocket> {
-    if (this.disposed) {
-      throw new Error('HostTransport has been disposed');
-    }
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      return this.ws;
-    }
-    if (this.wsConnectPromise) {
-      return this.wsConnectPromise;
-    }
-    const wsUrl = this.wsUrl;
-    if (!wsUrl) {
-      throw new Error('Embedded host transport unavailable');
-    }
-
-    this.wsConnectPromise = new Promise<WebSocket>((resolve, reject) => {
-      const socket = new WebSocket(wsUrl);
-      this.connectingWs = socket;
-      let settled = false;
-
-      const connectTimer = window.setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        if (this.connectingWs === socket) {
-          this.connectingWs = null;
-        }
-        this.wsConnectPromise = null;
-        try {
-          socket.close();
-        } catch {
-          // Ignore close errors on connecting socket.
-        }
-        reject(new Error(`Host WebSocket connection timed out after ${this.defaultTimeoutMs}ms`));
-      }, this.defaultTimeoutMs);
-
-      socket.onopen = () => {
-        window.clearTimeout(connectTimer);
-        if (this.connectingWs === socket) {
-          this.connectingWs = null;
-        }
-        if (this.disposed) {
-          settled = true;
-          this.wsConnectPromise = null;
-          socket.close();
-          reject(new Error('HostTransport disposed during WebSocket handshake'));
-          return;
-        }
-        settled = true;
-        this.ws = socket;
-        this.wsConnectPromise = null;
-        resolve(socket);
-      };
-      socket.onmessage = (ev) => this.handleRawPayload(ev.data);
-      socket.onerror = () => {
-        window.clearTimeout(connectTimer);
-        if (this.connectingWs === socket) {
-          this.connectingWs = null;
-        }
-        this.wsConnectPromise = null;
-        if (!settled) {
-          settled = true;
-          reject(new Error(`Failed to connect host WebSocket at ${this.wsUrl}`));
-        }
-      };
-      socket.onclose = () => {
-        window.clearTimeout(connectTimer);
-        if (this.connectingWs === socket) {
-          this.connectingWs = null;
-        }
-        if (this.ws === socket) {
-          this.ws = null;
-        }
-        this.wsConnectPromise = null;
-        if (!settled) {
-          settled = true;
-          reject(new Error(`Host WebSocket closed during handshake at ${this.wsUrl}`));
-        }
-        this.rejectAllPending('Host WebSocket connection closed');
-      };
-    });
-
-    return this.wsConnectPromise;
-  }
-
   private async postRaw(payload: string): Promise<void> {
-    if (this.port) {
-      this.port.postMessage(payload);
+    if (this.portChannel.send(payload)) {
       return;
     }
 
@@ -226,13 +166,12 @@ export class HostTransport {
       return;
     }
 
-    if (this.wsUrl) {
-      const socket = await this.ensureWebSocket();
-      socket.send(payload);
+    if (this.wsChannel.hasUrl()) {
+      await this.wsChannel.send(payload);
       return;
     }
 
-    throw new Error('No MessagePort, host postMessage, or wsUrl configured');
+    this.portChannel.enqueue(payload);
   }
 
   async invoke<T = unknown>(method: string, params?: unknown, timeoutMs?: number): Promise<T> {
@@ -241,6 +180,7 @@ export class HostTransport {
     }
 
     const id = `rpc_${Date.now()}_${++this.reqSeq}`;
+    const startedAt = Date.now();
     const request: RpcRequest = {
       jsonrpc: '2.0',
       id,
@@ -249,15 +189,26 @@ export class HostTransport {
     };
 
     const waitMs = timeoutMs ?? this.defaultTimeoutMs;
+    this.tracer.record({ kind: 'rpc.start', id, method, timestampMs: startedAt });
 
     const promise = new Promise<T>((resolve, reject) => {
       const timer = window.setTimeout(() => {
         if (this.pending.delete(id)) {
-          reject(new Error(`RPC "${method}" timed out after ${waitMs}ms`));
+          const error = `RPC "${method}" timed out after ${waitMs}ms`;
+          this.tracer.record({
+            kind: 'rpc.error',
+            id,
+            method,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            error,
+          });
+          reject(new Error(error));
         }
       }, waitMs);
 
       this.pending.set(id, {
+        method,
+        startedAt,
         resolve: resolve as (val: unknown) => void,
         reject,
         timer,
@@ -272,7 +223,15 @@ export class HostTransport {
         this.pending.delete(id);
         window.clearTimeout(pending.timer);
       }
-      throw err instanceof Error ? err : new Error(String(err));
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.tracer.record({
+        kind: 'rpc.error',
+        id,
+        method,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        error: error.message,
+      });
+      throw error;
     }
 
     return promise;
@@ -280,6 +239,34 @@ export class HostTransport {
 
   async sendContainerAction(action: ContainerAction): Promise<void> {
     await this.invoke('container.action', action);
+  }
+
+  getChannelKind(): BridgeChannelKind {
+    if (this.portChannel.hasPort()) return 'port';
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.__POCHITA_HOST__?.postMessage === 'function'
+    ) {
+      return 'js-interface';
+    }
+    return 'ws';
+  }
+
+  getDiagnostics(pluginId: string | null = null): BridgeDiagnosticsSnapshot {
+    return {
+      env: 'host',
+      pluginId,
+      channelKind: this.getChannelKind(),
+      pendingCount: this.pending.size,
+      pendingMethods: Array.from(this.pending.values(), (entry) => entry.method),
+      lastError: this.tracer.getLastError(),
+      disposed: this.disposed,
+      traceCount: this.tracer.getTraceCount(),
+    };
+  }
+
+  getRecentTraces(limit?: number): BridgeTraceEvent[] {
+    return this.tracer.getRecentTraces(limit);
   }
 
   subscribe(event: string, listener: HostEventListener): () => void {
@@ -302,23 +289,8 @@ export class HostTransport {
     if (typeof window !== 'undefined') {
       window.removeEventListener('message', this.handleWindowMessage);
     }
-    if (this.port) {
-      this.port.close();
-      this.port = null;
-    }
-    if (this.connectingWs) {
-      try {
-        this.connectingWs.close();
-      } catch {
-        // Ignore close errors on connecting socket.
-      }
-      this.connectingWs = null;
-    }
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    this.wsConnectPromise = null;
+    this.portChannel.dispose();
+    this.wsChannel.dispose();
     this.rejectAllPending('Transport disposed before request settled');
     this.listeners.clear();
   }

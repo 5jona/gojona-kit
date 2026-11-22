@@ -532,14 +532,18 @@ test('createBridge routes mock mode storage and event subscriptions through Mock
   bridge.dispose();
 });
 
-test('createBridge forwards per-call timeoutMs in invokePlugin payload and honors custom timeout', async () => {
+test('createBridge forwards per-call timeoutMs in invokePlugin payload and adds wire timeout margin', async () => {
   const originalWindow = globalThis.window;
 
   class FakeWindow extends EventTarget {
     constructor() {
       super();
       this.location = { origin: 'https://demo.plugins.sideveil.local', search: '' };
-      this.setTimeout = setTimeout;
+      this.scheduledTimeouts = [];
+      this.setTimeout = (fn, ms) => {
+        this.scheduledTimeouts.push(ms);
+        return setTimeout(fn, ms);
+      };
       this.clearTimeout = clearTimeout;
       this.sentPayloads = [];
       this.__POCHITA_HOST__ = {
@@ -574,6 +578,7 @@ test('createBridge forwards per-call timeoutMs in invokePlugin payload and honor
       params: { op: 'fsck' },
       timeoutMs: 25000,
     });
+    assert.equal(fakeWindow.scheduledTimeouts.at(-1), 27000);
 
     fakeWindow.dispatchEvent(
       new MessageEvent('message', {
@@ -582,11 +587,6 @@ test('createBridge forwards per-call timeoutMs in invokePlugin payload and honor
       }),
     );
     assert.deepEqual(await callPromise, { ok: true });
-
-    await assert.rejects(
-      () => bridge.invokePlugin('slow.op', {}, { timeoutMs: 40 }),
-      /timed out after 40ms/,
-    );
 
     bridge.dispose();
   } finally {

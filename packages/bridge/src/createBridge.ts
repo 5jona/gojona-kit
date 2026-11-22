@@ -1,28 +1,32 @@
-import {
-  createContext,
-  createElement,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
 import { detectPluginId, detectRuntime } from './detect.ts';
 import { HostTransport } from './host.ts';
 import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
 import { MockTransport, runMockExec, runMockRpc } from './mock.ts';
+import { createBridgeEventSubscriptions } from './rpcError.ts';
+import { BridgeTracer, installPochitaDebugHandle, uninstallPochitaDebugHandle } from './trace.ts';
 import type {
   BridgeClient,
+  BridgeDiagnosticsSnapshot,
   BridgeOptions,
   ContainerAction,
-  DynamicThemePalettePayload,
   ExecOptions,
   ExecResult,
   HostEventListener,
   InvokeOptions,
-  PluginBackendState,
   WriteFileAtomicOptions,
 } from './types.ts';
+
+export {
+  BridgeProvider,
+  type BridgeProviderProps,
+  useBridge,
+} from './BridgeProvider.tsx';
+
+/**
+ * Extra client-side wire margin added to `plugin.invoke` timeouts so `sideveild`'s
+ * structured `-32011` timeout error arrives before the local JS fallback timer fires.
+ */
+export const PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS = 2000;
 
 /**
  * Creates a runtime-aware bridge client supporting embedded WebView hosts,
@@ -33,12 +37,16 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const env = options.forceEnv ?? detectRuntime({ allowUrlOverride });
   const pluginId = detectPluginId(options.pluginId);
   const mockNamespace = options.mockNamespace ?? 'default';
+  const ksuTracer = env === 'ksu' ? new BridgeTracer(options.onTrace) : null;
+  let ksuDisposed = false;
+
   const hostTransport =
     env === 'host'
       ? new HostTransport({
           wsUrl: options.wsUrl,
           timeoutMs: options.timeoutMs,
           allowedOrigins: options.allowedOrigins,
+          onTrace: options.onTrace,
         })
       : null;
   const ownsMockTransport = !options.mockTransport;
@@ -48,10 +56,12 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
         new MockTransport({
           namespace: mockNamespace,
           persistToLocalStorage: true,
+          timeoutMs: options.timeoutMs,
           onExec: options.onMockExec,
           onRpc: options.onMockRpc,
           onPluginInvoke: options.onMockPluginInvoke,
           onContainerAction: options.onMockContainerAction,
+          onTrace: options.onTrace,
         }))
       : null;
 
@@ -107,15 +117,34 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return hostTransport.invoke<T>(method, params, callOpts?.timeoutMs);
     }
     if (env === 'ksu') {
-      if (options.onKsuRpc) {
-        return (await options.onKsuRpc(method, params)) as T;
+      const startedAt = Date.now();
+      ksuTracer?.record({ kind: 'rpc.start', method, timestampMs: startedAt });
+      try {
+        if (!options.onKsuRpc) {
+          throw new Error(
+            `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
+          );
+        }
+        const res = (await options.onKsuRpc(method, params)) as T;
+        ksuTracer?.record({
+          kind: 'rpc.ok',
+          method,
+          durationMs: Math.max(0, Date.now() - startedAt),
+        });
+        return res;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        ksuTracer?.record({
+          kind: 'rpc.error',
+          method,
+          durationMs: Math.max(0, Date.now() - startedAt),
+          error: msg,
+        });
+        throw err;
       }
-      throw new Error(
-        `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
-      );
     }
     return mockTransport
-      ? mockTransport.invoke<T>(method, params)
+      ? mockTransport.invoke<T>(method, params, callOpts)
       : (runMockRpc(mockNamespace, method, params, options.onMockRpc) as Promise<T>);
   };
 
@@ -128,7 +157,9 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       const timeoutMs = callOpts?.timeoutMs;
       const invokePayload =
         timeoutMs !== undefined ? { method, params, timeoutMs } : { method, params };
-      return hostTransport.invoke<T>('plugin.invoke', invokePayload, timeoutMs);
+      const wireTimeoutMs =
+        timeoutMs !== undefined ? timeoutMs + PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS : undefined;
+      return hostTransport.invoke<T>('plugin.invoke', invokePayload, wireTimeoutMs);
     }
     if (env === 'ksu') {
       if (options.onMockPluginInvoke) {
@@ -142,7 +173,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       );
     }
     if (mockTransport) {
-      return mockTransport.invokePlugin<T>(method, params);
+      return mockTransport.invokePlugin<T>(method, params, callOpts);
     }
     return runMockRpc(
       mockNamespace,
@@ -179,58 +210,47 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     return () => {};
   };
 
-  const onPluginEvent = <T = unknown>(
-    event: string,
-    listener: (payload: T) => void,
-  ): (() => void) => {
-    const unsubScoped = onHostEvent('plugin.event', (data) => {
-      if (data && typeof data === 'object') {
-        const payloadObj = data as { pluginId?: string; event?: string; payload?: T };
-        if (payloadObj.event === event) {
-          listener(payloadObj.payload as T);
-        }
-      }
-    });
-    const unsubDirect = onHostEvent(event, (data) => {
-      listener(data as T);
-    });
-    return () => {
-      unsubScoped();
-      unsubDirect();
+  const { onPluginEvent, onPluginBackendState, onBackPressed, onThemePalette } =
+    createBridgeEventSubscriptions(pluginId, onHostEvent);
+
+  const getDiagnostics = (): BridgeDiagnosticsSnapshot => {
+    if (hostTransport) {
+      return hostTransport.getDiagnostics(pluginId);
+    }
+    if (mockTransport) {
+      return mockTransport.getDiagnostics(pluginId, env);
+    }
+    return {
+      env,
+      pluginId,
+      channelKind: 'ksu',
+      pendingCount: 0,
+      pendingMethods: [],
+      lastError: ksuTracer?.getLastError() ?? null,
+      disposed: ksuDisposed,
+      traceCount: ksuTracer?.getTraceCount() ?? 0,
     };
   };
 
-  const onPluginBackendState = (listener: (state: PluginBackendState) => void): (() => void) => {
-    return onHostEvent('plugin.backendState', (data) => {
-      if (data && typeof data === 'object') {
-        const payloadObj = data as {
-          pluginId?: string;
-          state?: PluginBackendState;
-        };
-        if (payloadObj.state) {
-          listener(payloadObj.state);
-        }
-      }
-    });
+  const getRecentTraces = (limit?: number) => {
+    if (hostTransport) return hostTransport.getRecentTraces(limit);
+    if (mockTransport) return mockTransport.getRecentTraces(limit);
+    return ksuTracer?.getRecentTraces(limit) ?? [];
   };
 
-  const onBackPressed = (listener: () => void): (() => void) => {
-    return onHostEvent('panel.backPressed', () => {
-      listener();
-    });
-  };
-
-  const onThemePalette = (
-    listener: (palette: DynamicThemePalettePayload) => void,
-  ): (() => void) => {
-    return onHostEvent('theme.paletteUpdated', (data) => {
-      if (data && typeof data === 'object' && 'cssTokens' in data) {
-        listener(data as DynamicThemePalettePayload);
-      }
-    });
-  };
+  const debugHandle = installPochitaDebugHandle({
+    env,
+    getDiagnostics,
+    getRecentTraces,
+    emitMockHostEvent:
+      env === 'mock' && mockTransport
+        ? (event, payload) => mockTransport.emit(event, payload)
+        : undefined,
+  });
 
   const dispose = (): void => {
+    ksuDisposed = true;
+    uninstallPochitaDebugHandle(debugHandle);
     hostTransport?.dispose();
     if (ownsMockTransport) {
       mockTransport?.dispose();
@@ -252,113 +272,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     onPluginBackendState,
     onBackPressed,
     onThemePalette,
+    getDiagnostics,
     dispose,
   };
-}
-
-const BridgeContext = createContext<BridgeClient | null>(null);
-
-export interface BridgeProviderProps {
-  options?: BridgeOptions;
-  client?: BridgeClient;
-  children?: ReactNode;
-}
-
-export function BridgeProvider({ options, client, children }: BridgeProviderProps) {
-  const callbacksRef = useRef({
-    onMockExec: options?.onMockExec,
-    onMockRpc: options?.onMockRpc,
-    onMockPluginInvoke: options?.onMockPluginInvoke,
-    onKsuRpc: options?.onKsuRpc,
-    onMockContainerAction: options?.onMockContainerAction,
-  });
-  callbacksRef.current = {
-    onMockExec: options?.onMockExec,
-    onMockRpc: options?.onMockRpc,
-    onMockPluginInvoke: options?.onMockPluginInvoke,
-    onKsuRpc: options?.onKsuRpc,
-    onMockContainerAction: options?.onMockContainerAction,
-  };
-
-  const pluginId = options?.pluginId;
-  const forceEnv = options?.forceEnv;
-  const mockTransport = options?.mockTransport;
-  const allowUrlOverride = options?.allowUrlOverride ?? options?.allowQueryOverride;
-  const wsUrl = options?.wsUrl;
-  const mockNamespace = options?.mockNamespace;
-  const timeoutMs = options?.timeoutMs;
-  const allowedOriginsKey = options?.allowedOrigins?.join('\u0000') ?? '';
-
-  const bridge = useMemo(() => {
-    if (client) return client;
-    return createBridge({
-      pluginId,
-      forceEnv,
-      mockTransport,
-      allowUrlOverride,
-      wsUrl,
-      mockNamespace,
-      timeoutMs,
-      allowedOrigins: allowedOriginsKey ? allowedOriginsKey.split('\u0000') : undefined,
-      onMockExec: (cmd, execOpts) =>
-        callbacksRef.current.onMockExec
-          ? callbacksRef.current.onMockExec(cmd, execOpts)
-          : runMockExec(mockNamespace ?? 'default', cmd, execOpts),
-      onMockRpc: (method, params) =>
-        callbacksRef.current.onMockRpc
-          ? callbacksRef.current.onMockRpc(method, params)
-          : runMockRpc(mockNamespace ?? 'default', method, params),
-      onMockPluginInvoke: (method, params) =>
-        callbacksRef.current.onMockPluginInvoke
-          ? callbacksRef.current.onMockPluginInvoke(method, params)
-          : runMockRpc(mockNamespace ?? 'default', `plugin.invoke:${method}`, params),
-      onKsuRpc: (method, params) => {
-        if (callbacksRef.current.onKsuRpc) {
-          return callbacksRef.current.onKsuRpc(method, params);
-        }
-        throw new Error(
-          `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
-        );
-      },
-      onMockContainerAction: (action) => callbacksRef.current.onMockContainerAction?.(action),
-    });
-  }, [
-    client,
-    pluginId,
-    forceEnv,
-    mockTransport,
-    allowUrlOverride,
-    wsUrl,
-    mockNamespace,
-    timeoutMs,
-    allowedOriginsKey,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      if (!client) {
-        bridge.dispose();
-      }
-    };
-  }, [bridge, client]);
-
-  return createElement(BridgeContext.Provider, { value: bridge }, children);
-}
-
-let defaultFallbackBridge: BridgeClient | null = null;
-
-function getDefaultFallbackBridge(): BridgeClient {
-  if (!defaultFallbackBridge) {
-    defaultFallbackBridge = createBridge();
-  }
-  return defaultFallbackBridge;
-}
-
-/**
- * Returns the nearest BridgeClient instance (falling back to a lazy shared client
- * when called outside BridgeProvider).
- */
-export function useBridge(): BridgeClient {
-  const ctx = useContext(BridgeContext);
-  return ctx ?? getDefaultFallbackBridge();
 }

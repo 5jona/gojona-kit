@@ -1,118 +1,50 @@
+import {
+  dispatchMockContainerAction,
+  mockReadFile,
+  mockWriteFile,
+  registerMockExec,
+  registerMockRpc,
+  runMockExec,
+  runMockRpc,
+} from './mockRegistry.ts';
+import { BridgeRpcError, dispatchEventListeners } from './rpcError.ts';
+import { BridgeTracer } from './trace.ts';
 import type {
+  BridgeDiagnosticsSnapshot,
+  BridgeTraceEvent,
+  BridgeTraceListener,
   ContainerAction,
   ExecOptions,
   ExecResult,
   HostEventListener,
+  InvokeOptions,
   MockExecHandler,
   MockRpcHandler,
+  RuntimeEnv,
 } from './types.ts';
 
-const customExecHandlers = new Map<string, MockExecHandler>();
-const customRpcHandlers = new Map<string, MockRpcHandler>();
-
-/**
- * Registers a reusable browser mock exec handler keyed by namespace.
- */
-export function registerMockExec(namespace: string, handler: MockExecHandler): () => void {
-  customExecHandlers.set(namespace, handler);
-  return () => {
-    if (customExecHandlers.get(namespace) === handler) {
-      customExecHandlers.delete(namespace);
-    }
-  };
-}
-
-/**
- * Registers a reusable browser mock RPC handler keyed by namespace.
- */
-export function registerMockRpc(namespace: string, handler: MockRpcHandler): () => void {
-  customRpcHandlers.set(namespace, handler);
-  return () => {
-    if (customRpcHandlers.get(namespace) === handler) {
-      customRpcHandlers.delete(namespace);
-    }
-  };
-}
-
-function getFileStorageKey(namespace: string, path: string): string {
-  return `pochita:mockfs:${namespace}:${path}`;
-}
-
-export function mockReadFile(namespace: string, path: string): string | null {
-  try {
-    return window.localStorage.getItem(getFileStorageKey(namespace, path));
-  } catch {
-    return null;
-  }
-}
-
-export function mockWriteFile(namespace: string, path: string, content: string): ExecResult {
-  try {
-    window.localStorage.setItem(getFileStorageKey(namespace, path), content);
-    return { errno: 0, stdout: 'OK', stderr: '' };
-  } catch (err) {
-    return { errno: -1, stdout: '', stderr: String(err) };
-  }
-}
-
-export async function runMockExec(
-  namespace: string,
-  cmd: string,
-  options: ExecOptions | undefined,
-  overrideHandler?: MockExecHandler,
-): Promise<ExecResult> {
-  if (overrideHandler) {
-    return overrideHandler(cmd, options);
-  }
-  const registered = customExecHandlers.get(namespace);
-  if (registered) {
-    return registered(cmd, options);
-  }
-  return {
-    errno: 0,
-    stdout: `[mock:${namespace}] executed: ${cmd}`,
-    stderr: '',
-  };
-}
-
-export async function runMockRpc(
-  namespace: string,
-  method: string,
-  params: unknown,
-  overrideHandler?: MockRpcHandler,
-): Promise<unknown> {
-  if (overrideHandler) {
-    return overrideHandler(method, params);
-  }
-  const registered = customRpcHandlers.get(namespace);
-  if (registered) {
-    return registered(method, params);
-  }
-  return {
-    mocked: true,
-    namespace,
-    method,
-    params: params ?? null,
-    timestamp: Date.now(),
-  };
-}
-
-export function dispatchMockContainerAction(
-  action: ContainerAction,
-  callback?: (action: ContainerAction) => void,
-): void {
-  callback?.(action);
-}
+export {
+  dispatchMockContainerAction,
+  mockReadFile,
+  mockWriteFile,
+  registerMockExec,
+  registerMockRpc,
+  runMockExec,
+  runMockRpc,
+};
 
 export interface MockTransportOptions {
   namespace?: string;
   handlers?: Record<string, (params?: unknown) => unknown | Promise<unknown>>;
   initialFiles?: Record<string, string>;
   persistToLocalStorage?: boolean;
+  latencyMs?: number;
+  timeoutMs?: number;
   onExec?: MockExecHandler;
   onRpc?: MockRpcHandler;
   onPluginInvoke?: MockRpcHandler;
   onContainerAction?: (action: ContainerAction) => void;
+  onTrace?: BridgeTraceListener;
 }
 
 /**
@@ -122,21 +54,31 @@ export interface MockTransportOptions {
 export class MockTransport {
   private readonly namespace: string;
   private readonly persistToLocalStorage: boolean;
+  private readonly latencyMs: number;
+  private readonly defaultTimeoutMs?: number;
   private readonly onExec?: MockExecHandler;
   private readonly onRpc?: MockRpcHandler;
   private readonly onPluginInvoke?: MockRpcHandler;
   private readonly onContainerAction?: (action: ContainerAction) => void;
+  private readonly tracer: BridgeTracer;
   private readonly listeners = new Map<string, Set<HostEventListener>>();
   private readonly storage = new Map<string, string>();
   private readonly handlers = new Map<string, (params?: unknown) => unknown | Promise<unknown>>();
+  private readonly faults = new Map<string, Error>();
+  private readonly pending = new Map<string, string>();
+  private reqSeq = 0;
+  private disposed = false;
 
   constructor(options: MockTransportOptions = {}) {
     this.namespace = options.namespace ?? 'default';
     this.persistToLocalStorage = options.persistToLocalStorage ?? false;
+    this.latencyMs = Math.max(0, options.latencyMs ?? 0);
+    this.defaultTimeoutMs = options.timeoutMs;
     this.onExec = options.onExec;
     this.onRpc = options.onRpc;
     this.onPluginInvoke = options.onPluginInvoke;
     this.onContainerAction = options.onContainerAction;
+    this.tracer = new BridgeTracer(options.onTrace);
     if (options.initialFiles) {
       for (const [filePath, content] of Object.entries(options.initialFiles)) {
         this.storage.set(filePath, content);
@@ -161,29 +103,122 @@ export class MockTransport {
     };
   }
 
+  /**
+   * Injects a deterministic error for a given RPC method until cleared via `clearFaults()`.
+   */
+  injectError(method: string, error: Error | string): void {
+    this.faults.set(method, typeof error === 'string' ? new Error(error) : error);
+  }
+
+  /**
+   * Clears a specific injected method fault, or all injected faults when omitted.
+   */
+  clearFaults(method?: string): void {
+    if (method !== undefined) {
+      this.faults.delete(method);
+    } else {
+      this.faults.clear();
+    }
+  }
+
   async exec(cmd: string, options?: ExecOptions): Promise<ExecResult> {
     return runMockExec(this.namespace, cmd, options, this.onExec);
   }
 
-  async invoke<T = unknown>(method: string, params?: unknown): Promise<T> {
-    const custom = this.handlers.get(method);
-    if (custom) {
-      return (await custom(params)) as T;
+  private async runWithTiming<T>(
+    method: string,
+    options: InvokeOptions | undefined,
+    execute: () => Promise<T>,
+  ): Promise<T> {
+    if (this.disposed) {
+      throw new Error('MockTransport has been disposed');
     }
-    if (this.onRpc) {
-      return (await this.onRpc(method, params)) as T;
+    const id = `mock_${Date.now()}_${++this.reqSeq}`;
+    const startedAt = Date.now();
+    const waitMs = options?.timeoutMs ?? this.defaultTimeoutMs;
+    this.pending.set(id, method);
+    this.tracer.record({ kind: 'rpc.start', id, method, timestampMs: startedAt });
+
+    const run = async (): Promise<T> => {
+      if (this.latencyMs > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, this.latencyMs));
+      }
+      const injected = this.faults.get(method);
+      if (injected) {
+        throw injected;
+      }
+      return execute();
+    };
+
+    try {
+      let result: T;
+      if (waitMs !== undefined && waitMs > 0) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        result = await Promise.race([
+          run().finally(() => {
+            if (timer !== undefined) clearTimeout(timer);
+          }),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+              reject(new Error(`RPC "${method}" timed out after ${waitMs}ms`));
+            }, waitMs);
+          }),
+        ]);
+      } else {
+        result = await run();
+      }
+      this.tracer.record({
+        kind: 'rpc.ok',
+        id,
+        method,
+        durationMs: Math.max(0, Date.now() - startedAt),
+      });
+      return result;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.tracer.record({
+        kind: 'rpc.error',
+        id,
+        method,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        error: error.message,
+        ...(error instanceof BridgeRpcError ? { code: error.code } : {}),
+      });
+      throw error;
+    } finally {
+      this.pending.delete(id);
     }
-    if (method === 'ping' || method === 'daemon.ping') {
-      return { pong: true, timestampMs: Date.now() } as T;
-    }
-    return runMockRpc(this.namespace, method, params) as Promise<T>;
   }
 
-  async invokePlugin<T = unknown>(method: string, params?: unknown): Promise<T> {
+  async invoke<T = unknown>(method: string, params?: unknown, options?: InvokeOptions): Promise<T> {
+    return this.runWithTiming(method, options, async () => {
+      const custom = this.handlers.get(method);
+      if (custom) {
+        return (await custom(params)) as T;
+      }
+      if (this.onRpc) {
+        return (await this.onRpc(method, params)) as T;
+      }
+      if (method === 'ping' || method === 'daemon.ping') {
+        return { pong: true, timestampMs: Date.now() } as T;
+      }
+      return (await runMockRpc(this.namespace, method, params)) as T;
+    });
+  }
+
+  async invokePlugin<T = unknown>(
+    method: string,
+    params?: unknown,
+    options?: InvokeOptions,
+  ): Promise<T> {
     if (this.onPluginInvoke) {
-      return (await this.onPluginInvoke(method, params)) as T;
+      return this.runWithTiming(`plugin.invoke:${method}`, options, async () => {
+        const directFault = this.faults.get(method);
+        if (directFault) throw directFault;
+        return (await this.onPluginInvoke?.(method, params)) as T;
+      });
     }
-    return this.invoke<T>(`plugin.invoke:${method}`, params);
+    return this.invoke<T>(`plugin.invoke:${method}`, params, options);
   }
 
   sendContainerAction(action: ContainerAction): void {
@@ -224,18 +259,37 @@ export class MockTransport {
   }
 
   emit(event: string, payload?: unknown): void {
-    const set = this.listeners.get(event);
-    if (!set) return;
-    for (const listener of set) {
-      listener(payload);
-    }
+    this.tracer.record({ kind: 'event.in', event });
+    dispatchEventListeners(this.listeners, event, payload);
   }
 
   getListenerCount(event: string): number {
     return this.listeners.get(event)?.size ?? 0;
   }
 
+  getDiagnostics(
+    pluginId: string | null = null,
+    env: RuntimeEnv = 'mock',
+  ): BridgeDiagnosticsSnapshot {
+    return {
+      env,
+      pluginId,
+      channelKind: 'mock',
+      pendingCount: this.pending.size,
+      pendingMethods: Array.from(this.pending.values()),
+      lastError: this.tracer.getLastError(),
+      disposed: this.disposed,
+      traceCount: this.tracer.getTraceCount(),
+    };
+  }
+
+  getRecentTraces(limit?: number): BridgeTraceEvent[] {
+    return this.tracer.getRecentTraces(limit);
+  }
+
   dispose(): void {
+    this.disposed = true;
     this.listeners.clear();
+    this.pending.clear();
   }
 }
