@@ -5,6 +5,17 @@ export {
   type AppShellVariant,
 } from './components/AppShell.tsx';
 export { Badge, type BadgeProps } from './components/Badge.tsx';
+export {
+  type BridgeTraceEntry,
+  type BridgeTraceFilter,
+  BridgeTraceInspector,
+  type BridgeTraceInspectorProps,
+  DEFAULT_SLOW_THRESHOLD_MS,
+  filterTraceEntries,
+  isTraceError,
+  isTraceSlow,
+  summarizeTraceEntries,
+} from './components/BridgeTraceInspector.tsx';
 export { Button, type ButtonProps } from './components/Button.tsx';
 export {
   Card,
@@ -28,7 +39,15 @@ export {
   type FilterChipsSingleProps,
 } from './components/FilterChips.tsx';
 export { Input, type InputProps } from './components/Input.tsx';
-export { LogConsole, type LogConsoleProps, type LogEntry } from './components/LogConsole.tsx';
+export {
+  filterLogEntries,
+  formatLogEntriesText,
+  LogConsole,
+  type LogConsoleProps,
+  type LogEntry,
+  type LogFilterLevel,
+  type LogLevel,
+} from './components/LogConsole.tsx';
 export { MetricTile, type MetricTileProps } from './components/MetricTile.tsx';
 export {
   ProgressBar,
