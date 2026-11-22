@@ -1,12 +1,17 @@
+import { sanitizeTraceValue } from './traceSanitize.ts';
+import { createTraceStore, DEFAULT_TRACE_BUFFER_SIZE } from './traceStore.ts';
 import type {
   BridgeDiagnosticsSnapshot,
   BridgeTraceEvent,
+  BridgeTraceInput,
   BridgeTraceListener,
+  BridgeTraceStore,
+  BridgeTraceTransport,
   PochitaDebugHandle,
   RuntimeEnv,
 } from './types.ts';
 
-const DEFAULT_MAX_TRACES = 100;
+export { createTraceStore, DEFAULT_TRACE_BUFFER_SIZE, sanitizeTraceValue };
 
 const DEBUG_THEME_TOKENS = [
   '--surface-canvas',
@@ -33,59 +38,126 @@ const DEBUG_THEME_TOKENS = [
 
 /**
  * Bounded ring-buffer tracer for bridge RPC and event diagnostics.
+ * Delegates storage and subscriptions to a `BridgeTraceStore`.
  */
 export class BridgeTracer {
-  private readonly maxEntries: number;
-  private readonly entries: BridgeTraceEvent[] = [];
-  private readonly onTrace?: BridgeTraceListener;
-  private totalCount = 0;
-  private lastError: string | null = null;
+  private readonly store: BridgeTraceStore;
 
-  constructor(onTrace?: BridgeTraceListener, maxEntries = DEFAULT_MAX_TRACES) {
-    this.onTrace = onTrace;
-    this.maxEntries = Math.max(1, maxEntries);
+  constructor(
+    onTrace?: BridgeTraceListener,
+    maxEntries = DEFAULT_TRACE_BUFFER_SIZE,
+    store?: BridgeTraceStore,
+  ) {
+    this.store = store ?? createTraceStore({ maxEntries });
+    if (onTrace) {
+      this.store.subscribe(onTrace);
+    }
   }
 
-  record(event: Omit<BridgeTraceEvent, 'timestampMs'> & { timestampMs?: number }): void {
-    const entry: BridgeTraceEvent = {
-      ...event,
-      timestampMs: event.timestampMs ?? Date.now(),
-    };
-    this.totalCount += 1;
-    if (entry.kind === 'rpc.error' && entry.error) {
-      this.lastError = entry.error;
-    }
-    this.entries.push(entry);
-    if (this.entries.length > this.maxEntries) {
-      this.entries.splice(0, this.entries.length - this.maxEntries);
-    }
-    if (this.onTrace) {
-      try {
-        this.onTrace(entry);
-      } catch {
-        // Isolate observer exceptions so transport execution is never disrupted.
-      }
-    }
+  getStore(): BridgeTraceStore {
+    return this.store;
+  }
+
+  record(event: BridgeTraceInput): BridgeTraceEvent {
+    return this.store.push(event);
+  }
+
+  rpcStart(
+    transport: BridgeTraceTransport,
+    id: string | undefined,
+    method: string,
+    startedAt: number,
+    payloadPreview?: unknown,
+  ): BridgeTraceEvent {
+    return this.store.push({
+      kind: 'rpc.start',
+      phase: 'request',
+      transport,
+      id,
+      method,
+      timestampMs: startedAt,
+      payloadPreview,
+    });
+  }
+
+  rpcOk(
+    transport: BridgeTraceTransport,
+    id: string | undefined,
+    method: string,
+    startedAt: number,
+    payloadPreview?: unknown,
+  ): BridgeTraceEvent {
+    return this.store.push({
+      kind: 'rpc.ok',
+      phase: 'response',
+      transport,
+      id,
+      method,
+      durationMs: Math.max(0, Date.now() - startedAt),
+      payloadPreview,
+    });
+  }
+
+  rpcError(
+    transport: BridgeTraceTransport,
+    id: string | undefined,
+    method: string,
+    startedAt: number,
+    error: string,
+    options?: { code?: number; timedOut?: boolean },
+  ): BridgeTraceEvent {
+    return this.store.push({
+      kind: 'rpc.error',
+      phase: options?.timedOut ? 'timeout' : 'error',
+      transport,
+      id,
+      method,
+      durationMs: Math.max(0, Date.now() - startedAt),
+      error,
+      ...(options?.code !== undefined ? { code: options.code } : {}),
+    });
+  }
+
+  eventIn(
+    transport: BridgeTraceTransport,
+    event: string,
+    payloadPreview?: unknown,
+  ): BridgeTraceEvent {
+    return this.store.push({
+      kind: 'event.in',
+      phase: 'event',
+      transport,
+      event,
+      payloadPreview,
+    });
   }
 
   getRecentTraces(limit?: number): BridgeTraceEvent[] {
-    if (limit === undefined || limit >= this.entries.length) {
-      return this.entries.slice();
-    }
-    if (limit <= 0) return [];
-    return this.entries.slice(-limit);
+    return this.store.getEntries(limit);
+  }
+
+  clear(): void {
+    this.store.clear();
+  }
+
+  subscribe(listener: BridgeTraceListener): () => void {
+    return this.store.subscribe(listener);
+  }
+
+  exportJson(pretty = true): string {
+    return this.store.exportJson(pretty);
   }
 
   getTraceCount(): number {
-    return this.totalCount;
+    return this.store.getTraceCount();
   }
 
   getLastError(): string | null {
-    return this.lastError;
+    return this.store.getLastError();
   }
 
   setLastError(error: string | null): void {
-    this.lastError = error;
+    this.store.setLastError(error);
   }
 }
 

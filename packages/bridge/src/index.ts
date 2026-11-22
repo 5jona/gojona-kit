@@ -22,15 +22,34 @@ export {
   type ThemeSyncDeduplicator,
   useContainerThemeSync,
 } from './themeSync.ts';
-export { BridgeTracer } from './trace.ts';
+export {
+  BridgeTracer,
+  createTraceStore,
+  DEFAULT_TRACE_BUFFER_SIZE,
+  sanitizeTraceValue,
+} from './trace.ts';
+export {
+  DEFAULT_TRACE_MAX_ARRAY_LENGTH,
+  DEFAULT_TRACE_MAX_DEPTH,
+  DEFAULT_TRACE_MAX_OBJECT_KEYS,
+  DEFAULT_TRACE_MAX_STRING_LENGTH,
+  type SanitizeTraceOptions,
+  TRACE_REDACTED_VALUE,
+} from './traceSanitize.ts';
 export type {
   BridgeChannelKind,
   BridgeClient,
   BridgeDiagnosticsSnapshot,
   BridgeOptions,
   BridgeTraceEvent,
+  BridgeTraceInput,
   BridgeTraceKind,
   BridgeTraceListener,
+  BridgeTracePhase,
+  BridgeTraceStatus,
+  BridgeTraceStore,
+  BridgeTraceStoreOptions,
+  BridgeTraceTransport,
   ContainerAction,
   ContainerBackdrop,
   ContainerEdgeStatus,

@@ -13,6 +13,7 @@ import type {
   BridgeDiagnosticsSnapshot,
   BridgeTraceEvent,
   BridgeTraceListener,
+  BridgeTraceStore,
   ContainerAction,
   ExecOptions,
   ExecResult,
@@ -45,6 +46,8 @@ export interface MockTransportOptions {
   onPluginInvoke?: MockRpcHandler;
   onContainerAction?: (action: ContainerAction) => void;
   onTrace?: BridgeTraceListener;
+  traceBufferSize?: number;
+  traceStore?: BridgeTraceStore;
 }
 
 /**
@@ -78,7 +81,7 @@ export class MockTransport {
     this.onRpc = options.onRpc;
     this.onPluginInvoke = options.onPluginInvoke;
     this.onContainerAction = options.onContainerAction;
-    this.tracer = new BridgeTracer(options.onTrace);
+    this.tracer = new BridgeTracer(options.onTrace, options.traceBufferSize, options.traceStore);
     if (options.initialFiles) {
       for (const [filePath, content] of Object.entries(options.initialFiles)) {
         this.storage.set(filePath, content);
@@ -127,6 +130,7 @@ export class MockTransport {
 
   private async runWithTiming<T>(
     method: string,
+    params: unknown,
     options: InvokeOptions | undefined,
     execute: () => Promise<T>,
   ): Promise<T> {
@@ -137,19 +141,18 @@ export class MockTransport {
     const startedAt = Date.now();
     const waitMs = options?.timeoutMs ?? this.defaultTimeoutMs;
     this.pending.set(id, method);
-    this.tracer.record({ kind: 'rpc.start', id, method, timestampMs: startedAt });
+    this.tracer.rpcStart('mock', id, method, startedAt, params);
 
     const run = async (): Promise<T> => {
       if (this.latencyMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, this.latencyMs));
       }
       const injected = this.faults.get(method);
-      if (injected) {
-        throw injected;
-      }
+      if (injected) throw injected;
       return execute();
     };
 
+    let timedOut = false;
     try {
       let result: T;
       if (waitMs !== undefined && waitMs > 0) {
@@ -160,6 +163,7 @@ export class MockTransport {
           }),
           new Promise<never>((_, reject) => {
             timer = setTimeout(() => {
+              timedOut = true;
               reject(new Error(`RPC "${method}" timed out after ${waitMs}ms`));
             }, waitMs);
           }),
@@ -167,21 +171,12 @@ export class MockTransport {
       } else {
         result = await run();
       }
-      this.tracer.record({
-        kind: 'rpc.ok',
-        id,
-        method,
-        durationMs: Math.max(0, Date.now() - startedAt),
-      });
+      this.tracer.rpcOk('mock', id, method, startedAt, result);
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      this.tracer.record({
-        kind: 'rpc.error',
-        id,
-        method,
-        durationMs: Math.max(0, Date.now() - startedAt),
-        error: error.message,
+      this.tracer.rpcError('mock', id, method, startedAt, error.message, {
+        timedOut,
         ...(error instanceof BridgeRpcError ? { code: error.code } : {}),
       });
       throw error;
@@ -191,14 +186,10 @@ export class MockTransport {
   }
 
   async invoke<T = unknown>(method: string, params?: unknown, options?: InvokeOptions): Promise<T> {
-    return this.runWithTiming(method, options, async () => {
+    return this.runWithTiming(method, params, options, async () => {
       const custom = this.handlers.get(method);
-      if (custom) {
-        return (await custom(params)) as T;
-      }
-      if (this.onRpc) {
-        return (await this.onRpc(method, params)) as T;
-      }
+      if (custom) return (await custom(params)) as T;
+      if (this.onRpc) return (await this.onRpc(method, params)) as T;
       if (method === 'ping' || method === 'daemon.ping') {
         return { pong: true, timestampMs: Date.now() } as T;
       }
@@ -212,7 +203,7 @@ export class MockTransport {
     options?: InvokeOptions,
   ): Promise<T> {
     if (this.onPluginInvoke) {
-      return this.runWithTiming(`plugin.invoke:${method}`, options, async () => {
+      return this.runWithTiming(`plugin.invoke:${method}`, params, options, async () => {
         const directFault = this.faults.get(method);
         if (directFault) throw directFault;
         return (await this.onPluginInvoke?.(method, params)) as T;
@@ -259,7 +250,7 @@ export class MockTransport {
   }
 
   emit(event: string, payload?: unknown): void {
-    this.tracer.record({ kind: 'event.in', event });
+    this.tracer.eventIn('mock', event, payload);
     dispatchEventListeners(this.listeners, event, payload);
   }
 
@@ -285,6 +276,10 @@ export class MockTransport {
 
   getRecentTraces(limit?: number): BridgeTraceEvent[] {
     return this.tracer.getRecentTraces(limit);
+  }
+
+  getTraceStore(): BridgeTraceStore {
+    return this.tracer.getStore();
   }
 
   dispose(): void {

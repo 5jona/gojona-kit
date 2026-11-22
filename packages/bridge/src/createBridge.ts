@@ -3,11 +3,17 @@ import { HostTransport } from './host.ts';
 import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
 import { MockTransport, runMockExec, runMockRpc } from './mock.ts';
 import { createBridgeEventSubscriptions } from './rpcError.ts';
-import { BridgeTracer, installPochitaDebugHandle, uninstallPochitaDebugHandle } from './trace.ts';
+import {
+  BridgeTracer,
+  createTraceStore,
+  installPochitaDebugHandle,
+  uninstallPochitaDebugHandle,
+} from './trace.ts';
 import type {
   BridgeClient,
   BridgeDiagnosticsSnapshot,
   BridgeOptions,
+  BridgeTraceListener,
   ContainerAction,
   ExecOptions,
   ExecResult,
@@ -37,8 +43,15 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const env = options.forceEnv ?? detectRuntime({ allowUrlOverride });
   const pluginId = detectPluginId(options.pluginId);
   const mockNamespace = options.mockNamespace ?? 'default';
-  const ksuTracer = env === 'ksu' ? new BridgeTracer(options.onTrace) : null;
   let ksuDisposed = false;
+
+  const ownsMockTransport = !options.mockTransport;
+  const sharedTraceStore =
+    options.traceStore ??
+    ((env === 'mock' || env === 'browser') && options.mockTransport
+      ? options.mockTransport.getTraceStore()
+      : createTraceStore({ maxEntries: options.traceBufferSize }));
+  const unsubscribeOnTrace = options.onTrace ? sharedTraceStore.subscribe(options.onTrace) : null;
 
   const hostTransport =
     env === 'host'
@@ -46,10 +59,9 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
           wsUrl: options.wsUrl,
           timeoutMs: options.timeoutMs,
           allowedOrigins: options.allowedOrigins,
-          onTrace: options.onTrace,
+          traceStore: sharedTraceStore,
         })
       : null;
-  const ownsMockTransport = !options.mockTransport;
   const mockTransport =
     env === 'mock' || env === 'browser'
       ? (options.mockTransport ??
@@ -61,7 +73,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
           onRpc: options.onMockRpc,
           onPluginInvoke: options.onMockPluginInvoke,
           onContainerAction: options.onMockContainerAction,
-          onTrace: options.onTrace,
+          traceStore: sharedTraceStore,
         }))
       : null;
 
@@ -117,8 +129,9 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return hostTransport.invoke<T>(method, params, callOpts?.timeoutMs);
     }
     if (env === 'ksu') {
+      const ksuTracer = new BridgeTracer(undefined, undefined, sharedTraceStore);
       const startedAt = Date.now();
-      ksuTracer?.record({ kind: 'rpc.start', method, timestampMs: startedAt });
+      ksuTracer.rpcStart('ksu', undefined, method, startedAt, params);
       try {
         if (!options.onKsuRpc) {
           throw new Error(
@@ -126,20 +139,11 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
           );
         }
         const res = (await options.onKsuRpc(method, params)) as T;
-        ksuTracer?.record({
-          kind: 'rpc.ok',
-          method,
-          durationMs: Math.max(0, Date.now() - startedAt),
-        });
+        ksuTracer.rpcOk('ksu', undefined, method, startedAt, res);
         return res;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        ksuTracer?.record({
-          kind: 'rpc.error',
-          method,
-          durationMs: Math.max(0, Date.now() - startedAt),
-          error: msg,
-        });
+        ksuTracer.rpcError('ksu', undefined, method, startedAt, msg);
         throw err;
       }
     }
@@ -226,22 +230,20 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       channelKind: 'ksu',
       pendingCount: 0,
       pendingMethods: [],
-      lastError: ksuTracer?.getLastError() ?? null,
+      lastError: sharedTraceStore.getLastError(),
       disposed: ksuDisposed,
-      traceCount: ksuTracer?.getTraceCount() ?? 0,
+      traceCount: sharedTraceStore.getTraceCount(),
     };
   };
 
-  const getRecentTraces = (limit?: number) => {
-    if (hostTransport) return hostTransport.getRecentTraces(limit);
-    if (mockTransport) return mockTransport.getRecentTraces(limit);
-    return ksuTracer?.getRecentTraces(limit) ?? [];
-  };
+  const getTraceEntries = (limit?: number) => sharedTraceStore.getEntries(limit);
+  const clearTraceEntries = () => sharedTraceStore.clear();
+  const subscribeTrace = (listener: BridgeTraceListener) => sharedTraceStore.subscribe(listener);
 
   const debugHandle = installPochitaDebugHandle({
     env,
     getDiagnostics,
-    getRecentTraces,
+    getRecentTraces: getTraceEntries,
     emitMockHostEvent:
       env === 'mock' && mockTransport
         ? (event, payload) => mockTransport.emit(event, payload)
@@ -250,6 +252,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
 
   const dispose = (): void => {
     ksuDisposed = true;
+    unsubscribeOnTrace?.();
     uninstallPochitaDebugHandle(debugHandle);
     hostTransport?.dispose();
     if (ownsMockTransport) {
@@ -273,6 +276,9 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     onBackPressed,
     onThemePalette,
     getDiagnostics,
+    getTraceEntries,
+    clearTraceEntries,
+    subscribeTrace,
     dispose,
   };
 }

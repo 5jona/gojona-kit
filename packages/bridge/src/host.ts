@@ -6,6 +6,8 @@ import type {
   BridgeDiagnosticsSnapshot,
   BridgeTraceEvent,
   BridgeTraceListener,
+  BridgeTraceStore,
+  BridgeTraceTransport,
   ContainerAction,
   HostEvent,
   HostEventListener,
@@ -18,6 +20,7 @@ export { BridgeRpcError };
 interface PendingCall {
   method: string;
   startedAt: number;
+  transport: BridgeTraceTransport;
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
   timer: number;
@@ -28,6 +31,8 @@ export interface HostTransportOptions {
   timeoutMs?: number;
   allowedOrigins?: string[];
   onTrace?: BridgeTraceListener;
+  traceBufferSize?: number;
+  traceStore?: BridgeTraceStore;
 }
 
 /**
@@ -52,7 +57,7 @@ export class HostTransport {
       options.wsUrl ?? (typeof window !== 'undefined' ? window.__POCHITA_HOST__?.wsUrl : undefined);
     this.defaultTimeoutMs = options.timeoutMs ?? 8000;
     this.allowedOrigins = options.allowedOrigins;
-    this.tracer = new BridgeTracer(options.onTrace);
+    this.tracer = new BridgeTracer(options.onTrace, options.traceBufferSize, options.traceStore);
     this.wsChannel = new WebSocketChannel({
       wsUrl,
       timeoutMs: this.defaultTimeoutMs,
@@ -65,6 +70,10 @@ export class HostTransport {
     }
   }
 
+  private getTraceTransport(): BridgeTraceTransport {
+    return this.portChannel.hasPort() ? 'port' : 'host';
+  }
+
   private readonly handleWindowMessage = (event: MessageEvent) => {
     if (this.disposed) return;
     if (!isTrustedWindowMessage(event, this.allowedOrigins)) return;
@@ -74,7 +83,7 @@ export class HostTransport {
       const [transferredPort] = event.ports;
       const hadPort = this.portChannel.hasPort();
       this.portChannel.attachPort(transferredPort, (data) => this.handleRawPayload(data));
-      this.tracer.record({ kind: hadPort ? 'port.replaced' : 'port.installed' });
+      this.tracer.record({ kind: hadPort ? 'port.replaced' : 'port.installed', transport: 'port' });
     }
 
     if (
@@ -103,7 +112,6 @@ export class HostTransport {
       if (!pending) return;
       this.pending.delete(msg.id);
       window.clearTimeout(pending.timer);
-      const durationMs = Math.max(0, Date.now() - pending.startedAt);
 
       if (msg.error) {
         const rpcErr = new BridgeRpcError(
@@ -112,29 +120,26 @@ export class HostTransport {
           msg.error.message,
           msg.error.data,
         );
-        this.tracer.record({
-          kind: 'rpc.error',
-          id: msg.id,
-          method: pending.method,
-          durationMs,
-          code: msg.error.code,
-          error: rpcErr.message,
-        });
+        this.tracer.rpcError(
+          pending.transport,
+          msg.id,
+          pending.method,
+          pending.startedAt,
+          rpcErr.message,
+          {
+            code: msg.error.code,
+          },
+        );
         pending.reject(rpcErr);
       } else {
-        this.tracer.record({
-          kind: 'rpc.ok',
-          id: msg.id,
-          method: pending.method,
-          durationMs,
-        });
+        this.tracer.rpcOk(pending.transport, msg.id, pending.method, pending.startedAt, msg.result);
         pending.resolve(msg.result);
       }
       return;
     }
 
     if (typeof msg.event === 'string') {
-      this.tracer.record({ kind: 'event.in', event: msg.event });
+      this.tracer.eventIn(this.getTraceTransport(), msg.event, msg.payload);
       dispatchEventListeners(this.listeners, msg.event, msg.payload);
     }
   }
@@ -143,13 +148,7 @@ export class HostTransport {
     for (const [id, pending] of this.pending.entries()) {
       window.clearTimeout(pending.timer);
       const error = `${reason} ("${id}")`;
-      this.tracer.record({
-        kind: 'rpc.error',
-        id,
-        method: pending.method,
-        durationMs: Math.max(0, Date.now() - pending.startedAt),
-        error,
-      });
+      this.tracer.rpcError(pending.transport, id, pending.method, pending.startedAt, error);
       pending.reject(new Error(error));
     }
     this.pending.clear();
@@ -181,27 +180,17 @@ export class HostTransport {
 
     const id = `rpc_${Date.now()}_${++this.reqSeq}`;
     const startedAt = Date.now();
-    const request: RpcRequest = {
-      jsonrpc: '2.0',
-      id,
-      method,
-      params,
-    };
+    const transport = this.getTraceTransport();
+    const request: RpcRequest = { jsonrpc: '2.0', id, method, params };
 
     const waitMs = timeoutMs ?? this.defaultTimeoutMs;
-    this.tracer.record({ kind: 'rpc.start', id, method, timestampMs: startedAt });
+    this.tracer.rpcStart(transport, id, method, startedAt, params);
 
     const promise = new Promise<T>((resolve, reject) => {
       const timer = window.setTimeout(() => {
         if (this.pending.delete(id)) {
           const error = `RPC "${method}" timed out after ${waitMs}ms`;
-          this.tracer.record({
-            kind: 'rpc.error',
-            id,
-            method,
-            durationMs: Math.max(0, Date.now() - startedAt),
-            error,
-          });
+          this.tracer.rpcError(transport, id, method, startedAt, error, { timedOut: true });
           reject(new Error(error));
         }
       }, waitMs);
@@ -209,6 +198,7 @@ export class HostTransport {
       this.pending.set(id, {
         method,
         startedAt,
+        transport,
         resolve: resolve as (val: unknown) => void,
         reject,
         timer,
@@ -224,13 +214,7 @@ export class HostTransport {
         window.clearTimeout(pending.timer);
       }
       const error = err instanceof Error ? err : new Error(String(err));
-      this.tracer.record({
-        kind: 'rpc.error',
-        id,
-        method,
-        durationMs: Math.max(0, Date.now() - startedAt),
-        error: error.message,
-      });
+      this.tracer.rpcError(transport, id, method, startedAt, error.message);
       throw error;
     }
 
@@ -267,6 +251,10 @@ export class HostTransport {
 
   getRecentTraces(limit?: number): BridgeTraceEvent[] {
     return this.tracer.getRecentTraces(limit);
+  }
+
+  getTraceStore(): BridgeTraceStore {
+    return this.tracer.getStore();
   }
 
   subscribe(event: string, listener: HostEventListener): () => void {

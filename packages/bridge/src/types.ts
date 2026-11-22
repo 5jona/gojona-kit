@@ -1,29 +1,22 @@
+export type {
+  BridgeTraceEvent,
+  BridgeTraceInput,
+  BridgeTraceKind,
+  BridgeTraceListener,
+  BridgeTracePhase,
+  BridgeTraceStatus,
+  BridgeTraceStore,
+  BridgeTraceStoreOptions,
+  BridgeTraceTransport,
+} from './traceTypes.ts';
+
+import type { BridgeTraceEvent, BridgeTraceListener, BridgeTraceStore } from './traceTypes.ts';
+
 export type RuntimeEnv = 'host' | 'ksu' | 'mock' | 'browser';
 export type BridgeChannelKind = 'port' | 'js-interface' | 'ws' | 'ksu' | 'mock';
 export type PluginBackendState = 'none' | 'online' | 'offline';
 export type ContainerBackdrop = 'native-glass' | 'transparent' | 'opaque';
 export type ContainerPresentationMode = 'drawer' | 'peek' | 'pinned' | 'wide' | 'native-hud';
-
-export type BridgeTraceKind =
-  | 'rpc.start'
-  | 'rpc.ok'
-  | 'rpc.error'
-  | 'event.in'
-  | 'port.installed'
-  | 'port.replaced';
-
-export interface BridgeTraceEvent {
-  kind: BridgeTraceKind;
-  timestampMs: number;
-  method?: string;
-  event?: string;
-  id?: string;
-  durationMs?: number;
-  error?: string;
-  code?: number;
-}
-
-export type BridgeTraceListener = (entry: BridgeTraceEvent) => void;
 
 export interface BridgeDiagnosticsSnapshot {
   env: RuntimeEnv;
@@ -214,6 +207,10 @@ export interface BridgeOptions {
   onMockContainerAction?: (action: ContainerAction) => void;
   /** Optional observer invoked for bridge RPC, event, and port lifecycle trace events. */
   onTrace?: BridgeTraceListener;
+  /** Optional ring-buffer capacity for structured bridge traces (defaults to 200). */
+  traceBufferSize?: number;
+  /** Optional external trace store so UI inspectors can subscribe live across bridge calls. */
+  traceStore?: BridgeTraceStore;
 }
 
 export interface BridgeClient {
@@ -240,6 +237,9 @@ export interface BridgeClient {
   onBackPressed: (listener: () => void) => () => void;
   onThemePalette: (listener: (palette: DynamicThemePalettePayload) => void) => () => void;
   getDiagnostics: () => BridgeDiagnosticsSnapshot;
+  getTraceEntries: (limit?: number) => BridgeTraceEvent[];
+  clearTraceEntries: () => void;
+  subscribeTrace: (listener: BridgeTraceListener) => () => void;
   dispose: () => void;
 }
 
