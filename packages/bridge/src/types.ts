@@ -186,13 +186,34 @@ export interface PluginBackendStatePayload {
   state: PluginBackendState;
 }
 
+/**
+ * Structural contract for a shared `MockTransport` instance passed to `BridgeOptions.mockTransport`.
+ */
+export interface MockTransportLike {
+  getTraceStore: () => BridgeTraceStore;
+  exec: (cmd: string, options?: ExecOptions) => Promise<ExecResult>;
+  readFile: (path: string) => Promise<string | null>;
+  writeFile: (path: string, content: string) => Promise<ExecResult>;
+  invoke: <T = unknown>(method: string, params?: unknown, options?: InvokeOptions) => Promise<T>;
+  invokePlugin: <T = unknown>(
+    method: string,
+    params?: unknown,
+    options?: InvokeOptions,
+  ) => Promise<T>;
+  sendContainerAction: (action: ContainerAction) => void;
+  subscribe: (event: string, listener: HostEventListener) => () => void;
+  emit: (event: string, payload?: unknown) => void;
+  getDiagnostics: (pluginId?: string | null, env?: RuntimeEnv) => BridgeDiagnosticsSnapshot;
+  dispose: () => void;
+}
+
 export interface BridgeOptions {
   /** Explicit plugin ID when running inside a plugin sandbox. */
   pluginId?: string;
   /** Force a specific runtime environment (useful in preview sandboxes). */
   forceEnv?: RuntimeEnv;
   /** Optional shared MockTransport instance used when running in `mock` or `browser` mode. */
-  mockTransport?: import('./mock.ts').MockTransport;
+  mockTransport?: MockTransportLike;
   /** Allow `?env=host|ksu|mock|browser` query parameter override (defaults to DEV only when native globals are absent). */
   allowUrlOverride?: boolean;
   /** Legacy alias for allowUrlOverride */

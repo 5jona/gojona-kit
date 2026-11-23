@@ -1,45 +1,19 @@
 import {
   createThemeBootstrapScript,
+  SEMANTIC_THEME_TOKENS,
+  type SemanticThemeToken,
   STORAGE_KEY_SCHEME,
   STORAGE_KEY_THEME,
 } from '@pochita/config/themes';
 import type { ResolvedColorScheme } from './types.ts';
 
-export { STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
+export { SEMANTIC_THEME_TOKENS, type SemanticThemeToken, STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };
 
 /**
  * Canonical synchronous inline script for HTML `<head>` to restore theme and
  * color-scheme attributes before first paint.
  */
 export const THEME_BOOTSTRAP_SCRIPT = createThemeBootstrapScript('standalone');
-
-/**
- * Canonical list of semantic CSS custom properties shared across all themes.
- */
-export const SEMANTIC_THEME_TOKENS = Object.freeze([
-  '--surface-canvas',
-  '--surface-panel',
-  '--surface-card',
-  '--surface-elevated',
-  '--surface-toast',
-  '--text-primary',
-  '--text-secondary',
-  '--border-hairline',
-  '--glass-divider',
-  '--accent',
-  '--accent-soft',
-  '--accent-fg',
-  '--success',
-  '--warning',
-  '--danger',
-  '--radius-panel',
-  '--radius-card',
-  '--radius-control',
-  '--radius-pill',
-  '--blur-amount',
-] as const);
-
-export type SemanticThemeToken = (typeof SEMANTIC_THEME_TOKENS)[number];
 
 /**
  * Allowlist of semantic CSS custom properties permitted for runtime dynamic injection

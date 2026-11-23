@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 import {
   createThemeBootstrapScript,
   DEFAULT_THEME_ID,
+  SEMANTIC_THEME_TOKENS,
   STORAGE_KEY_SCHEME,
   STORAGE_KEY_THEME,
   THEME_IDS,
@@ -14,6 +15,7 @@ import {
 export {
   createThemeBootstrapScript,
   DEFAULT_THEME_ID,
+  SEMANTIC_THEME_TOKENS,
   STORAGE_KEY_SCHEME,
   STORAGE_KEY_THEME,
   THEME_IDS,
@@ -108,14 +110,21 @@ export function createPochitaViteConfig(options = {}) {
     resolve = {},
   } = options;
 
-  const resolvedKitRoot = kitRoot ?? (process.env.POCHITA_KIT_ROOT?.trim() || DEFAULT_KIT_ROOT);
-  const existingAllow = server?.fs?.allow ?? [];
+  const rawKitRoot = kitRoot ?? (process.env.POCHITA_KIT_ROOT?.trim() || DEFAULT_KIT_ROOT);
+  const resolvedKitRoot = rawKitRoot ? path.resolve(rawKitRoot) : undefined;
+  const existingAllow = (server?.fs?.allow ?? []).map((entry) => path.resolve(entry));
   const mergedFs = resolvedKitRoot
     ? {
         ...server?.fs,
-        allow: Array.from(new Set(['.', resolvedKitRoot, ...existingAllow])),
+        allow: Array.from(new Set([path.resolve('.'), resolvedKitRoot, ...existingAllow])),
       }
     : server?.fs;
+
+  const existingDedupe = Array.isArray(resolve?.dedupe) ? resolve.dedupe : [];
+  const mergedResolve = {
+    ...resolve,
+    dedupe: Array.from(new Set(['react', 'react-dom', ...existingDedupe])),
+  };
 
   const resolvedHmr =
     devHmr === true
@@ -142,7 +151,7 @@ export function createPochitaViteConfig(options = {}) {
   return defineConfig({
     base: './',
     plugins: resolvedPlugins,
-    resolve,
+    resolve: mergedResolve,
     build: {
       outDir,
       emptyOutDir: true,
@@ -162,5 +171,12 @@ export function createPochitaViteConfig(options = {}) {
   });
 }
 
+/**
+ * Legacy alias for `createPochitaViteConfig`.
+ */
 export const createWebUIViteConfig = createPochitaViteConfig;
+
+/**
+ * Legacy camelCase alias for `createPochitaViteConfig`.
+ */
 export const createWebUiViteConfig = createPochitaViteConfig;

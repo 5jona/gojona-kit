@@ -1,3 +1,4 @@
+import { dispatchEventListeners } from './events.ts';
 import {
   dispatchMockContainerAction,
   mockReadFile,
@@ -7,7 +8,7 @@ import {
   runMockExec,
   runMockRpc,
 } from './mockRegistry.ts';
-import { BridgeRpcError, dispatchEventListeners } from './rpcError.ts';
+import { BridgeRpcError } from './rpcError.ts';
 import { BridgeTracer } from './trace.ts';
 import type {
   BridgeDiagnosticsSnapshot,
@@ -21,6 +22,7 @@ import type {
   InvokeOptions,
   MockExecHandler,
   MockRpcHandler,
+  MockTransportLike,
   RuntimeEnv,
 } from './types.ts';
 
@@ -54,7 +56,7 @@ export interface MockTransportOptions {
  * Standalone mock transport simulating the host bridge, filesystem, exec, and RPC endpoints
  * for testing and isolated browser preview execution.
  */
-export class MockTransport {
+export class MockTransport implements MockTransportLike {
   private readonly namespace: string;
   private readonly persistToLocalStorage: boolean;
   private readonly latencyMs: number;

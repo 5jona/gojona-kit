@@ -59,7 +59,7 @@ test('pochitaThemeBootstrapPlugin is idempotent when bootstrap script is already
   assert.equal(plugin.transformIndexHtml.handler(html), html);
 });
 
-test('createPochitaViteConfig derives DEFAULT_KIT_ROOT automatically and honors overrides', () => {
+test('createPochitaViteConfig derives DEFAULT_KIT_ROOT automatically, resolves absolute fs.allow, and deduplicates react/react-dom', () => {
   const expectedKitRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
   assert.equal(DEFAULT_KIT_ROOT, expectedKitRoot);
 
@@ -68,14 +68,20 @@ test('createPochitaViteConfig derives DEFAULT_KIT_ROOT automatically and honors 
     delete process.env.POCHITA_KIT_ROOT;
     const defaultCfg = createPochitaViteConfig();
     assert.ok(defaultCfg.server?.fs?.allow?.includes(expectedKitRoot));
+    assert.ok(defaultCfg.server?.fs?.allow?.every((p) => path.isAbsolute(p)));
+    assert.deepEqual(defaultCfg.resolve?.dedupe, ['react', 'react-dom']);
 
     process.env.POCHITA_KIT_ROOT = '/tmp/custom-env-kit-root';
     const envCfg = createPochitaViteConfig();
     assert.ok(envCfg.server?.fs?.allow?.includes('/tmp/custom-env-kit-root'));
 
-    const explicitCfg = createPochitaViteConfig({ kitRoot: '/tmp/explicit-kit-root' });
+    const explicitCfg = createPochitaViteConfig({
+      kitRoot: '/tmp/explicit-kit-root',
+      resolve: { dedupe: ['custom-pkg'] },
+    });
     assert.ok(explicitCfg.server?.fs?.allow?.includes('/tmp/explicit-kit-root'));
     assert.ok(!explicitCfg.server?.fs?.allow?.includes('/tmp/custom-env-kit-root'));
+    assert.deepEqual(explicitCfg.resolve?.dedupe, ['react', 'react-dom', 'custom-pkg']);
   } finally {
     if (prevEnv !== undefined) {
       process.env.POCHITA_KIT_ROOT = prevEnv;
@@ -85,12 +91,13 @@ test('createPochitaViteConfig derives DEFAULT_KIT_ROOT automatically and honors 
   }
 });
 
-test('THEME_IDS and DEFAULT_THEME_ID drive createThemeBootstrapScript as single source of truth', () => {
+test('THEME_IDS and DEFAULT_THEME_ID drive createThemeBootstrapScript as single source of truth and set dataset.colorScheme', () => {
   const script = createThemeBootstrapScript('standalone');
   for (const id of THEME_IDS) {
     assert.ok(script.includes(`t==='${id}'`), `script must include allowlisted theme ${id}`);
   }
   assert.ok(script.includes(`:'${DEFAULT_THEME_ID}'`));
+  assert.ok(script.includes('document.documentElement.dataset.colorScheme='));
 });
 
 test('createPochitaViteConfig configures devHmr and POCHITA_DEBUG / sourcemap options', () => {

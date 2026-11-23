@@ -1,14 +1,10 @@
+import { installPochitaDebugHandle, uninstallPochitaDebugHandle } from './debugHandle.ts';
 import { detectPluginId, detectRuntime } from './detect.ts';
+import { createBridgeEventSubscriptions } from './events.ts';
 import { HostTransport } from './host.ts';
 import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
 import { MockTransport, runMockExec, runMockRpc } from './mock.ts';
-import { createBridgeEventSubscriptions } from './rpcError.ts';
-import {
-  BridgeTracer,
-  createTraceStore,
-  installPochitaDebugHandle,
-  uninstallPochitaDebugHandle,
-} from './trace.ts';
+import { BridgeTracer, createTraceStore } from './trace.ts';
 import type {
   BridgeClient,
   BridgeDiagnosticsSnapshot,
@@ -21,12 +17,6 @@ import type {
   InvokeOptions,
   WriteFileAtomicOptions,
 } from './types.ts';
-
-export {
-  BridgeProvider,
-  type BridgeProviderProps,
-  useBridge,
-} from './BridgeProvider.tsx';
 
 /**
  * Extra client-side wire margin added to `plugin.invoke` timeouts so `sideveild`'s

@@ -6,8 +6,13 @@ export {
   useBridge,
 } from './BridgeProvider.tsx';
 export { createBridge, PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS } from './createBridge.ts';
-
+export {
+  inspectDomThemeTokens,
+  installPochitaDebugHandle,
+  uninstallPochitaDebugHandle,
+} from './debugHandle.ts';
 export { type DetectRuntimeOptions, detectPluginId, detectRuntime } from './detect.ts';
+export { createBridgeEventSubscriptions, dispatchEventListeners } from './events.ts';
 export { BridgeRpcError, HostTransport, type HostTransportOptions } from './host.ts';
 export { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic, shellQuote } from './ksu.ts';
 export {
@@ -73,6 +78,7 @@ export type {
   KsuHostGlobal,
   MockExecHandler,
   MockRpcHandler,
+  MockTransportLike,
   PluginBackendState,
   PluginBackendStatePayload,
   PluginScopedEventPayload,

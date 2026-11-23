@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useBridge } from './createBridge.ts';
+import { useBridge } from './BridgeProvider.tsx';
 import type { ContainerThemeSyncPayload } from './types.ts';
 
 export interface ContainerThemeSyncOptions {

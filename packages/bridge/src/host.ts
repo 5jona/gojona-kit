@@ -1,5 +1,6 @@
+import { dispatchEventListeners } from './events.ts';
 import { isTrustedWindowMessage, PortChannel, WebSocketChannel } from './portChannel.ts';
-import { BridgeRpcError, dispatchEventListeners } from './rpcError.ts';
+import { BridgeRpcError } from './rpcError.ts';
 import { BridgeTracer } from './trace.ts';
 import type {
   BridgeChannelKind,
