@@ -51,6 +51,12 @@ test('all package and app source files satisfy <= 300 soft limit and <= 400 hard
   }
 
   assert.ok(pkgSrcFiles.length > 0, 'Expected package source files to exist');
+  assert.ok(
+    pkgSrcFiles.some((file) =>
+      path.relative(REPO_ROOT, file).startsWith(`packages${path.sep}contracts-gen${path.sep}src`),
+    ),
+    'Expected packages/contracts-gen/src/*.mjs to be covered by line-count checks',
+  );
 
   for (const file of pkgSrcFiles) {
     const lines = countLines(file);
