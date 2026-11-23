@@ -75,6 +75,18 @@ export {
   useSyncedPluginTheme,
 } from './theme.ts';
 export {
+  createTypedPluginClient,
+  type EventPayloadMap,
+  type RpcInvokeArgs,
+  type RpcMethodMap,
+  type RpcMethodSpec,
+  type TypedPluginBridge,
+  type TypedPluginClient,
+  type TypedPluginClientOptions,
+  usePluginInvoke,
+  useTypedPluginClient,
+} from './typedClient.ts';
+export {
   BUILTIN_DIAG_PLUGIN_ID,
   type ContainerEdgeStatus,
   type ContainerPinnedBounds,

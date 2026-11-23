@@ -4,15 +4,15 @@
 
 ## 1. Repository Layout & Entry Points
 
-| Path                      | Package / Role           | Key Entry Points                                                                              |
-| ------------------------- | ------------------------ | --------------------------------------------------------------------------------------------- |
-| `packages/config/`        | `@pochita/config`        | `index.mjs` (Vite preset), `themes.mjs` (SSOT), `biome.base.json`, `register-ts.mjs`          |
-| `packages/contracts-gen/` | `@pochita/contracts-gen` | `src/cli.mjs` (`pochita-contracts-gen`), `src/spec.mjs`, emitters, `src/validator.mjs`        |
-| `packages/bridge/`        | `@pochita/bridge`        | `src/index.ts`, `src/detect.ts`, `src/host.ts`, `src/ksu.ts`, `src/mock.ts`, `src/trace.ts`   |
-| `packages/ui/`            | `@pochita/ui`            | `src/index.ts`, `src/theme/tokens.ts`, `src/styles/index.css`                                 |
-| `packages/sdk/`           | `@pochita/sideveil-sdk`  | `src/index.ts`, `src/PluginContext.ts`, `src/hooks.ts`, `src/presentation.ts`, `src/theme.ts` |
-| `apps/playground/`        | `@pochita/playground`    | Dual-viewport workbench and live theme/component preview                                      |
-| `test/standards.test.mjs` | Repo Quality Gate        | Enforces line limits, `THEME_IDS` SSOT, zero hex colors, `import type`, `dist/` sync          |
+| Path                      | Package / Role           | Key Entry Points                                                                                                    |
+| ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `packages/config/`        | `@pochita/config`        | `index.mjs` (Vite preset), `themes.mjs` (SSOT), `biome.base.json`, `register-ts.mjs`                                |
+| `packages/contracts-gen/` | `@pochita/contracts-gen` | `src/cli.mjs` (`pochita-contracts-gen`), `contract.schema.json`, `src/diff.mjs`, emitters, `src/validator.mjs`      |
+| `packages/bridge/`        | `@pochita/bridge`        | `src/index.ts`, `src/detect.ts`, `src/host.ts`, `src/ksu.ts`, `src/mock.ts`, `src/trace.ts`                         |
+| `packages/ui/`            | `@pochita/ui`            | `src/index.ts`, `src/theme/tokens.ts`, `src/styles/index.css`                                                       |
+| `packages/sdk/`           | `@pochita/sideveil-sdk`  | `src/index.ts`, `src/PluginContext.ts`, `src/typedClient.ts`, `src/hooks.ts`, `src/presentation.ts`, `src/theme.ts` |
+| `apps/playground/`        | `@pochita/playground`    | Dual-viewport workbench and live theme/component preview                                                            |
+| `test/standards.test.mjs` | Repo Quality Gate        | Enforces line limits, `THEME_IDS` SSOT, zero hex colors, `import type`, `dist/` sync                                |
 
 ## 2. Package Dependency DAG & Forbidden Reverse Edges
 
@@ -81,13 +81,13 @@
 
 ### `@pochita/sideveil-sdk` Plugin Hooks (`packages/sdk/src/index.ts`)
 
-| Domain                         | Canonical Primitives                                                                                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Provider & manifest            | `SideVeilPluginProvider`, `useSideVeilPlugin`, `definePluginManifest`, `resolvePluginOrigin`, `BUILTIN_DIAG_PLUGIN_ID`                                               |
-| Container & presentation       | `useContainerAction`, `useBackPress`, `usePresentationMode`, `useHaptics`, `usePanelVisibility`, `useScopeChanged`                                                   |
-| Plugin RPC & events            | `usePluginRpc`, `usePluginEvent`, `usePluginEventLagged`, `usePluginBackendState`, `useInterPluginBus`                                                               |
-| Persistence & theme sync       | `usePluginStorage`, `useDynamicThemeTokens`, `useDynamicThemeState`, `useSyncedPluginTheme`, `extractPluginAppearance`                                               |
-| Native HUD, telemetry & device | `useEdgeStatus`, `createEdgeStatusController`, `useNativeHud`, `useTelemetry`, `shouldPollTelemetry`, `useGraphicsCapabilities`, `useClipboard`, `useNetworkContext` |
+| Domain                         | Canonical Primitives                                                                                                                                                         |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider & manifest            | `SideVeilPluginProvider`, `useSideVeilPlugin`, `definePluginManifest`, `resolvePluginOrigin`, `BUILTIN_DIAG_PLUGIN_ID`                                                       |
+| Container & presentation       | `useContainerAction`, `useBackPress`, `usePresentationMode`, `useHaptics`, `usePanelVisibility`, `useScopeChanged`                                                           |
+| Plugin RPC & events            | `createTypedPluginClient`, `useTypedPluginClient`, `usePluginInvoke`, `usePluginRpc`, `usePluginEvent`, `usePluginEventLagged`, `usePluginBackendState`, `useInterPluginBus` |
+| Persistence & theme sync       | `usePluginStorage`, `useDynamicThemeTokens`, `useDynamicThemeState`, `useSyncedPluginTheme`, `extractPluginAppearance`                                                       |
+| Native HUD, telemetry & device | `useEdgeStatus`, `createEdgeStatusController`, `useNativeHud`, `useTelemetry`, `shouldPollTelemetry`, `useGraphicsCapabilities`, `useClipboard`, `useNetworkContext`         |
 
 ### `@pochita/config` & `@pochita/contracts-gen` Tooling
 
@@ -95,7 +95,9 @@
 | ------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Vite + Tailwind v4 preset | `createPochitaViteConfig`, `pochitaThemeBootstrapPlugin`, `DEFAULT_KIT_ROOT`          | Sets `base: './'`, offline asset paths, and `POCHITA_KIT_ROOT` fs allowlist     |
 | Shared lint & TS runner   | `@pochita/config/biome.json`, `@pochita/config/register-ts`, `@pochita/config/themes` | Shared Biome preset, native Node TS hook, and `THEME_IDS` SSOT                  |
+| Contract meta schema      | `packages/contracts-gen/contract.schema.json`                                         | JSON Schema Draft 2020-12 spec for `*.contract.json` (`$schema` authoring)      |
 | Contract codegen & check  | `pochita-contracts-gen generate`, `pochita-contracts-gen check`                       | Zero-dependency Rust/Kotlin/TS/JSON Schema emitter and drift detector           |
+| Breaking-change diff      | `pochita-contracts-gen diff [--json] <base> <head>`, `diffContractSpecs`              | Deterministic `buf breaking`-style compatibility gate across contract revisions |
 | Wire fixture validation   | `pochita-contracts-gen validate-fixtures`                                             | Pure JS JSON Schema subset validator for positive and expected-invalid fixtures |
 
 ## 4. Runtime Detection & `HostTransport` Architecture
@@ -165,9 +167,11 @@ Cross-repo IPC schemas, RPC methods, event payloads, enums, and protocol constan
 - **Modular File Splitting**: The `outputs` array supports per-file `include` filters across `rust`, `kotlin`, `ts`, and `jsonSchema` targets so large domains emit multiple small files (`<= 300` lines each).
 - **Deterministic Formatting**: Output emitters match `rustfmt` (`serde`), `ktlint`/`detekt` (`kotlinx.serialization`), Biome (2-space indent, single quotes, trailing commas), and JSON Schema Draft 2020-12.
 - **Cross-Repo SSOT Invariants**:
+  - Every `*.contract.json` spec may reference `packages/contracts-gen/contract.schema.json` via `"$schema"` for IDE validation and autocompletion against the Draft 2020-12 meta schema.
   - Every generated file begins with `@generated by @pochita/contracts-gen — DO NOT EDIT`. Never hand-edit generated files; edit the `*.contract.json` source and regenerate.
-  - Downstream CI runs `pochita-contracts-gen check <spec.json...>` to fail builds immediately on any byte-level drift.
+  - Downstream CI runs `pochita-contracts-gen check <spec.json...>` to fail builds immediately on any byte-level drift, and `pochita-contracts-gen diff [--json] <base-spec.json> <head-spec.json>` (`diffContractSpecs`) to block breaking wire evolutions (removed/changed constants, enums, structs, fields, tagged-union tags/variants, RPC methods/types, or event wires/payloads) while allowing additive non-breaking changes.
   - Golden positive and negative wire fixtures are validated via `pochita-contracts-gen validate-fixtures <schema.json> <fixtures...>` against `$defs/<TypeName>`.
+  - Plugin WebUIs bind generated `*RpcMethodMap` / `*EventPayloadMap` interfaces directly to `createTypedPluginClient` / `useTypedPluginClient` (or single-method `usePluginInvoke`) for compile-time-typed, per-method-timeout RPC calls and event subscriptions with zero `useState` re-render overhead.
 
 ## 7. Build, Verification & Standards Gates
 
