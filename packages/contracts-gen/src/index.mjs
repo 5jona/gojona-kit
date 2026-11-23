@@ -1,4 +1,5 @@
 export { compileSpecFile, runCli } from './cli.mjs';
+export { diffContractSpecs } from './diff.mjs';
 export { emitKotlin } from './emitKotlin.mjs';
 export { emitRust } from './emitRust.mjs';
 export { emitSchema } from './emitSchema.mjs';

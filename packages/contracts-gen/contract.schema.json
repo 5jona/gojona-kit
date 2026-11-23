@@ -1,0 +1,592 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pochita.dev/schemas/contracts-gen/v1/contract.schema.json",
+  "title": "Pochita Cross-Language IPC Contract Specification",
+  "description": "Declarative v1 specification consumed by @pochita/contracts-gen to emit Rust, Kotlin, TypeScript, and JSON Schema contract artifacts.",
+  "type": "object",
+  "required": ["schemaVersion", "name", "outputs"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional JSON Schema URI reference for editor autocompletion and validation."
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Contract specification format version (must be 1)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Logical contract name used as the default schema title and identifier."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional human-readable description of the contract domain."
+    },
+    "constants": {
+      "type": "object",
+      "description": "Named groups of scalar protocol constants.",
+      "additionalProperties": {
+        "$ref": "#/$defs/ConstantGroup"
+      }
+    },
+    "enums": {
+      "type": "object",
+      "description": "String-backed closed enumerations.",
+      "additionalProperties": {
+        "$ref": "#/$defs/EnumDef"
+      }
+    },
+    "structs": {
+      "type": "object",
+      "description": "Record / data-class object types with named fields.",
+      "additionalProperties": {
+        "$ref": "#/$defs/StructDef"
+      }
+    },
+    "taggedUnions": {
+      "type": "object",
+      "description": "Discriminated union / sealed interface types.",
+      "additionalProperties": {
+        "$ref": "#/$defs/TaggedUnionDef"
+      }
+    },
+    "rpcs": {
+      "type": "object",
+      "description": "JSON-RPC method declarations mapping method names to params and result types.",
+      "additionalProperties": {
+        "$ref": "#/$defs/RpcDef"
+      }
+    },
+    "events": {
+      "type": "object",
+      "description": "Host and plugin event declarations mapping event names to payload types.",
+      "additionalProperties": {
+        "$ref": "#/$defs/EventDef"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Target codegen output files emitted from this specification.",
+      "items": {
+        "$ref": "#/$defs/OutputConfig"
+      }
+    }
+  },
+  "$defs": {
+    "RenameRule": {
+      "type": "string",
+      "enum": ["camelCase", "kebab-case", "snake_case", "PascalCase"]
+    },
+    "PrimitiveType": {
+      "type": "string",
+      "enum": [
+        "string",
+        "bool",
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "i32",
+        "i64",
+        "f32",
+        "f64",
+        "usize",
+        "json"
+      ]
+    },
+    "ConstType": {
+      "type": "string",
+      "enum": ["string", "u16", "u32", "u64", "i32", "i64", "f32", "f64", "bool", "usize"]
+    },
+    "ScalarValue": {
+      "type": ["string", "number", "boolean"]
+    },
+    "TypeExpr": {
+      "description": "Primitive type name or single-key composite type constructor.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PrimitiveType"
+        },
+        {
+          "type": "object",
+          "required": ["list"],
+          "additionalProperties": false,
+          "properties": {
+            "list": {
+              "$ref": "#/$defs/TypeExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["optional"],
+          "additionalProperties": false,
+          "properties": {
+            "optional": {
+              "$ref": "#/$defs/TypeExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["map"],
+          "additionalProperties": false,
+          "properties": {
+            "map": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/TypeExpr"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["ref"],
+          "additionalProperties": false,
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["literal"],
+          "additionalProperties": false,
+          "properties": {
+            "literal": {
+              "$ref": "#/$defs/ScalarValue"
+            }
+          }
+        }
+      ]
+    },
+    "ConstantItem": {
+      "type": "object",
+      "required": ["value"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/ScalarValue"
+        },
+        "type": {
+          "$ref": "#/$defs/ConstType"
+        },
+        "doc": {
+          "type": "string"
+        }
+      }
+    },
+    "ConstantGroup": {
+      "type": "object",
+      "required": ["items"],
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "type": "string"
+        },
+        "rustMod": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kotlinObject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tsName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "items": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ConstantItem"
+          }
+        }
+      }
+    },
+    "EnumVariant": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "wire": {
+          "type": "string",
+          "minLength": 1
+        },
+        "doc": {
+          "type": "string"
+        }
+      }
+    },
+    "EnumDef": {
+      "type": "object",
+      "required": ["variants"],
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "type": "string"
+        },
+        "renameAll": {
+          "$ref": "#/$defs/RenameRule"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/EnumVariant"
+          }
+        }
+      }
+    },
+    "FieldDef": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "$ref": "#/$defs/TypeExpr"
+        },
+        "wire": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "default": {
+          "description": "Default deserialization value for Rust/Kotlin targets."
+        },
+        "skipSerializingIfNone": {
+          "type": "boolean"
+        },
+        "doc": {
+          "type": "string"
+        }
+      }
+    },
+    "StructDef": {
+      "type": "object",
+      "required": ["fields"],
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "type": "string"
+        },
+        "renameAll": {
+          "$ref": "#/$defs/RenameRule"
+        },
+        "rustDerives": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldDef"
+          }
+        }
+      }
+    },
+    "TaggedUnionVariant": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "not": {
+        "required": ["fields", "payload"]
+      },
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "wire": {
+          "type": "string",
+          "minLength": 1
+        },
+        "doc": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldDef"
+          }
+        },
+        "payload": {
+          "$ref": "#/$defs/TypeExpr"
+        }
+      }
+    },
+    "TaggedUnionDef": {
+      "type": "object",
+      "required": ["tag", "variants"],
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "renameAll": {
+          "$ref": "#/$defs/RenameRule"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/TaggedUnionVariant"
+          }
+        }
+      }
+    },
+    "NullableTypeExpr": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TypeExpr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "RpcDef": {
+      "type": "object",
+      "required": ["method"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "$ref": "#/$defs/NullableTypeExpr"
+        },
+        "result": {
+          "$ref": "#/$defs/NullableTypeExpr"
+        },
+        "doc": {
+          "type": "string"
+        }
+      }
+    },
+    "EventDef": {
+      "type": "object",
+      "required": ["event"],
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "$ref": "#/$defs/NullableTypeExpr"
+        },
+        "doc": {
+          "type": "string"
+        }
+      }
+    },
+    "IncludeRule": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "IncludeFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "constants": {
+          "$ref": "#/$defs/IncludeRule"
+        },
+        "enums": {
+          "$ref": "#/$defs/IncludeRule"
+        },
+        "structs": {
+          "$ref": "#/$defs/IncludeRule"
+        },
+        "taggedUnions": {
+          "$ref": "#/$defs/IncludeRule"
+        },
+        "rpcs": {
+          "$ref": "#/$defs/IncludeRule"
+        },
+        "events": {
+          "$ref": "#/$defs/IncludeRule"
+        }
+      }
+    },
+    "OutputConfig": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["target", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "const": "rust"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "header": {
+              "type": "string"
+            },
+            "include": {
+              "$ref": "#/$defs/IncludeFilter"
+            },
+            "rpcConstantsMod": {
+              "type": "string",
+              "minLength": 1
+            },
+            "eventConstantsMod": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["target", "path", "package"],
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "const": "kotlin"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "package": {
+              "type": "string",
+              "minLength": 1
+            },
+            "header": {
+              "type": "string"
+            },
+            "include": {
+              "$ref": "#/$defs/IncludeFilter"
+            },
+            "imports": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "rpcConstantsObject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "eventConstantsObject": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["target", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "const": "ts"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "header": {
+              "type": "string"
+            },
+            "include": {
+              "$ref": "#/$defs/IncludeFilter"
+            },
+            "imports": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "methodsConstName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rpcMapName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "eventsConstName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "eventMapName": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["target", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "const": "jsonSchema"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string"
+            },
+            "header": {
+              "type": "string"
+            },
+            "include": {
+              "$ref": "#/$defs/IncludeFilter"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

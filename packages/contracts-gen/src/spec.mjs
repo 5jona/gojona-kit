@@ -202,12 +202,16 @@ function validateOutputs(spec) {
 /** Validates and normalizes an in-memory contract spec object. */
 export function validateContractSpec(raw) {
   if (!isPlainObject(raw)) fail('root', 'spec must be a JSON object');
+  if (raw.$schema !== undefined) {
+    assertNonEmptyString(raw.$schema, '$schema');
+  }
   if (raw.schemaVersion !== 1) {
     fail('schemaVersion', `expected 1, got ${JSON.stringify(raw.schemaVersion)}`);
   }
   assertNonEmptyString(raw.name, 'name');
 
   const spec = {
+    ...(raw.$schema !== undefined ? { $schema: raw.$schema.trim() } : {}),
     schemaVersion: 1,
     name: raw.name.trim(),
     description: typeof raw.description === 'string' ? raw.description : '',
