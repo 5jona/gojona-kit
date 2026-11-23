@@ -13,7 +13,7 @@ pochita-webui-kit/
 │   └── ui/          # @pochita/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
 ├── apps/
 │   └── playground/  # @pochita/playground: dual-viewport and live theme workbench
-└── .agent/rules.md  # Repository engineering rules
+└── AGENTS.md        # Repository agent & engineering guidelines
 ```
 
 ### `@pochita/ui`
