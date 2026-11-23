@@ -13,6 +13,25 @@ export {
 } from './debugHandle.ts';
 export { type DetectRuntimeOptions, detectPluginId, detectRuntime } from './detect.ts';
 export { createBridgeEventSubscriptions, dispatchEventListeners } from './events.ts';
+export {
+  EDGE_SIDE_VALUES,
+  type EdgeSide,
+  PANEL_STATE_VALUES,
+  type PanelState,
+  SCOPE_MODE_VALUES,
+  type ScopeMode,
+  SIDEVEIL_CONFIG_BOUNDS,
+  SIDEVEIL_CONFIG_DEFAULTS,
+} from './generated/sideveilConfig.ts';
+export {
+  SIDEVEIL_BUILTIN_DIAGNOSTIC,
+  SIDEVEIL_ERROR_CODES,
+  SIDEVEIL_EVENTS,
+  SIDEVEIL_HUD_DEFAULTS,
+  SIDEVEIL_METHODS,
+  SIDEVEIL_THEMES,
+  SIDEVEIL_TIMEOUT_BOUNDS,
+} from './generated/sideveilConstants.ts';
 export { BridgeRpcError, HostTransport, type HostTransportOptions } from './host.ts';
 export { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic, shellQuote } from './ksu.ts';
 export {
@@ -86,5 +105,7 @@ export type {
   RpcRequest,
   RpcResponse,
   RuntimeEnv,
+  SideVeilEventConstants,
+  SideVeilMethodConstants,
   WriteFileAtomicOptions,
 } from './types.ts';

@@ -1,15 +1,17 @@
-import type {
-  ContainerBackdrop,
-  ContainerPresentationMode,
-  PluginBackendState,
+import {
+  type ContainerBackdrop,
+  type ContainerPresentationMode,
+  type PluginBackendState,
+  SIDEVEIL_BUILTIN_DIAGNOSTIC,
+  SIDEVEIL_TIMEOUT_BOUNDS,
 } from '@pochita/bridge';
 
-export const BUILTIN_DIAG_PLUGIN_ID = 'sideveil.diagnostic';
+export const BUILTIN_DIAG_PLUGIN_ID = SIDEVEIL_BUILTIN_DIAGNOSTIC.ID;
 
-export const PLUGIN_EVENT_LAGGED_EVENT = 'plugin.eventLagged';
-export const MIN_PLUGIN_INVOKE_TIMEOUT_MS = 1_000;
-export const DEFAULT_PLUGIN_INVOKE_TIMEOUT_MS = 8_000;
-export const MAX_PLUGIN_INVOKE_TIMEOUT_MS = 60_000;
+export const PLUGIN_EVENT_LAGGED_EVENT = SIDEVEIL_TIMEOUT_BOUNDS.PLUGIN_EVENT_LAGGED_SUBEVENT;
+export const MIN_PLUGIN_INVOKE_TIMEOUT_MS = SIDEVEIL_TIMEOUT_BOUNDS.MIN_PLUGIN_INVOKE_MS;
+export const DEFAULT_PLUGIN_INVOKE_TIMEOUT_MS = SIDEVEIL_TIMEOUT_BOUNDS.DEFAULT_PLUGIN_INVOKE_MS;
+export const MAX_PLUGIN_INVOKE_TIMEOUT_MS = SIDEVEIL_TIMEOUT_BOUNDS.MAX_PLUGIN_INVOKE_MS;
 
 /**
  * Resolves the canonical isolated WebView origin for a SideVeil plugin.

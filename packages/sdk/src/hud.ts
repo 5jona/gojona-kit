@@ -1,7 +1,13 @@
 import type { ContainerBackdrop } from '@pochita/bridge';
+import type { HudTextOverlay } from './generated/sideveilThemeHud.ts';
+
+export {
+  HUD_TEXT_ALIGN_VALUES,
+  type HudTextAlign,
+  type HudTextOverlay,
+} from './generated/sideveilThemeHud.ts';
 
 export type HudBackdropKind = ContainerBackdrop;
-export type HudTextAlign = 'start' | 'center' | 'end';
 
 export type HudPrimitive =
   | {
@@ -72,18 +78,6 @@ export type HudPrimitive =
       strokeArgb?: number;
       strokeWidth?: number;
     };
-
-export interface HudTextOverlay {
-  x: number;
-  y: number;
-  text: string;
-  sizeSp?: number;
-  colorArgb: number;
-  align?: HudTextAlign;
-  bold?: boolean;
-  tabularNums?: boolean;
-  maxWidthDp?: number;
-}
 
 export interface NativeHudScene {
   pluginId?: string;

@@ -14,14 +14,34 @@ import type {
   PluginBackendStatePayload,
   PluginScopedEventPayload,
 } from '@pochita/bridge';
+import type {
+  DynamicThemePalette,
+  HostDynamicColorsPayload,
+  HudDismissPayload,
+  SideVeilThemeHudEventPayloadMap,
+  SideVeilThemeHudRpcMethodMap,
+} from './generated/sideveilThemeHud.ts';
+import type {
+  DaemonHealth,
+  DaemonStatus,
+  DebugGestureStats,
+  HostPluginDiagnosticsPayload,
+  PanelStateChangedPayload,
+  PanelVisibilityPayload,
+  PingResult,
+  ScopeChangedPayload,
+  SideVeilCoreEventPayloadMap,
+  SideVeilCoreRpcMethodMap,
+} from './generated/sideveilWire.ts';
 import type { PluginDescriptor, PluginManifest } from './manifest.ts';
 
-export type {
-  HudBackdropKind,
-  HudPrimitive,
-  HudTextAlign,
-  HudTextOverlay,
-  NativeHudScene,
+export {
+  HUD_TEXT_ALIGN_VALUES,
+  type HudBackdropKind,
+  type HudPrimitive,
+  type HudTextAlign,
+  type HudTextOverlay,
+  type NativeHudScene,
 } from './hud.ts';
 export {
   BUILTIN_DIAG_PLUGIN_ID,
@@ -87,13 +107,15 @@ export interface PluginAuditEntry {
   detail: string;
 }
 
-export interface HostPluginDiagnosticsPayload {
-  warmPluginIds: string[];
-  activeHudPluginId?: string | null;
-  hostNativeHeapKb?: number | null;
-  hostPssKb?: number | null;
-  webviewCrashCount?: number;
-}
+/** Combined typed SideVeil host event payload map. */
+export interface SideVeilEventPayloadMap
+  extends SideVeilCoreEventPayloadMap,
+    SideVeilThemeHudEventPayloadMap {}
+
+/** Combined typed SideVeil JSON-RPC method parameter and result map. */
+export interface SideVeilRpcMethodMap
+  extends SideVeilCoreRpcMethodMap,
+    SideVeilThemeHudRpcMethodMap {}
 
 export interface PluginAuditReport {
   entries: PluginAuditEntry[];
@@ -176,10 +198,21 @@ export type {
   ContainerPinnedBounds,
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
+  DaemonHealth,
+  DaemonStatus,
+  DebugGestureStats,
+  DynamicThemePalette,
   DynamicThemePalettePayload,
   GlassTintOverride,
+  HostDynamicColorsPayload,
+  HostPluginDiagnosticsPayload,
+  HudDismissPayload,
   InvokeOptions,
+  PanelStateChangedPayload,
+  PanelVisibilityPayload,
+  PingResult,
   PluginBackendState,
   PluginBackendStatePayload,
   PluginScopedEventPayload,
+  ScopeChangedPayload,
 };

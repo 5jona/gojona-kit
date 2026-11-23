@@ -10,7 +10,11 @@ export type {
   BridgeTraceTransport,
 } from './traceTypes.ts';
 
+import type { SIDEVEIL_EVENTS, SIDEVEIL_METHODS } from './generated/sideveilConstants.ts';
 import type { BridgeTraceEvent, BridgeTraceListener, BridgeTraceStore } from './traceTypes.ts';
+
+export type SideVeilMethodConstants = typeof SIDEVEIL_METHODS;
+export type SideVeilEventConstants = typeof SIDEVEIL_EVENTS;
 
 export type RuntimeEnv = 'host' | 'ksu' | 'mock' | 'browser';
 export type BridgeChannelKind = 'port' | 'js-interface' | 'ws' | 'ksu' | 'mock';
