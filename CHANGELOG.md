@@ -4,6 +4,13 @@ All notable changes to `gojona-kit` (`@gojona/*` packages) are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-24
+
+### Changed
+
+- Renamed upstream repository and package metadata (`repository`, `homepage`, `bugs`) from `pochita-webui-kit` to `gojona-kit`.
+- Enabled GitHub Actions npm OIDC Trusted Publishing with Sigstore `--provenance` attestations in `.github/workflows/publish.yml`.
+
 ## [0.1.0] - 2026-11-24
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "@gojona/bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Runtime-aware transport bridge for Android WebView hosts, KernelSU WebUI, and browser mock environments with observability tracing.",
   "license": "MIT",
   "author": "5jona",
