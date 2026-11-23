@@ -52,6 +52,7 @@ export function Slider({
   return (
     <div
       data-pochita="slider"
+      data-swipe-ignore=""
       data-state={disabled ? 'disabled' : 'enabled'}
       data-testid={dataTestId}
       className={cn('flex flex-col gap-2.5', className)}

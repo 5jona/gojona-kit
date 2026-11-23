@@ -77,9 +77,12 @@ export { Switch, type SwitchProps } from './components/Switch.tsx';
 export {
   Tabs,
   TabsContent,
+  type TabsContentProps,
   TabsList,
+  type TabsListProps,
   type TabsProps,
   TabsTrigger,
+  type TabsTriggerProps,
 } from './components/Tabs.tsx';
 export { ThemeSwitcher, type ThemeSwitcherProps } from './components/ThemeSwitcher.tsx';
 export { type ToastItem, ToastProvider, type ToastTone, useToast } from './components/Toast.tsx';
@@ -92,16 +95,29 @@ export {
 export { copyTextWithFallback } from './lib/clipboard.ts';
 export { cn } from './lib/cn.ts';
 export {
+  blurStrandedTabTrigger,
   classifySwipeLock,
   computeDampedOffset,
+  computeDragOffset,
+  computeReleaseVelocity,
+  computeSettleDurationMs,
+  DEFAULT_BOUNDARY_EDGE_PX,
   DEFAULT_TAB_SWIPE_OPTIONS,
   hasScrollableHorizontalAncestor,
+  interpolateIndicatorRect,
   isInEdgeGuardZone,
+  type PagerCommitOptions,
+  prefersReducedMotion,
+  recordVelocitySample,
   resolveAdjacentTab,
+  resolvePagerCommitStep,
   resolveSwipeStep,
   type SwipeLockState,
   shouldIgnoreSwipeStart,
+  type TabIndicatorRect,
   type TabSwipeOptions,
+  VELOCITY_WINDOW_MS,
+  type VelocitySample,
 } from './lib/tabSwipe.ts';
 export { isValidThemeId, THEME_LIST, THEME_REGISTRY } from './theme/registry.ts';
 export {

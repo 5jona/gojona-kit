@@ -1,3 +1,10 @@
+export {
+  blurStrandedTabTrigger,
+  hasScrollableHorizontalAncestor,
+  prefersReducedMotion,
+  shouldIgnoreSwipeStart,
+} from './tabSwipeDom.ts';
+
 /** Configuration thresholds for horizontal tab swipe recognition and edge protection. */
 export interface TabSwipeOptions {
   /** Minimum horizontal distance in pixels required for a standard swipe (default: `48`). */
@@ -17,6 +24,28 @@ export interface TabSwipeOptions {
 /** Axis lock state during an active touch or pointer gesture. */
 export type SwipeLockState = 'pending' | 'horizontal' | 'vertical';
 
+/** Single pointer or touch horizontal sample used for instantaneous release velocity. */
+export interface VelocitySample {
+  x: number;
+  t: number;
+}
+
+/** Horizontal geometry of a tab trigger relative to its `<TabsList>` scroll content box. */
+export interface TabIndicatorRect {
+  x: number;
+  width: number;
+}
+
+/** Commit threshold options for the 1:1 interactive tab pager. */
+export interface PagerCommitOptions {
+  /** Fraction of viewport width required to commit regardless of velocity (default: `0.28`). */
+  distanceRatio?: number;
+  /** Minimum horizontal displacement in pixels for a fast-flick commit (default: `20`). */
+  flickDistancePx?: number;
+  /** Minimum instantaneous release velocity in px/ms for a fast-flick commit (default: `0.45`). */
+  flickVelocityPxPerMs?: number;
+}
+
 /** Default threshold parameters for horizontal tab swipe detection. */
 export const DEFAULT_TAB_SWIPE_OPTIONS: Required<TabSwipeOptions> = {
   minDistancePx: 48,
@@ -27,32 +56,11 @@ export const DEFAULT_TAB_SWIPE_OPTIONS: Required<TabSwipeOptions> = {
   edgeGuardPx: 24,
 };
 
-const IGNORED_TAGS = new Set(['input', 'textarea', 'select']);
-const IGNORED_ROLES = new Set(['slider', 'switch', 'tablist']);
-const IGNORE_SELECTOR =
-  '[data-swipe-ignore], input, textarea, select, [role="slider"], [role="switch"], [role="tablist"], [contenteditable="true"]';
+/** Trailing sample window in milliseconds for instantaneous release velocity. */
+export const VELOCITY_WINDOW_MS = 80;
 
-interface InspectableNode {
-  tagName?: string;
-  nodeName?: string;
-  role?: string;
-  contentEditable?: string;
-  isContentEditable?: boolean;
-  dataset?: Record<string, string | undefined>;
-  style?: { overflowX?: string };
-  scrollWidth?: number;
-  clientWidth?: number;
-  scrollLeft?: number;
-  parentElement?: InspectableNode | null;
-  parentNode?: InspectableNode | null;
-  getAttribute?: (name: string) => string | null;
-  hasAttribute?: (name: string) => boolean;
-  closest?: (selector: string) => unknown;
-}
-
-function readAttr(node: InspectableNode, name: string): string | null {
-  return typeof node.getAttribute === 'function' ? node.getAttribute(name) : null;
-}
+/** Maximum boundary rubber-band stretch distance in pixels when no neighbor tab exists. */
+export const DEFAULT_BOUNDARY_EDGE_PX = 48;
 
 /** Checks whether `clientX` falls within the left or right viewport edge guard zone. */
 export function isInEdgeGuardZone(
@@ -107,7 +115,7 @@ export function resolveAdjacentTab(
   return tabOrder[index + step] ?? null;
 }
 
-/** Computes damped visual drag offset in pixels with soft rubber-band resistance at boundary tabs. */
+/** Computes legacy clamped visual drag offset in pixels with boundary resistance. */
 export function computeDampedOffset(
   dx: number,
   canMoveInDirection: boolean,
@@ -120,72 +128,136 @@ export function computeDampedOffset(
   return Math.max(-effectiveLimit, Math.min(effectiveLimit, dx * factor));
 }
 
-function isIgnoredSwipeNode(node: InspectableNode): boolean {
-  const rawTag = node.tagName ?? node.nodeName ?? '';
-  if (typeof rawTag === 'string' && IGNORED_TAGS.has(rawTag.toLowerCase())) return true;
-  const attr = readAttr(node, 'data-swipe-ignore');
-  const hasIgnore =
-    (typeof node.hasAttribute === 'function' && node.hasAttribute('data-swipe-ignore')) ||
-    attr !== null ||
-    node.dataset?.swipeIgnore !== undefined;
-  if (hasIgnore && attr !== 'false' && node.dataset?.swipeIgnore !== 'false') return true;
-  const role = (readAttr(node, 'role') ?? node.role ?? '').toLowerCase();
-  if (IGNORED_ROLES.has(role)) return true;
-  const editable = (readAttr(node, 'contenteditable') ?? node.contentEditable ?? '').toLowerCase();
-  return editable === 'true' || node.isContentEditable === true;
-}
-
-/** Returns `true` when a gesture originates inside an interactive control or `[data-swipe-ignore]` subtree. */
-export function shouldIgnoreSwipeStart(
-  target: EventTarget | null,
-  root: HTMLElement | null,
-): boolean {
-  let current = target as InspectableNode | null;
-  const rootNode = root as unknown as InspectableNode | null;
-  while (current && typeof current === 'object') {
-    if (isIgnoredSwipeNode(current)) return true;
-    if (current === rootNode) break;
-    const next = current.parentElement ?? current.parentNode ?? null;
-    if (!next && typeof current.closest === 'function') {
-      return Boolean(current.closest(IGNORE_SELECTOR));
-    }
-    current = next;
-  }
-  return false;
-}
-
-/** Returns `true` when an ancestor between `target` and `root` can scroll horizontally in `dx`. */
-export function hasScrollableHorizontalAncestor(
-  target: EventTarget | null,
-  root: HTMLElement | null,
+/**
+ * Computes 1:1 finger-tracking offset clamped to `±viewportWidth` when a neighbor panel exists,
+ * or smooth exponential rubber-band resistance at first/last tab boundaries.
+ */
+export function computeDragOffset(
   dx: number,
-): boolean {
-  if (!Number.isFinite(dx) || dx === 0) return false;
-  let current = target as InspectableNode | null;
-  const rootNode = root as unknown as InspectableNode | null;
-  while (current && typeof current === 'object' && current !== rootNode) {
-    const scrollWidth = current.scrollWidth ?? 0;
-    const clientWidth = current.clientWidth ?? 0;
-    if (scrollWidth > clientWidth + 2) {
-      let overflowX = current.style?.overflowX ?? '';
-      if (
-        !overflowX &&
-        typeof window !== 'undefined' &&
-        typeof window.getComputedStyle === 'function'
-      ) {
-        try {
-          overflowX = window.getComputedStyle(current as unknown as Element).overflowX;
-        } catch {
-          overflowX = '';
-        }
-      }
-      if (overflowX !== 'hidden' && overflowX !== 'clip') {
-        const scrollLeft = current.scrollLeft ?? 0;
-        if (dx < 0 && scrollLeft < scrollWidth - clientWidth - 1) return true;
-        if (dx > 0 && scrollLeft > 0) return true;
-      }
-    }
-    current = current.parentElement ?? current.parentNode ?? null;
+  canMoveInDirection: boolean,
+  viewportWidth: number,
+  maxEdgePx: number = DEFAULT_BOUNDARY_EDGE_PX,
+): number {
+  if (!Number.isFinite(dx) || dx === 0) return 0;
+  if (canMoveInDirection) {
+    const limit =
+      Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : Math.abs(dx);
+    return Math.max(-limit, Math.min(limit, dx));
   }
-  return false;
+  const edge = Math.max(0, Number.isFinite(maxEdgePx) ? maxEdgePx : DEFAULT_BOUNDARY_EDGE_PX);
+  if (edge === 0) return 0;
+  const sign = dx < 0 ? -1 : 1;
+  return sign * edge * (1 - Math.exp(-Math.abs(dx) / (edge * 2.5)));
+}
+
+/** Appends a `(x, t)` pointer sample and prunes entries older than `windowMs`. */
+export function recordVelocitySample(
+  samples: VelocitySample[],
+  x: number,
+  t: number,
+  windowMs: number = VELOCITY_WINDOW_MS,
+): void {
+  if (!Number.isFinite(x) || !Number.isFinite(t)) return;
+  const last = samples[samples.length - 1];
+  if (last && t <= last.t) {
+    last.x = x;
+    last.t = t;
+  } else {
+    samples.push({ x, t });
+  }
+  const cutoff = t - Math.max(1, windowMs);
+  let dropCount = 0;
+  while (samples.length - dropCount > 2) {
+    const next = samples[dropCount + 1];
+    if (!next || next.t >= cutoff) break;
+    dropCount += 1;
+  }
+  if (dropCount > 0) samples.splice(0, dropCount);
+}
+
+/**
+ * Computes signed instantaneous release velocity in `px/ms` over the trailing sample window.
+ * Returns `0` if fewer than 2 samples exist or the pointer paused longer than `windowMs`.
+ */
+export function computeReleaseVelocity(
+  samples: readonly VelocitySample[],
+  nowMs?: number,
+  windowMs: number = VELOCITY_WINDOW_MS,
+): number {
+  if (samples.length < 2) return 0;
+  const newest = samples[samples.length - 1];
+  if (!newest) return 0;
+  const win = Math.max(1, windowMs);
+  if (nowMs !== undefined && Number.isFinite(nowMs) && nowMs - newest.t > win) return 0;
+  const cutoff = newest.t - win;
+  let oldest = samples[0] ?? newest;
+  for (let i = 0; i < samples.length - 1; i += 1) {
+    const candidate = samples[i];
+    if (!candidate) continue;
+    oldest = candidate;
+    if (candidate.t >= cutoff) break;
+  }
+  const dt = newest.t - oldest.t;
+  return dt > 0 ? (newest.x - oldest.x) / dt : 0;
+}
+
+/**
+ * Resolves the pager commit step (`-1` prev, `1` next, `0` cancel) using viewport distance ratio
+ * (`>= 0.28 * viewportWidth`) or directional instantaneous release velocity (`|dx| >= 20`, `|v| >= 0.45`).
+ */
+export function resolvePagerCommitStep(
+  dx: number,
+  vRelease: number,
+  viewportWidth: number,
+  opts?: PagerCommitOptions,
+): -1 | 0 | 1 {
+  if (!Number.isFinite(dx) || dx === 0) return 0;
+  const distanceRatio = opts?.distanceRatio ?? 0.28;
+  const flickDistancePx = opts?.flickDistancePx ?? 20;
+  const flickVelocity = opts?.flickVelocityPxPerMs ?? 0.45;
+  const absX = Math.abs(dx);
+  const width = Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : 360;
+  const validV = Number.isFinite(vRelease) ? vRelease : 0;
+  const absV = Math.abs(validV);
+  if (validV * dx < 0 && absV >= flickVelocity) return 0;
+  const meetsDistance = absX >= width * distanceRatio;
+  const meetsFlick = absX >= flickDistancePx && validV * dx > 0 && absV >= flickVelocity;
+  if (!meetsDistance && !meetsFlick) return 0;
+  return dx < 0 ? 1 : -1;
+}
+
+/** Computes velocity-scaled settle animation duration in milliseconds clamped to `[minMs, maxMs]`. */
+export function computeSettleDurationMs(
+  remainingPx: number,
+  vReleasePxPerMs: number,
+  minMs = 160,
+  maxMs = 260,
+): number {
+  const dist = Math.max(0, Number.isFinite(remainingPx) ? remainingPx : 0);
+  const absV = Math.abs(Number.isFinite(vReleasePxPerMs) ? vReleasePxPerMs : 0);
+  const speed = Math.max(0.5, Math.min(3.5, absV));
+  return Math.round(Math.max(minMs, Math.min(maxMs, dist / (speed * 1.15))));
+}
+
+/**
+ * Interpolates the sliding active indicator pill `(x, width)` between `current` and `target`
+ * using signed drag progress `clamp(-offset / viewportWidth, -1, 1)`.
+ */
+export function interpolateIndicatorRect(
+  current: TabIndicatorRect,
+  target: TabIndicatorRect | null,
+  progress: number,
+): TabIndicatorRect {
+  const clamped = Math.max(-1, Math.min(1, Number.isFinite(progress) ? progress : 0));
+  const t = Math.abs(clamped);
+  if (t === 0) return { x: current.x, width: current.width };
+  if (!target) {
+    const sign = clamped < 0 ? -1 : 1;
+    const nudge = sign * Math.min(8, current.width * 0.12) * t;
+    return { x: current.x + nudge, width: current.width };
+  }
+  return {
+    x: current.x + (target.x - current.x) * t,
+    width: current.width + (target.width - current.width) * t,
+  };
 }
