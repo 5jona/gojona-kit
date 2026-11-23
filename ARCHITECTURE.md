@@ -48,15 +48,15 @@
 
 ### `@pochita/ui` Components & Utilities (`packages/ui/src/index.ts`)
 
-| Capability                 | Canonical Primitive                                                                               | Notes                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Responsive container shell | `AppShell`                                                                                        | Provides `@container` (`pochita-shell`) breakpoints, header modes, and surface framing            |
-| Buttons, inputs & toggles  | `Button`, `Input`, `Switch`, `Slider`                                                             | Accessible defaults; `Slider` supports preset chips                                               |
-| Selections & navigation    | `SegmentedControl`, `FilterChips`, `Tabs` (`TabsList`, `TabsTrigger`, `TabsContent`)              | Single/multi-select chips and Radix-backed tab groups                                             |
-| Cards, settings & tiles    | `Card` (`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`), `SettingRow`, `ControlTile` | Semantic glass surfaces, rows, and quick-action tiles                                             |
-| Status & metrics           | `Badge`, `MetricTile`, `ProgressBar`, `Sparkline`, `StatusBanner`, `EmptyState`                   | Exports pure `buildSparklineGeometry` helper                                                      |
-| Observability & feedback   | `LogConsole`, `BridgeTraceInspector`, `ErrorBoundary`, `ToastProvider`, `useToast`                | Exports `filterLogEntries`, `formatLogEntriesText`, `filterTraceEntries`, `summarizeTraceEntries` |
-| Theme switcher & styling   | `ThemeSwitcher`, `cn`                                                                             | Tailwind class deduplication via `clsx` + `tailwind-merge`                                        |
+| Capability                 | Canonical Primitive                                                                               | Notes                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Responsive container shell | `AppShell`                                                                                        | Provides `@container` (`pochita-shell`) breakpoints, header modes, and surface framing                                            |
+| Buttons, inputs & toggles  | `Button`, `Input`, `Switch`, `Slider`                                                             | Accessible defaults; `Slider` supports preset chips                                                                               |
+| Selections & navigation    | `SegmentedControl`, `FilterChips`, `Tabs` (`TabsList`, `TabsTrigger`, `TabsContent`)              | Single/multi-select chips and Radix-backed tabs with horizontal swipe switching (`swipeable`, `edgeGuardPx`, `data-swipe-ignore`) |
+| Cards, settings & tiles    | `Card` (`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`), `SettingRow`, `ControlTile` | Semantic glass surfaces, rows, and quick-action tiles                                                                             |
+| Status & metrics           | `Badge`, `MetricTile`, `ProgressBar`, `Sparkline`, `StatusBanner`, `EmptyState`                   | Exports pure `buildSparklineGeometry` helper                                                                                      |
+| Observability & feedback   | `LogConsole`, `BridgeTraceInspector`, `ErrorBoundary`, `ToastProvider`, `useToast`                | Exports `filterLogEntries`, `formatLogEntriesText`, `filterTraceEntries`, `summarizeTraceEntries`                                 |
+| Theme switcher & styling   | `ThemeSwitcher`, `cn`                                                                             | Tailwind class deduplication via `clsx` + `tailwind-merge`                                                                        |
 
 ### `@pochita/ui` Theme & Token Primitives (`packages/ui/src/theme/`)
 

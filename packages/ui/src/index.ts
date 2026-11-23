@@ -74,7 +74,13 @@ export {
   type StatusBannerTone,
 } from './components/StatusBanner.tsx';
 export { Switch, type SwitchProps } from './components/Switch.tsx';
-export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs.tsx';
+export {
+  Tabs,
+  TabsContent,
+  TabsList,
+  type TabsProps,
+  TabsTrigger,
+} from './components/Tabs.tsx';
 export { ThemeSwitcher, type ThemeSwitcherProps } from './components/ThemeSwitcher.tsx';
 export { type ToastItem, ToastProvider, type ToastTone, useToast } from './components/Toast.tsx';
 export {
@@ -85,6 +91,18 @@ export {
 } from './hooks/useCopyFeedback.ts';
 export { copyTextWithFallback } from './lib/clipboard.ts';
 export { cn } from './lib/cn.ts';
+export {
+  classifySwipeLock,
+  computeDampedOffset,
+  DEFAULT_TAB_SWIPE_OPTIONS,
+  hasScrollableHorizontalAncestor,
+  isInEdgeGuardZone,
+  resolveAdjacentTab,
+  resolveSwipeStep,
+  type SwipeLockState,
+  shouldIgnoreSwipeStart,
+  type TabSwipeOptions,
+} from './lib/tabSwipe.ts';
 export { isValidThemeId, THEME_LIST, THEME_REGISTRY } from './theme/registry.ts';
 export {
   buildThemeSyncKey,
