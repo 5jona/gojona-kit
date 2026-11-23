@@ -54,11 +54,16 @@ export interface PluginSurfacePrefs {
 
 export interface PluginEmbedPrefs {
   url: string;
+  remoteUrl?: string;
+  lanSsids?: string[];
   allowedOrigins?: string[];
   allowCleartext?: boolean;
   wideViewport?: boolean;
   allowZoom?: boolean;
   webHistoryBack?: boolean;
+  textZoom?: number;
+  showToolbar?: boolean;
+  keepAliveGraceSec?: number;
 }
 
 export interface PluginNetworkPrefs {
@@ -120,9 +125,19 @@ export interface PluginOverrideEntry {
   globalOverride?: boolean;
   devServerUrl?: string;
   embedUrl?: string;
+  remoteUrl?: string;
+  lanSsids?: string[];
   allowedOrigins?: string[];
   allowCleartext?: boolean;
   keepAlive?: boolean;
+  wideViewport?: boolean;
+  allowZoom?: boolean;
+  webHistoryBack?: boolean;
+  textZoom?: number;
+  showToolbar?: boolean;
+  keepAliveGraceSec?: number;
+  widthDp?: number;
+  heightPercent?: number;
 }
 
 export interface PluginOverridesFile {
