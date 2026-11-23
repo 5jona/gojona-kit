@@ -4,7 +4,7 @@ import type {
   ContainerPinnedBounds,
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
-} from '@pochita/bridge';
+} from '@gojona/bridge';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSideVeilPlugin } from './PluginContext.ts';
 import type { UseContainerActionApi } from './types.ts';

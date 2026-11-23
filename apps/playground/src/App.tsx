@@ -3,7 +3,7 @@ import {
   createBridge,
   createDeferredBridgeDisposer,
   createThemeSyncDeduplicator,
-} from '@pochita/bridge';
+} from '@gojona/bridge';
 import {
   AppShell,
   type AppShellVariant,
@@ -19,7 +19,7 @@ import {
   ThemeProvider,
   ThemeSwitcher,
   ToastProvider,
-} from '@pochita/ui';
+} from '@gojona/ui';
 import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BridgeDiagTab } from './components/BridgeDiagTab.tsx';
@@ -191,7 +191,7 @@ export default function App() {
                   }
                   footer={
                     <div className="flex items-center justify-between gap-2">
-                      <span>@pochita/ui · @pochita/bridge · @pochita/config</span>
+                      <span>@gojona/ui · @gojona/bridge · @gojona/config</span>
                       <span className="tabular-nums">v0.1.0</span>
                     </div>
                   }

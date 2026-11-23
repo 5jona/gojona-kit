@@ -1,4 +1,4 @@
-import type { ThemeId } from '@pochita/config/themes';
+import type { ThemeId } from '@gojona/config/themes';
 
 export type { ThemeId };
 

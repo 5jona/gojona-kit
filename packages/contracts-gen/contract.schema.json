@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pochita.dev/schemas/contracts-gen/v1/contract.schema.json",
   "title": "Pochita Cross-Language IPC Contract Specification",
-  "description": "Declarative v1 specification consumed by @pochita/contracts-gen to emit Rust, Kotlin, TypeScript, and JSON Schema contract artifacts.",
+  "description": "Declarative v1 specification consumed by @gojona/contracts-gen to emit Rust, Kotlin, TypeScript, and JSON Schema contract artifacts.",
   "type": "object",
   "required": ["schemaVersion", "name", "outputs"],
   "additionalProperties": false,

@@ -20,7 +20,7 @@ export {
   SIDEVEIL_TIMEOUT_BOUNDS,
   type SideVeilEventConstants,
   type SideVeilMethodConstants,
-} from '@pochita/bridge';
+} from '@gojona/bridge';
 export {
   shouldPollTelemetry,
   type UseClipboardApi,

@@ -1,4 +1,4 @@
-import { THEME_IDS } from '@pochita/config/themes';
+import { THEME_IDS } from '@gojona/config/themes';
 import type { ThemeDefinition, ThemeId } from './types.ts';
 
 const VALID_THEME_ID_SET: ReadonlySet<string> = new Set(THEME_IDS);

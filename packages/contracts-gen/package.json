@@ -1,8 +1,35 @@
 {
-  "name": "@pochita/contracts-gen",
+  "name": "@gojona/contracts-gen",
   "version": "0.1.0",
-  "private": true,
+  "description": "Zero-dependency contract-first IDL compiler and fixture validator emitting Rust, Kotlin, TypeScript, and JSON Schema 2020-12 artifacts.",
+  "license": "MIT",
+  "author": "5jona",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/5jona/pochita-webui-kit.git",
+    "directory": "packages/contracts-gen"
+  },
+  "homepage": "https://github.com/5jona/pochita-webui-kit#readme",
+  "bugs": {
+    "url": "https://github.com/5jona/pochita-webui-kit/issues"
+  },
+  "keywords": [
+    "contracts",
+    "codegen",
+    "idl",
+    "json-schema",
+    "rust",
+    "kotlin",
+    "typescript"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
+  "files": [
+    "contract.schema.json",
+    "src"
+  ],
   "bin": {
     "pochita-contracts-gen": "./src/cli.mjs"
   },

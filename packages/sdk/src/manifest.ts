@@ -4,7 +4,7 @@ import {
   type PluginBackendState,
   SIDEVEIL_BUILTIN_DIAGNOSTIC,
   SIDEVEIL_TIMEOUT_BOUNDS,
-} from '@pochita/bridge';
+} from '@gojona/bridge';
 
 export const BUILTIN_DIAG_PLUGIN_ID = SIDEVEIL_BUILTIN_DIAGNOSTIC.ID;
 

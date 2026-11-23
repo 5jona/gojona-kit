@@ -1,7 +1,29 @@
 {
-  "name": "@pochita/bridge",
+  "name": "@gojona/bridge",
   "version": "0.1.0",
-  "private": true,
+  "description": "Runtime-aware transport bridge for Android WebView hosts, KernelSU WebUI, and browser mock environments with observability tracing.",
+  "license": "MIT",
+  "author": "5jona",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/5jona/pochita-webui-kit.git",
+    "directory": "packages/bridge"
+  },
+  "homepage": "https://github.com/5jona/pochita-webui-kit#readme",
+  "bugs": {
+    "url": "https://github.com/5jona/pochita-webui-kit/issues"
+  },
+  "keywords": [
+    "bridge",
+    "webview",
+    "kernelsu",
+    "json-rpc",
+    "react",
+    "sideveil"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,10 +43,10 @@
     "build": "tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import @pochita/config/register-ts --test test/*.test.mjs"
+    "test": "node --import @gojona/config/register-ts --test test/*.test.mjs"
   },
   "dependencies": {
-    "@pochita/config": "file:../config"
+    "@gojona/config": "workspace:^"
   },
   "peerDependencies": {
     "react": "^19.0.0"

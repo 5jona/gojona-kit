@@ -85,12 +85,12 @@ test('all package and app source files satisfy <= 300 soft limit and <= 400 hard
   }
 });
 
-test('THEME_IDS in @pochita/config is the single source of truth for UI theme registry and CSS files', () => {
+test('THEME_IDS in @gojona/config is the single source of truth for UI theme registry and CSS files', () => {
   const registryPath = path.join(REPO_ROOT, 'packages/ui/src/theme/registry.ts');
   const registrySrc = fs.readFileSync(registryPath, 'utf8');
   assert.ok(
-    registrySrc.includes("from '@pochita/config/themes'"),
-    'registry.ts must import THEME_IDS from @pochita/config/themes',
+    registrySrc.includes("from '@gojona/config/themes'"),
+    'registry.ts must import THEME_IDS from @gojona/config/themes',
   );
 
   const themesCssDir = path.join(REPO_ROOT, 'packages/ui/src/styles/themes');

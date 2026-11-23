@@ -4,7 +4,7 @@ import {
   type SemanticThemeToken,
   STORAGE_KEY_SCHEME,
   STORAGE_KEY_THEME,
-} from '@pochita/config/themes';
+} from '@gojona/config/themes';
 import type { ResolvedColorScheme } from './types.ts';
 
 export { SEMANTIC_THEME_TOKENS, type SemanticThemeToken, STORAGE_KEY_SCHEME, STORAGE_KEY_THEME };

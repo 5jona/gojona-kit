@@ -17,7 +17,7 @@ description = "Run TypeScript typecheck across all workspace packages"
 run = "pnpm typecheck"
 
 [tasks.test]
-description = "Run Node unit tests across workspace packages (including @pochita/contracts-gen and standards)"
+description = "Run Node unit tests across workspace packages (including @gojona/contracts-gen and standards)"
 run = "pnpm test"
 
 [tasks.build]

@@ -4,49 +4,49 @@
 
 ## 1. Repository Layout & Entry Points
 
-| Path                      | Package / Role           | Key Entry Points                                                                                                    |
-| ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/`        | `@pochita/config`        | `index.mjs` (Vite preset), `themes.mjs` (SSOT), `biome.base.json`, `register-ts.mjs`                                |
-| `packages/contracts-gen/` | `@pochita/contracts-gen` | `src/cli.mjs` (`pochita-contracts-gen`), `contract.schema.json`, `src/diff.mjs`, emitters, `src/validator.mjs`      |
-| `packages/bridge/`        | `@pochita/bridge`        | `src/index.ts`, `src/detect.ts`, `src/host.ts`, `src/ksu.ts`, `src/mock.ts`, `src/trace.ts`                         |
-| `packages/ui/`            | `@pochita/ui`            | `src/index.ts`, `src/theme/tokens.ts`, `src/styles/index.css`                                                       |
-| `packages/sdk/`           | `@pochita/sideveil-sdk`  | `src/index.ts`, `src/PluginContext.ts`, `src/typedClient.ts`, `src/hooks.ts`, `src/presentation.ts`, `src/theme.ts` |
-| `apps/playground/`        | `@pochita/playground`    | Dual-viewport workbench and live theme/component preview                                                            |
-| `test/standards.test.mjs` | Repo Quality Gate        | Enforces line limits, `THEME_IDS` SSOT, zero hex colors, `import type`, `dist/` sync                                |
+| Path                      | Package / Role          | Key Entry Points                                                                                                    |
+| ------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `packages/config/`        | `@gojona/config`        | `index.mjs` (Vite preset), `themes.mjs` (SSOT), `biome.base.json`, `register-ts.mjs`                                |
+| `packages/contracts-gen/` | `@gojona/contracts-gen` | `src/cli.mjs` (`pochita-contracts-gen`), `contract.schema.json`, `src/diff.mjs`, emitters, `src/validator.mjs`      |
+| `packages/bridge/`        | `@gojona/bridge`        | `src/index.ts`, `src/detect.ts`, `src/host.ts`, `src/ksu.ts`, `src/mock.ts`, `src/trace.ts`                         |
+| `packages/ui/`            | `@gojona/ui`            | `src/index.ts`, `src/theme/tokens.ts`, `src/styles/index.css`                                                       |
+| `packages/sdk/`           | `@gojona/sideveil-sdk`  | `src/index.ts`, `src/PluginContext.ts`, `src/typedClient.ts`, `src/hooks.ts`, `src/presentation.ts`, `src/theme.ts` |
+| `apps/playground/`        | `@gojona/playground`    | Dual-viewport workbench and live theme/component preview                                                            |
+| `test/standards.test.mjs` | Repo Quality Gate       | Enforces line limits, `THEME_IDS` SSOT, zero hex colors, `import type`, `dist/` sync                                |
 
 ## 2. Package Dependency DAG & Forbidden Reverse Edges
 
 ```text
-  @pochita/config (Vite/Biome presets, Node TS loader, THEME_IDS SSOT)
+  @gojona/config (Vite/Biome presets, Node TS loader, THEME_IDS SSOT)
        │
        ├──────────────────────────────────────┐
        ▼                                      ▼
-  @pochita/ui                            @pochita/bridge
+  @gojona/ui                            @gojona/bridge
   (components, tokens, glass CSS)        (runtime detection, transports, tracer)
        │                                      │
        └──────────────────┬───────────────────┘
                           ▼
-               @pochita/sideveil-sdk
+               @gojona/sideveil-sdk
                (SideVeil provider, manifest, domain hooks)
                           │
                           ▼
                  apps/playground
 
-  @pochita/contracts-gen (zero-dependency Node ESM contract compiler & fixture validator)
+  @gojona/contracts-gen (zero-dependency Node ESM contract compiler & fixture validator)
 ```
 
 ### Layering Rules & Forbidden Reverse Edges
 
-- `@pochita/config` has zero internal package dependencies; it owns `THEME_IDS`, `DEFAULT_THEME_ID`, `createThemeBootstrapScript`, `createPochitaViteConfig`, and `biome.base.json`.
-- `@pochita/contracts-gen` is strictly standalone with zero runtime npm dependencies (pure Node ESM) so downstream Rust, Android/Kotlin, and TypeScript repos can execute codegen and fixture validation without installing React or Vite.
-- `@pochita/ui` depends only on `@pochita/config` (and headless UI peers). **Forbidden**: importing `@pochita/bridge`, `@pochita/sideveil-sdk`, or host-specific domain logic.
-- `@pochita/bridge` has zero runtime dependencies on sibling packages (`@pochita/config` is dev-only for Node TS test registration). **Forbidden**: importing `@pochita/ui` or `@pochita/sideveil-sdk`.
-- `@pochita/sideveil-sdk` composes `@pochita/bridge` and `@pochita/ui`. **Forbidden**: bypassing `@pochita/bridge` to touch `window.ksu`, `window.__POCHITA_HOST__`, or `window.postMessage`.
+- `@gojona/config` has zero internal package dependencies; it owns `THEME_IDS`, `DEFAULT_THEME_ID`, `createThemeBootstrapScript`, `createPochitaViteConfig`, and `biome.base.json`.
+- `@gojona/contracts-gen` is strictly standalone with zero runtime npm dependencies (pure Node ESM) so downstream Rust, Android/Kotlin, and TypeScript repos can execute codegen and fixture validation without installing React or Vite.
+- `@gojona/ui` depends only on `@gojona/config` (and headless UI peers). **Forbidden**: importing `@gojona/bridge`, `@gojona/sideveil-sdk`, or host-specific domain logic.
+- `@gojona/bridge` has zero runtime dependencies on sibling packages (`@gojona/config` is dev-only for Node TS test registration). **Forbidden**: importing `@gojona/ui` or `@gojona/sideveil-sdk`.
+- `@gojona/sideveil-sdk` composes `@gojona/bridge` and `@gojona/ui`. **Forbidden**: bypassing `@gojona/bridge` to touch `window.ksu`, `window.__POCHITA_HOST__`, or `window.postMessage`.
 - Workspace runtime packages (`ui`, `bridge`, `sdk`) expose dual exports: `"source": "./src/index.ts"` for zero-build local development and compiled ESM `dist/*.js` + `dist/*.d.ts` for published consumption. Always use explicit `import type` for type-only imports so Node executes TS sources directly.
 
 ## 3. Primitive Lookup Matrix (Use This — Do Not Reimplement)
 
-### `@pochita/ui` Components & Utilities (`packages/ui/src/index.ts`)
+### `@gojona/ui` Components & Utilities (`packages/ui/src/index.ts`)
 
 | Capability                 | Canonical Primitive                                                                               | Notes                                                                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -58,16 +58,16 @@
 | Observability & feedback   | `LogConsole`, `BridgeTraceInspector`, `ErrorBoundary`, `ToastProvider`, `useToast`                | Exports `filterLogEntries`, `formatLogEntriesText`, `filterTraceEntries`, `summarizeTraceEntries`                                 |
 | Theme switcher & styling   | `ThemeSwitcher`, `cn`                                                                             | Tailwind class deduplication via `clsx` + `tailwind-merge`                                                                        |
 
-### `@pochita/ui` Theme & Token Primitives (`packages/ui/src/theme/`)
+### `@gojona/ui` Theme & Token Primitives (`packages/ui/src/theme/`)
 
 | Capability                  | Canonical Primitive                                                                         | Notes                                                               |
 | --------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | Theme state & registry      | `ThemeProvider`, `useTheme`, `THEME_REGISTRY`, `THEME_LIST`, `isValidThemeId`               | Pass `syncEnabled={hydrated}` on daemon-backed hosts                |
-| Zero-flash bootstrap        | `THEME_BOOTSTRAP_SCRIPT`, `STORAGE_KEY_THEME`, `STORAGE_KEY_SCHEME`                         | Re-exported from `@pochita/config/themes`                           |
+| Zero-flash bootstrap        | `THEME_BOOTSTRAP_SCRIPT`, `STORAGE_KEY_THEME`, `STORAGE_KEY_SCHEME`                         | Re-exported from `@gojona/config/themes`                            |
 | Canvas / WebGPU colors      | `readThemeToken`, `colorWithAlpha`, `SEMANTIC_THEME_TOKENS`                                 | Resolves concrete scheme values where `light-dark()` is unsupported |
 | Dynamic Material You tokens | `applyDynamicCssTokens`, `clearDynamicCssTokens`, `inspectThemeTokens`, `buildThemeSyncKey` | Strict `--*` filtering and CDP diagnostic inspection                |
 
-### `@pochita/bridge` Transports & Observability (`packages/bridge/src/index.ts`)
+### `@gojona/bridge` Transports & Observability (`packages/bridge/src/index.ts`)
 
 | Capability                 | Canonical Primitive                                                           | Notes                                                           |
 | -------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -79,7 +79,7 @@
 | Theme sync deduplication   | `useContainerThemeSync`, `createThemeSyncDeduplicator`                        | Suppresses consecutive identical `syncTheme` payloads           |
 | Structured tracing         | `BridgeTracer`, `createTraceStore`, `sanitizeTraceValue`                      | Bounded ring buffer with depth/key limits and secret redaction  |
 
-### `@pochita/sideveil-sdk` Plugin Hooks (`packages/sdk/src/index.ts`)
+### `@gojona/sideveil-sdk` Plugin Hooks (`packages/sdk/src/index.ts`)
 
 | Domain                         | Canonical Primitives                                                                                                                                                         |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -89,16 +89,16 @@
 | Persistence & theme sync       | `usePluginStorage`, `useDynamicThemeTokens`, `useDynamicThemeState`, `useSyncedPluginTheme`, `extractPluginAppearance`                                                       |
 | Native HUD, telemetry & device | `useEdgeStatus`, `createEdgeStatusController`, `useNativeHud`, `useTelemetry`, `shouldPollTelemetry`, `useGraphicsCapabilities`, `useClipboard`, `useNetworkContext`         |
 
-### `@pochita/config` & `@pochita/contracts-gen` Tooling
+### `@gojona/config` & `@gojona/contracts-gen` Tooling
 
-| Capability                | Canonical Primitive / CLI                                                             | Notes                                                                           |
-| ------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Vite + Tailwind v4 preset | `createPochitaViteConfig`, `pochitaThemeBootstrapPlugin`, `DEFAULT_KIT_ROOT`          | Sets `base: './'`, offline asset paths, and `POCHITA_KIT_ROOT` fs allowlist     |
-| Shared lint & TS runner   | `@pochita/config/biome.json`, `@pochita/config/register-ts`, `@pochita/config/themes` | Shared Biome preset, native Node TS hook, and `THEME_IDS` SSOT                  |
-| Contract meta schema      | `packages/contracts-gen/contract.schema.json`                                         | JSON Schema Draft 2020-12 spec for `*.contract.json` (`$schema` authoring)      |
-| Contract codegen & check  | `pochita-contracts-gen generate`, `pochita-contracts-gen check`                       | Zero-dependency Rust/Kotlin/TS/JSON Schema emitter and drift detector           |
-| Breaking-change diff      | `pochita-contracts-gen diff [--json] <base> <head>`, `diffContractSpecs`              | Deterministic `buf breaking`-style compatibility gate across contract revisions |
-| Wire fixture validation   | `pochita-contracts-gen validate-fixtures`                                             | Pure JS JSON Schema subset validator for positive and expected-invalid fixtures |
+| Capability                | Canonical Primitive / CLI                                                          | Notes                                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Vite + Tailwind v4 preset | `createPochitaViteConfig`, `pochitaThemeBootstrapPlugin`, `DEFAULT_KIT_ROOT`       | Sets `base: './'`, offline asset paths, and `POCHITA_KIT_ROOT` fs allowlist     |
+| Shared lint & TS runner   | `@gojona/config/biome.json`, `@gojona/config/register-ts`, `@gojona/config/themes` | Shared Biome preset, native Node TS hook, and `THEME_IDS` SSOT                  |
+| Contract meta schema      | `packages/contracts-gen/contract.schema.json`                                      | JSON Schema Draft 2020-12 spec for `*.contract.json` (`$schema` authoring)      |
+| Contract codegen & check  | `pochita-contracts-gen generate`, `pochita-contracts-gen check`                    | Zero-dependency Rust/Kotlin/TS/JSON Schema emitter and drift detector           |
+| Breaking-change diff      | `pochita-contracts-gen diff [--json] <base> <head>`, `diffContractSpecs`           | Deterministic `buf breaking`-style compatibility gate across contract revisions |
+| Wire fixture validation   | `pochita-contracts-gen validate-fixtures`                                          | Pure JS JSON Schema subset validator for positive and expected-invalid fixtures |
 
 ## 4. Runtime Detection & `HostTransport` Architecture
 
@@ -148,7 +148,7 @@
    - Place custom component CSS inside `@layer components` or `@layer base` (never unlayered overrides of Tailwind utilities).
    - Never append hex alpha suffixes to CSS variables in JS; use `color-mix(in oklab, ...)` in CSS and `readThemeToken()` + `colorWithAlpha()` in Canvas/WebGPU code.
 
-## 6. Scheme C Contract-First Codegen (`@pochita/contracts-gen`)
+## 6. Scheme C Contract-First Codegen (`@gojona/contracts-gen`)
 
 Cross-repo IPC schemas, RPC methods, event payloads, enums, and protocol constants follow Scheme C contract-first code generation so Rust daemons, Android/Kotlin hosts, and TypeScript WebUIs derive from declarative `*.contract.json` (`schemaVersion: 1`) specifications.
 
@@ -168,7 +168,7 @@ Cross-repo IPC schemas, RPC methods, event payloads, enums, and protocol constan
 - **Deterministic Formatting**: Output emitters match `rustfmt` (`serde`), `ktlint`/`detekt` (`kotlinx.serialization`), Biome (2-space indent, single quotes, trailing commas), and JSON Schema Draft 2020-12.
 - **Cross-Repo SSOT Invariants**:
   - Every `*.contract.json` spec may reference `packages/contracts-gen/contract.schema.json` via `"$schema"` for IDE validation and autocompletion against the Draft 2020-12 meta schema.
-  - Every generated file begins with `@generated by @pochita/contracts-gen — DO NOT EDIT`. Never hand-edit generated files; edit the `*.contract.json` source and regenerate.
+  - Every generated file begins with `@generated by @gojona/contracts-gen — DO NOT EDIT`. Never hand-edit generated files; edit the `*.contract.json` source and regenerate.
   - Downstream CI runs `pochita-contracts-gen check <spec.json...>` to fail builds immediately on any byte-level drift, and `pochita-contracts-gen diff [--json] <base-spec.json> <head-spec.json>` (`diffContractSpecs`) to block breaking wire evolutions (removed/changed constants, enums, structs, fields, tagged-union tags/variants, RPC methods/types, or event wires/payloads) while allowing additive non-breaking changes.
   - Golden positive and negative wire fixtures are validated via `pochita-contracts-gen validate-fixtures <schema.json> <fixtures...>` against `$defs/<TypeName>`.
   - Plugin WebUIs bind generated `*RpcMethodMap` / `*EventPayloadMap` interfaces directly to `createTypedPluginClient` / `useTypedPluginClient` (or single-method `usePluginInvoke`) for compile-time-typed, per-method-timeout RPC calls and event subscriptions with zero `useState` re-render overhead.
@@ -182,7 +182,7 @@ Cross-repo IPC schemas, RPC methods, event payloads, enums, and protocol constan
 | `pnpm build` / `mise run build`         | Emits `dist/*.js` + `dist/*.d.ts` for workspace packages and builds playground       |
 | `pnpm typecheck` / `mise run typecheck` | Runs `tsc --noEmit` across all TypeScript packages                                   |
 | `pnpm test` / `mise run test`           | Runs package unit tests (`packages/*/test/*.test.mjs`) and `test/standards.test.mjs` |
-| `pnpm dev`                              | Launches `@pochita/playground` dual-viewport workbench                               |
+| `pnpm dev`                              | Launches `@gojona/playground` dual-viewport workbench                                |
 
 ### Automated & Engineering Invariants (`test/standards.test.mjs` & `AGENTS.md`)
 

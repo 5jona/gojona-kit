@@ -1,4 +1,4 @@
-import { SEMANTIC_THEME_TOKENS } from '@pochita/config/themes';
+import { SEMANTIC_THEME_TOKENS } from '@gojona/config/themes';
 import type {
   BridgeDiagnosticsSnapshot,
   BridgeTraceEvent,
@@ -8,7 +8,7 @@ import type {
 
 /**
  * Read-only DOM theme token inspector exposed via `window.__POCHITA_DEBUG__`
- * using the canonical semantic token list from `@pochita/config/themes`.
+ * using the canonical semantic token list from `@gojona/config/themes`.
  */
 export function inspectDomThemeTokens(): Record<string, unknown> {
   if (typeof document === 'undefined' || !document.documentElement) {

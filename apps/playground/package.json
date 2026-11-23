@@ -1,5 +1,5 @@
 {
-  "name": "@pochita/playground",
+  "name": "@gojona/playground",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,9 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@pochita/bridge": "workspace:*",
-    "@pochita/config": "workspace:*",
-    "@pochita/ui": "workspace:*",
+    "@gojona/bridge": "workspace:*",
+    "@gojona/config": "workspace:*",
+    "@gojona/ui": "workspace:*",
     "lucide-react": "^1.75.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

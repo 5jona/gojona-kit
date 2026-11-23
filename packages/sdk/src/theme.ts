@@ -19,7 +19,7 @@ export interface PluginThemeController<TThemeId extends string = string> {
 
 export interface UseSyncedPluginThemeOptions<TThemeId extends string = string, TConfig = unknown> {
   /**
-   * Optional theme controller (such as the return value of `@pochita/ui`'s `useTheme()`).
+   * Optional theme controller (such as the return value of `@gojona/ui`'s `useTheme()`).
    * When omitted, `useSyncedPluginTheme` updates `data-theme` and `<meta name="color-scheme">`
    * directly on `document.documentElement`.
    */

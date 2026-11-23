@@ -181,13 +181,13 @@ importers:
 
   apps/playground:
     dependencies:
-      '@pochita/bridge':
+      '@gojona/bridge':
         specifier: workspace:*
         version: link:../../packages/bridge
-      '@pochita/config':
+      '@gojona/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@pochita/ui':
+      '@gojona/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -224,8 +224,8 @@ importers:
 
   packages/bridge:
     dependencies:
-      '@pochita/config':
-        specifier: file:../config
+      '@gojona/config':
+        specifier: workspace:^
         version: link:../config
     devDependencies:
       '@types/react':
@@ -257,14 +257,14 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@pochita/bridge':
-        specifier: file:../bridge
+      '@gojona/bridge':
+        specifier: workspace:^
         version: link:../bridge
-      '@pochita/ui':
-        specifier: file:../ui
+      '@gojona/ui':
+        specifier: workspace:^
         version: link:../ui
     devDependencies:
-      '@pochita/config':
+      '@gojona/config':
         specifier: workspace:*
         version: link:../config
       '@types/react':
@@ -279,8 +279,8 @@ importers:
 
   packages/ui:
     dependencies:
-      '@pochita/config':
-        specifier: file:../config
+      '@gojona/config':
+        specifier: workspace:^
         version: link:../config
       '@radix-ui/react-slider':
         specifier: ^1.6.1

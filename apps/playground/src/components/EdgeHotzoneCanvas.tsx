@@ -1,4 +1,4 @@
-import { colorWithAlpha, readThemeToken, useTheme } from '@pochita/ui';
+import { colorWithAlpha, readThemeToken, useTheme } from '@gojona/ui';
 import { useEffect, useRef } from 'react';
 
 export interface EdgeHotzoneCanvasProps {

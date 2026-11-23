@@ -46,7 +46,7 @@ export interface BridgeTraceInspectorProps {
 }
 
 /**
- * Interactive inspector for `@pochita/bridge` RPC, event, and port lifecycle traces
+ * Interactive inspector for `@gojona/bridge` RPC, event, and port lifecycle traces
  * with error/slow filtering, expandable payload previews, and JSON copy.
  */
 export function BridgeTraceInspector({

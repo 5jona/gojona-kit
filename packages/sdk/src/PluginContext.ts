@@ -4,7 +4,7 @@ import {
   detectPluginId,
   type PluginBackendState,
   useBridge,
-} from '@pochita/bridge';
+} from '@gojona/bridge';
 import {
   createContext,
   createElement,

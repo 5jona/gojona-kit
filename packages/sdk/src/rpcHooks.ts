@@ -1,4 +1,4 @@
-import type { InvokeOptions } from '@pochita/bridge';
+import type { InvokeOptions } from '@gojona/bridge';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSideVeilPlugin } from './PluginContext.ts';
 import type { PluginBackendState, PluginRpcState } from './types.ts';

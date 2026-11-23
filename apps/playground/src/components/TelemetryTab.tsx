@@ -1,4 +1,4 @@
-import { useBridge } from '@pochita/bridge';
+import { useBridge } from '@gojona/bridge';
 import {
   Button,
   Card,
@@ -11,7 +11,7 @@ import {
   Slider,
   Switch,
   useToast,
-} from '@pochita/ui';
+} from '@gojona/ui';
 import { Activity, BatteryCharging, Cpu, Flame } from 'lucide-react';
 import { useState } from 'react';
 

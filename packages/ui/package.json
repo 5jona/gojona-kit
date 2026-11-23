@@ -1,7 +1,29 @@
 {
-  "name": "@pochita/ui",
+  "name": "@gojona/ui",
   "version": "0.1.0",
-  "private": true,
+  "description": "Multi-theme Tailwind CSS v4 and Radix React UI component library with adaptive glassmorphism surfaces and swipeable tab pager.",
+  "license": "MIT",
+  "author": "5jona",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/5jona/pochita-webui-kit.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/5jona/pochita-webui-kit#readme",
+  "bugs": {
+    "url": "https://github.com/5jona/pochita-webui-kit/issues"
+  },
+  "keywords": [
+    "ui",
+    "react",
+    "tailwindcss",
+    "radix-ui",
+    "glassmorphism",
+    "design-system"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -31,7 +53,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@pochita/config": "file:../config",
+    "@gojona/config": "workspace:^",
     "@radix-ui/react-slider": "^1.6.1",
     "@radix-ui/react-switch": "^1.4.1",
     "@radix-ui/react-tabs": "^1.2.1",

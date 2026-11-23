@@ -9,18 +9,18 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the package dependency DAG, primi
 ```text
 pochita-webui-kit/
 ├── packages/
-│   ├── config/        # @pochita/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
-│   ├── contracts-gen/ # @pochita/contracts-gen: deterministic Rust/Kotlin/TS/JSON Schema contract compiler & validator
-│   ├── bridge/        # @pochita/bridge: Host WebView / KernelSU / Browser Mock transport SDK
-│   ├── sdk/           # @pochita/sideveil-sdk: optional React plugin SDK for SideVeil sidebar plugins
-│   └── ui/            # @pochita/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
+│   ├── config/        # @gojona/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
+│   ├── contracts-gen/ # @gojona/contracts-gen: deterministic Rust/Kotlin/TS/JSON Schema contract compiler & validator
+│   ├── bridge/        # @gojona/bridge: Host WebView / KernelSU / Browser Mock transport SDK
+│   ├── sdk/           # @gojona/sideveil-sdk: optional React plugin SDK for SideVeil sidebar plugins
+│   └── ui/            # @gojona/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
 ├── apps/
-│   └── playground/    # @pochita/playground: dual-viewport and live theme workbench
+│   └── playground/    # @gojona/playground: dual-viewport and live theme workbench
 ├── ARCHITECTURE.md    # Architecture DAG, primitive lookup matrix, and contract-first workflow
 └── AGENTS.md          # Repository agent & engineering guidelines
 ```
 
-### `@pochita/ui`
+### `@gojona/ui`
 
 Tailwind- and Radix-based UI component library and theme management primitives:
 
@@ -33,7 +33,7 @@ Tailwind- and Radix-based UI component library and theme management primitives:
   - `applyDynamicCssTokens(tokens, root?)` & `clearDynamicCssTokens(tokenNames, root?)`: Inject and clean up host-synthesized Material You `Oklch` CSS custom properties (`--*`).
   - `THEME_BOOTSTRAP_SCRIPT`: Synchronous inline script for `<head>` to hydrate saved theme and color-scheme attributes before first paint, eliminating theme flash.
 
-### `@pochita/bridge`
+### `@gojona/bridge`
 
 Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, and browser mock environments:
 
@@ -43,9 +43,9 @@ Runtime-aware bridge SDK for embedded Android host WebViews, KernelSU modules, a
   - `useContainerThemeSync(options?)`: React hook providing a stable callback for `<ThemeProvider onThemeSync={...} />` with zero boilerplate, wrapping `createThemeSyncDeduplicator` and delegating to `bridge.sendContainerAction({ type: 'syncTheme', payload })`.
   - `createThemeSyncDeduplicator(send, options?)`: Pure deduplicator suppressing consecutive identical theme payloads. With `includeAppearanceHints: false`, appearance hints (`wantsNativeBlur`, `cornerRadiusPx`) are stripped to preserve daemon authority.
 
-### `@pochita/sideveil-sdk`
+### `@gojona/sideveil-sdk`
 
-Optional React SDK built on top of `@pochita/bridge` for authoring SideVeil sidebar plugins with minimal boilerplate:
+Optional React SDK built on top of `@gojona/bridge` for authoring SideVeil sidebar plugins with minimal boilerplate:
 
 - **Provider & Manifest**: `SideVeilPluginProvider`, `useSideVeilPlugin`, `definePluginManifest`, and `BUILTIN_DIAG_PLUGIN_ID`.
 - **Hooks**: `useContainerAction`, `useBackPress`, `usePluginRpc`, `usePluginStorage`, `usePluginEvent`, `usePluginBackendState`, `useEdgeStatus`, `useNativeHud`, `useDynamicThemeTokens`, `useGraphicsCapabilities`, `useInterPluginBus`, and `useTelemetry`.
@@ -66,31 +66,40 @@ pnpm check
 pnpm dev
 ```
 
-## Integrating External Repositories
+## Installation & Standalone Usage
 
-1. **Compiled `dist/` package exports**: `@pochita/ui`, `@pochita/bridge`, and `@pochita/sideveil-sdk` build standard ESM `dist/*.js` and `dist/*.d.ts` artifacts via `pnpm build` (automatically executed during `prepack` and `pnpm check`), while exposing a `"source": "./src/index.ts"` condition for zero-build monorepo development. External plugins can consume published tarballs/packages directly without relative source path aliases.
-2. **Local linking during active development**: reference `@pochita/ui`, `@pochita/bridge`, `@pochita/sideveil-sdk`, and `@pochita/config` via local workspace or relative file dependencies from a consumer repository's `package.json`.
-3. **Configuring Kit Path with `POCHITA_KIT_ROOT`**: consumer repositories utilizing `createPochitaViteConfig` (or `createWebUIViteConfig`) can override the default relative monorepo path using the `POCHITA_KIT_ROOT` environment variable:
+All packages are published independently to npmjs.org under the `@gojona/*` scope (MIT license) and can be consumed by any React 19 + Tailwind CSS v4 frontend project—with or without SideVeil:
+
+```bash
+# Generic React UI kit + Vite/Biome config (standalone web apps)
+pnpm add @gojona/ui react react-dom lucide-react
+pnpm add -D @gojona/config tailwindcss @tailwindcss/vite vite @vitejs/plugin-react
+
+# Optional: Android WebView / KernelSU bridge and SideVeil plugin SDK
+pnpm add @gojona/bridge @gojona/sideveil-sdk
+
+# Optional: Scheme C cross-language contract compiler CLI
+pnpm add -D @gojona/contracts-gen
+```
+
+1. **Compiled `dist/` package exports**: `@gojona/ui`, `@gojona/bridge`, and `@gojona/sideveil-sdk` ship precompiled ESM `dist/*.js` and `dist/*.d.ts` artifacts alongside `src/styles` (`@gojona/ui/styles.css` includes `@source` directives so Tailwind CSS v4 scans component classes automatically from `node_modules`).
+2. **Vite configuration**: import `createPochitaViteConfig` directly from `@gojona/config` (override `POCHITA_KIT_ROOT` only when linking against a local checkout):
 
    ```javascript
-   import path from 'node:path';
-   import { fileURLToPath } from 'node:url';
-   import { createPochitaViteConfig } from '@pochita/config';
-
-   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-   const kitRoot = process.env.POCHITA_KIT_ROOT
-     ? path.resolve(process.env.POCHITA_KIT_ROOT)
-     : path.resolve(__dirname, '../../../../pochita-webui-kit');
+   import { createPochitaViteConfig } from '@gojona/config';
 
    export default createPochitaViteConfig({
-     kitRoot,
-     server: { fs: { allow: [__dirname, kitRoot] } },
+     surface: 'standalone', // or 'native-glass' for SideVeil drawers
    });
    ```
-4. **Versioned releases**: push this repository to a remote Git origin and pin consumer dependencies to release tags (e.g., `v0.1.0`).
-5. **Adding a theme**: define semantic light/dark CSS custom properties under `packages/ui/src/styles/themes/` and register the theme metadata in `packages/ui/src/theme/registry.ts`.
+3. **Biome preset**: extend `@gojona/config/biome.json` in your `biome.json`.
+4. **Adding a theme**: define semantic light/dark CSS custom properties under `packages/ui/src/styles/themes/` and register the theme metadata in `packages/ui/src/theme/registry.ts` and `packages/config/themes.mjs`.
 
 ## Security Defaults
 
 - **`detectRuntime({ allowUrlOverride })`**: URL query parameter overrides (`?env=host|ksu|mock|browser`) are disabled by default in production and only accepted in development builds when no native bridge global exists. Set `allowUrlOverride: false` to enforce strict denial of query overrides, or `allowUrlOverride: true` in controlled test harnesses.
 - **`HostTransport({ allowedOrigins })`**: Embedded WebView postMessage communication strictly validates event origins against configured `allowedOrigins`. Message payloads and port transfers from untrusted origins are immediately discarded. In Android environments, pin origins to trusted endpoints such as `https://appassets.androidplatform.net`.
+
+## License
+
+Licensed under the [MIT License](./LICENSE).

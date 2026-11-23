@@ -13,7 +13,7 @@ import type {
   PluginBackendState,
   PluginBackendStatePayload,
   PluginScopedEventPayload,
-} from '@pochita/bridge';
+} from '@gojona/bridge';
 import type {
   DynamicThemePalette,
   HostDynamicColorsPayload,

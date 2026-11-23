@@ -1,4 +1,4 @@
-import { useBridge } from '@pochita/bridge';
+import { useBridge } from '@gojona/bridge';
 import {
   Badge,
   Button,
@@ -10,7 +10,7 @@ import {
   LogConsole,
   type LogEntry,
   useToast,
-} from '@pochita/ui';
+} from '@gojona/ui';
 import { TerminalSquare } from 'lucide-react';
 
 export interface BridgeDiagTabProps {
@@ -102,7 +102,7 @@ export function BridgeDiagTab({ logs, onLog, onClearLogs }: BridgeDiagTabProps) 
           <div>
             <CardTitle className="flex items-center gap-1.5">
               <TerminalSquare className="size-4 text-[var(--accent)]" />
-              统一通信基座诊断 (@pochita/bridge)
+              统一通信基座诊断 (@gojona/bridge)
             </CardTitle>
             <CardDescription>
               自动适配嵌入式 WebView 宿主、KernelSU WebUI 与浏览器模拟环境

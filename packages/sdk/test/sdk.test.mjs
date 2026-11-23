@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { createBridge, MockTransport } from '@pochita/bridge';
+import { createBridge, MockTransport } from '@gojona/bridge';
 import React from 'react';
 import {
   BridgeRpcError,

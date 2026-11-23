@@ -9,7 +9,7 @@ import {
   Slider,
   Switch,
   useToast,
-} from '@pochita/ui';
+} from '@gojona/ui';
 import { ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { EdgeHotzoneCanvas } from './EdgeHotzoneCanvas.tsx';

@@ -1,4 +1,4 @@
-import { type BridgeClient, type InvokeOptions, useBridge } from '@pochita/bridge';
+import { type BridgeClient, type InvokeOptions, useBridge } from '@gojona/bridge';
 import { useCallback, useMemo, useRef } from 'react';
 
 /** Parameter and result type pair for a single typed plugin JSON-RPC method. */

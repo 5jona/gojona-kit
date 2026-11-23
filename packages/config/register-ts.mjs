@@ -3,53 +3,60 @@ import { registerHooks } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-function findPackagesRoot() {
+function findMonorepoPackagesRoot() {
   const candidates = [
     path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
-    path.resolve(process.cwd(), '../../../../pochita-webui-kit/packages'),
-    path.resolve(process.cwd(), '../pochita-webui-kit/packages'),
+    ...(process.env.POCHITA_KIT_ROOT
+      ? [path.resolve(process.env.POCHITA_KIT_ROOT, 'packages')]
+      : []),
   ];
-  for (const c of candidates) {
-    if (existsSync(path.resolve(c, 'bridge/src/index.ts'))) {
-      return c;
+  for (const candidate of candidates) {
+    if (
+      existsSync(path.resolve(candidate, 'bridge/src/index.ts')) &&
+      existsSync(path.resolve(candidate, 'sdk/src/index.ts')) &&
+      existsSync(path.resolve(candidate, 'ui/src/index.ts'))
+    ) {
+      return candidate;
     }
   }
-  return candidates[0];
+  return null;
 }
 
-const packagesRoot = findPackagesRoot();
+const monorepoPackagesRoot = findMonorepoPackagesRoot();
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === '@pochita/ui/theme-tokens') {
-      const candidate = path.resolve(packagesRoot, 'ui/src/theme/tokens.ts');
-      if (existsSync(candidate)) {
-        return {
-          url: pathToFileURL(realpathSync(candidate)).href,
-          shortCircuit: true,
-        };
+    if (monorepoPackagesRoot) {
+      if (specifier === '@gojona/ui/theme-tokens') {
+        const candidate = path.resolve(monorepoPackagesRoot, 'ui/src/theme/tokens.ts');
+        if (existsSync(candidate)) {
+          return {
+            url: pathToFileURL(realpathSync(candidate)).href,
+            shortCircuit: true,
+          };
+        }
       }
-    }
 
-    if (specifier === '@pochita/config/themes') {
-      const candidate = path.resolve(packagesRoot, 'config/themes.mjs');
-      if (existsSync(candidate)) {
-        return {
-          url: pathToFileURL(realpathSync(candidate)).href,
-          shortCircuit: true,
-        };
+      if (specifier === '@gojona/config/themes') {
+        const candidate = path.resolve(monorepoPackagesRoot, 'config/themes.mjs');
+        if (existsSync(candidate)) {
+          return {
+            url: pathToFileURL(realpathSync(candidate)).href,
+            shortCircuit: true,
+          };
+        }
       }
-    }
 
-    if (specifier.startsWith('@pochita/') && !specifier.slice('@pochita/'.length).includes('/')) {
-      const pkg = specifier.replace('@pochita/', '');
-      const folder = pkg === 'sideveil-sdk' ? 'sdk' : pkg;
-      const candidate = path.resolve(packagesRoot, folder, 'src/index.ts');
-      if (existsSync(candidate)) {
-        return {
-          url: pathToFileURL(realpathSync(candidate)).href,
-          shortCircuit: true,
-        };
+      if (specifier.startsWith('@gojona/') && !specifier.slice('@gojona/'.length).includes('/')) {
+        const pkg = specifier.slice('@gojona/'.length);
+        const folder = pkg === 'sideveil-sdk' ? 'sdk' : pkg;
+        const candidate = path.resolve(monorepoPackagesRoot, folder, 'src/index.ts');
+        if (existsSync(candidate)) {
+          return {
+            url: pathToFileURL(realpathSync(candidate)).href,
+            shortCircuit: true,
+          };
+        }
       }
     }
 
@@ -59,12 +66,14 @@ registerHooks({
       context.parentURL
     ) {
       const parentDir = path.dirname(fileURLToPath(context.parentURL));
-      const candidate = path.resolve(parentDir, `${specifier}.ts`);
-      if (existsSync(candidate)) {
-        return {
-          url: pathToFileURL(realpathSync(candidate)).href,
-          shortCircuit: true,
-        };
+      for (const ext of ['.ts', '.tsx']) {
+        const candidate = path.resolve(parentDir, `${specifier}${ext}`);
+        if (existsSync(candidate)) {
+          return {
+            url: pathToFileURL(realpathSync(candidate)).href,
+            shortCircuit: true,
+          };
+        }
       }
     }
     return nextResolve(specifier, context);

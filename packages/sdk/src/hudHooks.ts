@@ -1,9 +1,9 @@
-import type { BridgeClient, ContainerEdgeStatus } from '@pochita/bridge';
+import type { BridgeClient, ContainerEdgeStatus } from '@gojona/bridge';
 import {
   applyDynamicCssTokens,
   clearDynamicCssTokens,
   isAllowedDynamicCssToken,
-} from '@pochita/ui/theme-tokens';
+} from '@gojona/ui/theme-tokens';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSideVeilPlugin } from './PluginContext.ts';
 import type { NativeHudScene } from './types.ts';
@@ -104,7 +104,7 @@ export function useNativeHud(): {
 
 /**
  * Applies host-synthesized Material You `Oklch` CSS custom properties (`theme.paletteUpdated`)
- * via `@pochita/ui`'s `applyDynamicCssTokens`/`clearDynamicCssTokens` and returns the
+ * via `@gojona/ui`'s `applyDynamicCssTokens`/`clearDynamicCssTokens` and returns the
  * currently active dynamic token map.
  */
 export function useDynamicThemeState(enabled = true): Readonly<Record<string, string>> {
