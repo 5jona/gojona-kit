@@ -230,6 +230,20 @@ test('lifecycle and network event parsers validate payloads and hooks are export
     {
       foregroundPackage: 'com.example.app',
       foregroundActivity: 'com.example.app/.MainActivity',
+      active: true,
+      scopeActive: true,
+    },
+  );
+  assert.deepEqual(
+    parseScopeChangedEvent({
+      foregroundPackage: 'com.example.app',
+      foregroundActivity: 'com.example.app/.MainActivity',
+      active: true,
+    }),
+    {
+      foregroundPackage: 'com.example.app',
+      foregroundActivity: 'com.example.app/.MainActivity',
+      active: true,
       scopeActive: true,
     },
   );

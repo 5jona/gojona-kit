@@ -152,14 +152,13 @@ export function useSyncedPluginTheme<TThemeId extends string = string, TConfig =
         if (!active) return;
         const appearance = extractPluginAppearance(raw);
         applyAppearance(appearance);
+        setHydrated(true);
         optionsRef.current.onConfigLoaded?.(raw, appearance);
       } catch (err) {
         if (!active) return;
         optionsRef.current.onError?.(
           `config.get failed: ${err instanceof Error ? err.message : String(err)}`,
         );
-      } finally {
-        if (active) setHydrated(true);
       }
     };
     void hydrate();

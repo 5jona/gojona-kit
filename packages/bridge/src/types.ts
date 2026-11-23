@@ -52,11 +52,21 @@ export interface ContainerEdgeStatus {
   clear?: boolean;
 }
 
+export interface GlassTintOverride {
+  tintTopArgb: number;
+  tintBottomArgb: number;
+  rimArgb: number;
+  accentArgb: number;
+  fallbackFillArgb: number;
+  fallbackStrokeArgb: number;
+}
+
 export interface DynamicThemePalettePayload {
   themeId: string;
   isDark: boolean;
   seedArgb: number;
   lumaHint: number;
+  glass?: GlassTintOverride;
   cssTokens: Record<string, string>;
 }
 

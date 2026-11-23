@@ -63,6 +63,7 @@ export {
   DEFAULT_PLUGIN_INVOKE_TIMEOUT_MS,
   type DynamicThemePalettePayload,
   definePluginManifest,
+  type GlassTintOverride,
   type GraphicsCapabilities,
   type HostPluginDiagnosticsPayload,
   type HudBackdropKind,

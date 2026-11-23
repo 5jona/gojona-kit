@@ -112,6 +112,7 @@ export function ThemeProvider({
 
   const onThemeSyncRef = useRef(onThemeSync);
   onThemeSyncRef.current = onThemeSync;
+  const hasOnThemeSync = Boolean(onThemeSync);
   const lastSyncedKeyRef = useRef<string>('');
 
   const surfaceMode = controlledSurfaceMode ?? internalSurfaceMode;
@@ -186,14 +187,14 @@ export function ThemeProvider({
       cornerRadiusPx: theme.defaultCornerRadiusPx,
     };
 
-    if (syncEnabled) {
+    if (syncEnabled && hasOnThemeSync && onThemeSyncRef.current) {
       const syncKey = buildThemeSyncKey(payload);
       if (syncKey !== lastSyncedKeyRef.current) {
         lastSyncedKeyRef.current = syncKey;
-        onThemeSyncRef.current?.(payload);
+        onThemeSyncRef.current(payload);
       }
     }
-  }, [themeId, surfaceMode, colorMode, resolvedScheme, theme, syncEnabled]);
+  }, [themeId, surfaceMode, colorMode, resolvedScheme, theme, syncEnabled, hasOnThemeSync]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({

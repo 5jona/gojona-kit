@@ -29,15 +29,40 @@ export function isTrustedWindowMessage(
 }
 
 /**
- * Manages a dedicated `MessagePort` channel with clean replacement on host reinstall
- * and automatic flushing of queued outgoing messages.
+ * Default maximum number of outgoing RPC payloads buffered by `PortChannel`
+ * before a `MessagePort` is attached.
+ */
+export const MAX_PORT_QUEUE_SIZE = 64;
+
+function matchesQueuedPayload(entry: string, targetPayloadOrId: string): boolean {
+  if (entry === targetPayloadOrId) return true;
+  try {
+    const parsed = JSON.parse(entry) as { id?: unknown };
+    return parsed?.id === targetPayloadOrId;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Manages a dedicated `MessagePort` channel with clean replacement on host reinstall,
+ * bounded outgoing queue capacity, timeout eviction, and automatic flushing.
  */
 export class PortChannel {
   private port: MessagePort | null = null;
   private readonly queuedPayloads: string[] = [];
+  private readonly maxQueueSize: number;
+
+  constructor(maxQueueSize = MAX_PORT_QUEUE_SIZE) {
+    this.maxQueueSize = Math.max(1, maxQueueSize);
+  }
 
   hasPort(): boolean {
     return this.port !== null;
+  }
+
+  getQueueSize(): number {
+    return this.queuedPayloads.length;
   }
 
   attachPort(nextPort: MessagePort, onRawPayload: (raw: unknown) => void): void {
@@ -59,13 +84,26 @@ export class PortChannel {
       return true;
     } catch {
       this.closeCurrentPort();
-      this.queuedPayloads.push(payload);
+      this.enqueue(payload);
       return true;
     }
   }
 
   enqueue(payload: string): void {
+    while (this.queuedPayloads.length >= this.maxQueueSize) {
+      this.queuedPayloads.shift();
+    }
     this.queuedPayloads.push(payload);
+  }
+
+  /**
+   * Evicts a buffered payload matching the serialized JSON string or JSON-RPC request `id`.
+   */
+  evict(payloadOrId: string): boolean {
+    const idx = this.queuedPayloads.findIndex((entry) => matchesQueuedPayload(entry, payloadOrId));
+    if (idx === -1) return false;
+    this.queuedPayloads.splice(idx, 1);
+    return true;
   }
 
   dispose(): void {
@@ -93,7 +131,11 @@ export class PortChannel {
         this.port.postMessage(pending[i]);
       } catch {
         this.closeCurrentPort();
-        this.queuedPayloads.unshift(...pending.slice(i));
+        const remaining = pending.slice(i);
+        this.queuedPayloads.unshift(...remaining);
+        if (this.queuedPayloads.length > this.maxQueueSize) {
+          this.queuedPayloads.splice(0, this.queuedPayloads.length - this.maxQueueSize);
+        }
         return;
       }
     }
@@ -197,13 +239,17 @@ export class WebSocketChannel {
       socket.onclose = () => {
         window.clearTimeout(connectTimer);
         if (this.connectingWs === socket) this.connectingWs = null;
-        if (this.ws === socket) this.ws = null;
+        const wasOpen = this.ws === socket;
+        if (wasOpen) this.ws = null;
         this.connectPromise = null;
         if (!settled) {
           settled = true;
           reject(new Error(`Host WebSocket closed during handshake at ${wsUrl}`));
+          return;
         }
-        this.onClosed();
+        if (wasOpen) {
+          this.onClosed();
+        }
       };
     });
 

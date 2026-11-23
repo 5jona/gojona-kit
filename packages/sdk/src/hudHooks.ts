@@ -1,5 +1,9 @@
 import type { BridgeClient, ContainerEdgeStatus } from '@pochita/bridge';
-import { applyDynamicCssTokens, clearDynamicCssTokens } from '@pochita/ui/theme-tokens';
+import {
+  applyDynamicCssTokens,
+  clearDynamicCssTokens,
+  isAllowedDynamicCssToken,
+} from '@pochita/ui/theme-tokens';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSideVeilPlugin } from './PluginContext.ts';
 import type { NativeHudScene } from './types.ts';
@@ -114,15 +118,29 @@ export function useDynamicThemeState(enabled = true): Readonly<Record<string, st
     }
     const appliedKeys = new Set<string>();
     const unsubscribe = bridge.onThemePalette((palette) => {
-      const applied = applyDynamicCssTokens(palette.cssTokens);
+      const nextMap: Record<string, string> = {};
+      for (const [key, value] of Object.entries(palette.cssTokens)) {
+        if (isAllowedDynamicCssToken(key) && typeof value === 'string' && value.trim().length > 0) {
+          nextMap[key] = value.trim();
+        }
+      }
+      const nextKeys = new Set(Object.keys(nextMap));
+      const staleKeys: string[] = [];
+      for (const prevKey of appliedKeys) {
+        if (!nextKeys.has(prevKey)) {
+          staleKeys.push(prevKey);
+          appliedKeys.delete(prevKey);
+        }
+      }
+      if (staleKeys.length > 0) {
+        clearDynamicCssTokens(staleKeys);
+      }
+      const applied = applyDynamicCssTokens(nextMap);
       for (const key of applied) {
         appliedKeys.add(key);
       }
-      const nextMap: Record<string, string> = {};
-      for (const [key, value] of Object.entries(palette.cssTokens)) {
-        if (key.startsWith('--') && typeof value === 'string' && value.trim().length > 0) {
-          nextMap[key] = value.trim();
-        }
+      for (const key of nextKeys) {
+        appliedKeys.add(key);
       }
       setTokens(nextMap);
     });

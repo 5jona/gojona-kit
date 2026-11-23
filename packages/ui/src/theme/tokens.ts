@@ -41,6 +41,23 @@ export const SEMANTIC_THEME_TOKENS = Object.freeze([
 
 export type SemanticThemeToken = (typeof SEMANTIC_THEME_TOKENS)[number];
 
+/**
+ * Allowlist of semantic CSS custom properties permitted for runtime dynamic injection
+ * via `applyDynamicCssTokens` (e.g. host-synthesized Material You `Oklch` tokens).
+ */
+export const ALLOWED_DYNAMIC_CSS_TOKENS = SEMANTIC_THEME_TOKENS;
+
+const ALLOWED_DYNAMIC_CSS_TOKEN_SET: ReadonlySet<string> = new Set<string>(
+  ALLOWED_DYNAMIC_CSS_TOKENS,
+);
+
+/**
+ * Checks whether a CSS custom property name is in the dynamic theme token allowlist.
+ */
+export function isAllowedDynamicCssToken(tokenName: string): tokenName is SemanticThemeToken {
+  return ALLOWED_DYNAMIC_CSS_TOKEN_SET.has(tokenName);
+}
+
 export interface ThemeTokenEntry {
   token: string;
   resolved: string;
@@ -208,7 +225,7 @@ export function inspectThemeTokens(
 
 /**
  * Applies host-synthesized dynamic CSS custom properties (e.g. Material You Oklch tokens)
- * to the document root, strictly filtering to `--*` custom property names.
+ * to the document root, strictly filtering to allowlisted semantic `--*` custom properties.
  */
 export function applyDynamicCssTokens(
   tokens: Record<string, string>,
@@ -217,7 +234,7 @@ export function applyDynamicCssTokens(
   if (!root) return [];
   const applied: string[] = [];
   for (const [key, value] of Object.entries(tokens)) {
-    if (key.startsWith('--') && typeof value === 'string' && value.trim().length > 0) {
+    if (isAllowedDynamicCssToken(key) && typeof value === 'string' && value.trim().length > 0) {
       root.style.setProperty(key, value.trim());
       applied.push(key);
     }
@@ -234,7 +251,7 @@ export function clearDynamicCssTokens(
 ): void {
   if (!root) return;
   for (const key of tokenNames) {
-    if (key.startsWith('--')) {
+    if (isAllowedDynamicCssToken(key)) {
       root.style.removeProperty(key);
     }
   }

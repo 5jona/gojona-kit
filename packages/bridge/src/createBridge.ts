@@ -52,6 +52,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       ? options.mockTransport.getTraceStore()
       : createTraceStore({ maxEntries: options.traceBufferSize }));
   const unsubscribeOnTrace = options.onTrace ? sharedTraceStore.subscribe(options.onTrace) : null;
+  const ksuTracer = env === 'ksu' ? new BridgeTracer(undefined, undefined, sharedTraceStore) : null;
 
   const hostTransport =
     env === 'host'
@@ -129,9 +130,8 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       return hostTransport.invoke<T>(method, params, callOpts?.timeoutMs);
     }
     if (env === 'ksu') {
-      const ksuTracer = new BridgeTracer(undefined, undefined, sharedTraceStore);
       const startedAt = Date.now();
-      ksuTracer.rpcStart('ksu', undefined, method, startedAt, params);
+      ksuTracer?.rpcStart('ksu', undefined, method, startedAt, params);
       try {
         if (!options.onKsuRpc) {
           throw new Error(
@@ -139,11 +139,11 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
           );
         }
         const res = (await options.onKsuRpc(method, params)) as T;
-        ksuTracer.rpcOk('ksu', undefined, method, startedAt, res);
+        ksuTracer?.rpcOk('ksu', undefined, method, startedAt, res);
         return res;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        ksuTracer.rpcError('ksu', undefined, method, startedAt, msg);
+        ksuTracer?.rpcError('ksu', undefined, method, startedAt, msg);
         throw err;
       }
     }
@@ -161,8 +161,8 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
       const timeoutMs = callOpts?.timeoutMs;
       const invokePayload =
         timeoutMs !== undefined ? { method, params, timeoutMs } : { method, params };
-      const wireTimeoutMs =
-        timeoutMs !== undefined ? timeoutMs + PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS : undefined;
+      const baseTimeoutMs = timeoutMs ?? options.timeoutMs ?? 8000;
+      const wireTimeoutMs = baseTimeoutMs + PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS;
       return hostTransport.invoke<T>('plugin.invoke', invokePayload, wireTimeoutMs);
     }
     if (env === 'ksu') {

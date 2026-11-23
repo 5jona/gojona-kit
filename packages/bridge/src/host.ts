@@ -183,12 +183,14 @@ export class HostTransport {
     const transport = this.getTraceTransport();
     const request: RpcRequest = { jsonrpc: '2.0', id, method, params };
 
+    const serialized = JSON.stringify(request);
     const waitMs = timeoutMs ?? this.defaultTimeoutMs;
     this.tracer.rpcStart(transport, id, method, startedAt, params);
 
     const promise = new Promise<T>((resolve, reject) => {
       const timer = window.setTimeout(() => {
         if (this.pending.delete(id)) {
+          this.portChannel.evict(serialized);
           const error = `RPC "${method}" timed out after ${waitMs}ms`;
           this.tracer.rpcError(transport, id, method, startedAt, error, { timedOut: true });
           reject(new Error(error));
@@ -204,18 +206,21 @@ export class HostTransport {
         timer,
       });
     });
+    // Prevent unhandled rejection if pending entry is rejected before postRaw settles.
+    promise.catch(() => {});
 
     try {
-      await this.postRaw(JSON.stringify(request));
+      await this.postRaw(serialized);
     } catch (err) {
       const pending = this.pending.get(id);
       if (pending) {
         this.pending.delete(id);
         window.clearTimeout(pending.timer);
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.tracer.rpcError(transport, id, method, startedAt, error.message);
+        throw error;
       }
-      const error = err instanceof Error ? err : new Error(String(err));
-      this.tracer.rpcError(transport, id, method, startedAt, error.message);
-      throw error;
+      throw err instanceof Error ? err : new Error(String(err));
     }
 
     return promise;

@@ -8,8 +8,11 @@ import type {
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
   DynamicThemePalettePayload,
+  GlassTintOverride,
   InvokeOptions,
   PluginBackendState,
+  PluginBackendStatePayload,
+  PluginScopedEventPayload,
 } from '@pochita/bridge';
 import type { PluginDescriptor, PluginManifest } from './manifest.ts';
 
@@ -58,11 +61,13 @@ export interface NetworkContextSnapshot {
 
 export interface PanelVisibilityState {
   visible: boolean;
+  state?: string;
 }
 
 export interface ScopeChangedState {
   foregroundPackage: string;
   foregroundActivity: string;
+  active: boolean;
   scopeActive: boolean;
 }
 
@@ -87,6 +92,7 @@ export interface HostPluginDiagnosticsPayload {
   activeHudPluginId?: string | null;
   hostNativeHeapKb?: number | null;
   hostPssKb?: number | null;
+  webviewCrashCount?: number;
 }
 
 export interface PluginAuditReport {
@@ -122,17 +128,6 @@ export interface PluginActiveChangedPayload {
   pluginId: string;
   foregroundPackage: string;
   matchedPluginIds: string[];
-}
-
-export interface PluginBackendStatePayload {
-  pluginId: string;
-  state: PluginBackendState;
-}
-
-export interface PluginScopedEventPayload<T = unknown> {
-  pluginId: string;
-  event: string;
-  payload?: T;
 }
 
 export interface PluginContextValue {
@@ -182,6 +177,9 @@ export type {
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
   DynamicThemePalettePayload,
+  GlassTintOverride,
   InvokeOptions,
   PluginBackendState,
+  PluginBackendStatePayload,
+  PluginScopedEventPayload,
 };

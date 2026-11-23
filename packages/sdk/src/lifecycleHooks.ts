@@ -27,20 +27,29 @@ export function parsePanelVisibilityEvent(raw: unknown): boolean | null {
 
 /**
  * Validates and extracts scope transition fields from a `scope.changed` host event payload.
+ * Reads canonical `active` with backward-compatible fallback to `scopeActive`.
  */
 export function parseScopeChangedEvent(raw: unknown): ScopeChangedState | null {
   if (!raw || typeof raw !== 'object') return null;
   const record = raw as {
     foregroundPackage?: unknown;
     foregroundActivity?: unknown;
+    active?: unknown;
     scopeActive?: unknown;
   };
   if (typeof record.foregroundPackage !== 'string') return null;
+  const active =
+    typeof record.active === 'boolean'
+      ? record.active
+      : typeof record.scopeActive === 'boolean'
+        ? record.scopeActive
+        : false;
   return {
     foregroundPackage: record.foregroundPackage,
     foregroundActivity:
       typeof record.foregroundActivity === 'string' ? record.foregroundActivity : '',
-    scopeActive: typeof record.scopeActive === 'boolean' ? record.scopeActive : false,
+    active,
+    scopeActive: active,
   };
 }
 
@@ -96,6 +105,7 @@ export function parsePluginEventLaggedPayload(raw: unknown): number | null {
 export function usePanelVisibility(): PanelVisibilityState {
   const { bridge } = useSideVeilPlugin();
   const [panelVisible, setPanelVisible] = useState(true);
+  const [panelState, setPanelState] = useState<string | undefined>(undefined);
   const [documentHidden, setDocumentHidden] = useState(() =>
     typeof document === 'undefined' ? false : Boolean(document.hidden),
   );
@@ -105,6 +115,8 @@ export function usePanelVisibility(): PanelVisibilityState {
       const next = parsePanelVisibilityEvent(raw);
       if (next !== null) {
         setPanelVisible(next);
+        const rawState = (raw as { state?: unknown }).state;
+        setPanelState(typeof rawState === 'string' ? rawState : undefined);
       }
     });
   }, [bridge]);
@@ -121,7 +133,10 @@ export function usePanelVisibility(): PanelVisibilityState {
   }, []);
 
   const visible = panelVisible && !documentHidden;
-  return useMemo(() => ({ visible }), [visible]);
+  return useMemo(
+    () => (panelState !== undefined ? { visible, state: panelState } : { visible }),
+    [visible, panelState],
+  );
 }
 
 /**
@@ -132,6 +147,7 @@ export function useScopeChanged(): ScopeChangedState {
   const [scope, setScope] = useState<ScopeChangedState>({
     foregroundPackage: '',
     foregroundActivity: '',
+    active: false,
     scopeActive: false,
   });
 

@@ -67,7 +67,7 @@ export function useContainerThemeSync(
     () =>
       createThemeSyncDeduplicator(
         (payload) => {
-          void bridge.sendContainerAction({ type: 'syncTheme', payload });
+          void bridge.sendContainerAction({ type: 'syncTheme', payload }).catch(() => {});
         },
         { includeAppearanceHints },
       ),

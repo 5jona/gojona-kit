@@ -89,7 +89,15 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
   const wsUrl = options?.wsUrl;
   const mockNamespace = options?.mockNamespace;
   const timeoutMs = options?.timeoutMs;
+  const traceBufferSize = options?.traceBufferSize;
+  const traceStore = options?.traceStore;
   const allowedOriginsKey = options?.allowedOrigins?.join('\u0000') ?? '';
+  const hasOnMockExec = Boolean(options?.onMockExec);
+  const hasOnMockRpc = Boolean(options?.onMockRpc);
+  const hasOnMockPluginInvoke = Boolean(options?.onMockPluginInvoke);
+  const hasOnKsuRpc = Boolean(options?.onKsuRpc);
+  const hasOnMockContainerAction = Boolean(options?.onMockContainerAction);
+  const hasOnTrace = Boolean(options?.onTrace);
 
   const bridge = useMemo(() => {
     if (client) return client;
@@ -101,29 +109,41 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
       wsUrl,
       mockNamespace,
       timeoutMs,
+      traceBufferSize,
+      traceStore,
       allowedOrigins: allowedOriginsKey ? allowedOriginsKey.split('\u0000') : undefined,
-      onMockExec: (cmd, execOpts) =>
-        callbacksRef.current.onMockExec
-          ? callbacksRef.current.onMockExec(cmd, execOpts)
-          : runMockExec(mockNamespace ?? 'default', cmd, execOpts),
-      onMockRpc: (method, params) =>
-        callbacksRef.current.onMockRpc
-          ? callbacksRef.current.onMockRpc(method, params)
-          : runMockRpc(mockNamespace ?? 'default', method, params),
-      onMockPluginInvoke: (method, params) =>
-        callbacksRef.current.onMockPluginInvoke
-          ? callbacksRef.current.onMockPluginInvoke(method, params)
-          : runMockRpc(mockNamespace ?? 'default', `plugin.invoke:${method}`, params),
-      onKsuRpc: (method, params) => {
-        if (callbacksRef.current.onKsuRpc) {
-          return callbacksRef.current.onKsuRpc(method, params);
-        }
-        throw new Error(
-          `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
-        );
-      },
-      onMockContainerAction: (action) => callbacksRef.current.onMockContainerAction?.(action),
-      onTrace: (entry) => callbacksRef.current.onTrace?.(entry),
+      onMockExec: hasOnMockExec
+        ? (cmd, execOpts) =>
+            callbacksRef.current.onMockExec
+              ? callbacksRef.current.onMockExec(cmd, execOpts)
+              : runMockExec(mockNamespace ?? 'default', cmd, execOpts)
+        : undefined,
+      onMockRpc: hasOnMockRpc
+        ? (method, params) =>
+            callbacksRef.current.onMockRpc
+              ? callbacksRef.current.onMockRpc(method, params)
+              : runMockRpc(mockNamespace ?? 'default', method, params)
+        : undefined,
+      onMockPluginInvoke: hasOnMockPluginInvoke
+        ? (method, params) =>
+            callbacksRef.current.onMockPluginInvoke
+              ? callbacksRef.current.onMockPluginInvoke(method, params)
+              : runMockRpc(mockNamespace ?? 'default', `plugin.invoke:${method}`, params)
+        : undefined,
+      onKsuRpc: hasOnKsuRpc
+        ? (method, params) => {
+            if (callbacksRef.current.onKsuRpc) {
+              return callbacksRef.current.onKsuRpc(method, params);
+            }
+            throw new Error(
+              `JSON-RPC invoke("${method}") is not supported in KernelSU mode unless onKsuRpc is provided`,
+            );
+          }
+        : undefined,
+      onMockContainerAction: hasOnMockContainerAction
+        ? (action) => callbacksRef.current.onMockContainerAction?.(action)
+        : undefined,
+      onTrace: hasOnTrace ? (entry) => callbacksRef.current.onTrace?.(entry) : undefined,
     });
   }, [
     client,
@@ -134,7 +154,15 @@ export function BridgeProvider({ options, client, children }: BridgeProviderProp
     wsUrl,
     mockNamespace,
     timeoutMs,
+    traceBufferSize,
+    traceStore,
     allowedOriginsKey,
+    hasOnMockExec,
+    hasOnMockRpc,
+    hasOnMockPluginInvoke,
+    hasOnKsuRpc,
+    hasOnMockContainerAction,
+    hasOnTrace,
   ]);
 
   useEffect(() => {

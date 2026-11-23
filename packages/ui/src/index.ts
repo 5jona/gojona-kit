@@ -89,10 +89,12 @@ export {
   useTheme,
 } from './theme/ThemeProvider.tsx';
 export {
+  ALLOWED_DYNAMIC_CSS_TOKENS,
   applyDynamicCssTokens,
   clearDynamicCssTokens,
   colorWithAlpha,
   inspectThemeTokens,
+  isAllowedDynamicCssToken,
   readThemeToken,
   SEMANTIC_THEME_TOKENS,
   type SemanticThemeToken,

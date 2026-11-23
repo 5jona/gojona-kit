@@ -17,6 +17,12 @@ export {
   registerMockRpc,
 } from './mock.ts';
 export {
+  isTrustedWindowMessage,
+  MAX_PORT_QUEUE_SIZE,
+  PortChannel,
+  WebSocketChannel,
+} from './portChannel.ts';
+export {
   type ContainerThemeSyncOptions,
   createThemeSyncDeduplicator,
   type ThemeSyncDeduplicator,
@@ -60,6 +66,7 @@ export type {
   EmbeddedHostGlobal,
   ExecOptions,
   ExecResult,
+  GlassTintOverride,
   HostEvent,
   HostEventListener,
   InvokeOptions,
