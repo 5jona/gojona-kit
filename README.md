@@ -1,19 +1,23 @@
 # pochita-webui-kit
 
-Reusable React UI kit, multi-theme design system, host runtime bridge, and shared Vite build preset for Android WebView overlays, KernelSU WebUI modules, and standalone browser dashboards.
+Reusable React UI kit, multi-theme design system, host runtime bridge, contract compiler, and shared Vite build preset for Android WebView overlays, KernelSU WebUI modules, and standalone browser dashboards.
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the package dependency DAG, primitive lookup matrix, transport/theme pipelines, and Scheme C contract-first codegen rules.
 
 ## Packages
 
 ```text
 pochita-webui-kit/
 ├── packages/
-│   ├── config/      # @pochita/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
-│   ├── bridge/      # @pochita/bridge: Host WebView / KernelSU / Browser Mock transport SDK
-│   ├── sdk/         # @pochita/sideveil-sdk: optional React plugin SDK for SideVeil sidebar plugins
-│   └── ui/          # @pochita/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
+│   ├── config/        # @pochita/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
+│   ├── contracts-gen/ # @pochita/contracts-gen: deterministic Rust/Kotlin/TS/JSON Schema contract compiler & validator
+│   ├── bridge/        # @pochita/bridge: Host WebView / KernelSU / Browser Mock transport SDK
+│   ├── sdk/           # @pochita/sideveil-sdk: optional React plugin SDK for SideVeil sidebar plugins
+│   └── ui/            # @pochita/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
 ├── apps/
-│   └── playground/  # @pochita/playground: dual-viewport and live theme workbench
-└── AGENTS.md        # Repository agent & engineering guidelines
+│   └── playground/    # @pochita/playground: dual-viewport and live theme workbench
+├── ARCHITECTURE.md    # Architecture DAG, primitive lookup matrix, and contract-first workflow
+└── AGENTS.md          # Repository agent & engineering guidelines
 ```
 
 ### `@pochita/ui`

@@ -5,7 +5,7 @@ pnpm = "12.22.0"
 dir = "{{config_root}}"
 
 [tasks.lint]
-description = "Run Biome lint and format check across workspace"
+description = "Run Biome lint and format check across workspace (see ARCHITECTURE.md)"
 run = "pnpm lint"
 
 [tasks.format]
@@ -17,13 +17,13 @@ description = "Run TypeScript typecheck across all workspace packages"
 run = "pnpm typecheck"
 
 [tasks.test]
-description = "Run Node unit tests across workspace packages"
+description = "Run Node unit tests across workspace packages (including @pochita/contracts-gen and standards)"
 run = "pnpm test"
 
 [tasks.build]
-description = "Build playground application"
+description = "Build workspace package dist/ artifacts and playground application"
 run = "pnpm build"
 
 [tasks.check]
-description = "Run Biome check, typecheck, unit tests, and playground build"
+description = "Run full verification gate (lint, build, typecheck, test; see ARCHITECTURE.md)"
 run = "pnpm check"
