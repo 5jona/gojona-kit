@@ -18,6 +18,8 @@ export {
   type EdgeSide,
   PANEL_STATE_VALUES,
   type PanelState,
+  RUNTIME_MODE_VALUES,
+  type RuntimeMode,
   SCOPE_MODE_VALUES,
   type ScopeMode,
   SIDEVEIL_CONFIG_BOUNDS,
@@ -25,6 +27,7 @@ export {
 } from './generated/sideveilConfig.ts';
 export {
   SIDEVEIL_BUILTIN_DIAGNOSTIC,
+  SIDEVEIL_BUILTIN_TEST_PLUGINS,
   SIDEVEIL_ERROR_CODES,
   SIDEVEIL_EVENTS,
   SIDEVEIL_HUD_DEFAULTS,

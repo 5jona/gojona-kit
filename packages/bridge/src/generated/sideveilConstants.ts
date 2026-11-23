@@ -82,6 +82,7 @@ export const SIDEVEIL_METHODS = {
   DEBUG_SET_WEBVIEW_DEBUGGING: 'debug.setWebViewDebugging',
   DEBUG_CDP_STATUS: 'debug.cdpStatus',
   DEBUG_RESET_FRAME_METRICS: 'debug.resetFrameMetrics',
+  DEBUG_SET_RUNTIME_MODE: 'debug.setRuntimeMode',
 } as const;
 
 /** JSON-RPC 2.0 and SideVeil domain error codes. */
@@ -114,6 +115,13 @@ export const SIDEVEIL_BUILTIN_DIAGNOSTIC = {
   SURFACE_BACKDROP: 'native-glass',
   CAPABILITY_STORAGE: 'storage',
   CAPABILITY_TOAST: 'toast',
+} as const;
+
+/** Canonical plugin IDs for source-level built-in test and demo plugins gated by runtimeMode. */
+export const SIDEVEIL_BUILTIN_TEST_PLUGINS = {
+  DIAGNOSTIC: 'sideveil.diagnostic',
+  VELLO_SCOPE: 'example.vello-scope',
+  NATIVE_PERF_HUD: 'example.native-perf-hud',
 } as const;
 
 /** Bounded RPC forwarding timeout limits and plugin event lag sub-event name. */
