@@ -22,7 +22,7 @@ export {
 };
 
 /**
- * Default root directory of the `pochita-webui-kit` monorepo, derived from `import.meta.url`.
+ * Default root directory of the `gojona-kit` monorepo, derived from `import.meta.url`.
  */
 export const DEFAULT_KIT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 

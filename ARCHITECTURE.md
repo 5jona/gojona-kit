@@ -1,6 +1,6 @@
 # Pochita WebUI Kit — Architecture & Navigation Map
 
-`pochita-webui-kit` is the shared monorepo providing the React design system, multi-runtime host transport bridge, SideVeil plugin SDK, build/lint presets, and deterministic cross-language contract compiler used across Android WebView overlays, KernelSU WebUI modules, and standalone browser previews.
+`gojona-kit` is the shared monorepo providing the React design system, multi-runtime host transport bridge, SideVeil plugin SDK, build/lint presets, and deterministic cross-language contract compiler used across Android WebView overlays, KernelSU WebUI modules, and standalone browser previews.
 
 ## 1. Repository Layout & Entry Points
 

@@ -1,17 +1,17 @@
 {
   "name": "@gojona/config",
   "version": "0.1.0",
-  "description": "Shared Vite + React + Tailwind v4 preset, Biome config, Node TS test hook, and theme bootstrap SSOT for pochita-webui-kit.",
+  "description": "Shared Vite + React + Tailwind v4 preset, Biome config, Node TS test hook, and theme bootstrap SSOT for gojona-kit.",
   "license": "MIT",
   "author": "5jona",
   "repository": {
     "type": "git",
-    "url": "https://github.com/5jona/pochita-webui-kit.git",
+    "url": "https://github.com/5jona/gojona-kit.git",
     "directory": "packages/config"
   },
-  "homepage": "https://github.com/5jona/pochita-webui-kit#readme",
+  "homepage": "https://github.com/5jona/gojona-kit#readme",
   "bugs": {
-    "url": "https://github.com/5jona/pochita-webui-kit/issues"
+    "url": "https://github.com/5jona/gojona-kit/issues"
   },
   "keywords": [
     "vite",

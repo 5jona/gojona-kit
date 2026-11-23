@@ -6,12 +6,12 @@
   "author": "5jona",
   "repository": {
     "type": "git",
-    "url": "https://github.com/5jona/pochita-webui-kit.git",
+    "url": "https://github.com/5jona/gojona-kit.git",
     "directory": "packages/sdk"
   },
-  "homepage": "https://github.com/5jona/pochita-webui-kit#readme",
+  "homepage": "https://github.com/5jona/gojona-kit#readme",
   "bugs": {
-    "url": "https://github.com/5jona/pochita-webui-kit/issues"
+    "url": "https://github.com/5jona/gojona-kit/issues"
   },
   "keywords": [
     "sideveil",

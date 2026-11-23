@@ -1,4 +1,4 @@
-# pochita-webui-kit
+# gojona-kit
 
 Reusable React UI kit, multi-theme design system, host runtime bridge, contract compiler, and shared Vite build preset for Android WebView overlays, KernelSU WebUI modules, and standalone browser dashboards.
 
@@ -7,7 +7,7 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the package dependency DAG, primi
 ## Packages
 
 ```text
-pochita-webui-kit/
+gojona-kit/
 ├── packages/
 │   ├── config/        # @gojona/config: shared Vite + React + Tailwind v4 preset, Biome base config, Node TS hook
 │   ├── contracts-gen/ # @gojona/contracts-gen: deterministic Rust/Kotlin/TS/JSON Schema contract compiler & validator

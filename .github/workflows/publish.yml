@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -34,14 +33,19 @@ jobs:
       - name: Run full verification gate
         run: pnpm check
 
-      - name: Publish unpublished packages to npmjs.org
+      - name: Publish unpublished packages to npmjs.org (OIDC Trusted Publishing / NPM_TOKEN)
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "[*] NPM_TOKEN secret not configured — skipping automated npm publish."
-            exit 0
+          set -euo pipefail
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "[*] Using NPM_TOKEN secret for npm authentication."
+            printf '//registry.npmjs.org/:_authToken=%s\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
+            chmod 0600 "${HOME}/.npmrc"
+          else
+            echo "[*] Using GitHub Actions OIDC Trusted Publishing (--provenance)."
           fi
+
           for dir in packages/config packages/contracts-gen packages/bridge packages/ui packages/sdk; do
             pkg_name="$(node -p "require('./${dir}/package.json').name")"
             pkg_ver="$(node -p "require('./${dir}/package.json').version")"
@@ -49,7 +53,7 @@ jobs:
               echo "[*] ${pkg_name}@${pkg_ver} already published on npmjs.org — skipping."
             else
               echo "[*] Publishing ${pkg_name}@${pkg_ver}..."
-              pnpm --dir "${dir}" publish --access public --no-git-checks
+              pnpm --dir "${dir}" publish --access public --provenance --no-git-checks
             fi
           done
 
@@ -58,11 +62,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "[*] Release ${TAG} already exists."
           else
             gh release create "${TAG}" \
-              --title "pochita-webui-kit ${TAG}" \
+              --title "gojona-kit ${TAG}" \
               --generate-notes
           fi
