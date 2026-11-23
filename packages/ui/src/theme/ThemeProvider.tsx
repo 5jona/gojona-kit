@@ -64,6 +64,9 @@ function updateMetaColorScheme(mode: ColorMode): void {
   }
 }
 
+/**
+ * Active theme and color-scheme state exposed by `useTheme()`.
+ */
 export interface ThemeContextValue {
   themeId: ThemeId;
   theme: ThemeDefinition;
@@ -78,6 +81,9 @@ export interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+/**
+ * Props for `<ThemeProvider>`.
+ */
 export interface ThemeProviderProps {
   defaultTheme?: ThemeId;
   defaultColorMode?: ColorMode;
@@ -94,6 +100,10 @@ export interface ThemeProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Root theme provider managing `data-theme`, `data-surface`, `data-color-scheme`,
+ * `<meta name="color-scheme">`, `localStorage` persistence, and host container synchronization.
+ */
 export function ThemeProvider({
   defaultTheme = 'coloros-glass',
   defaultColorMode = 'system',
@@ -224,6 +234,9 @@ export function ThemeProvider({
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+/**
+ * Accesses the active `<ThemeProvider>` context value.
+ */
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {

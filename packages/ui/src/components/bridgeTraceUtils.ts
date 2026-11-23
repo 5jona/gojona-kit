@@ -1,3 +1,6 @@
+/**
+ * Normalized bridge trace record consumed by `<BridgeTraceInspector>`.
+ */
 export interface BridgeTraceEntry {
   id?: string;
   kind?: string;
@@ -17,16 +20,28 @@ export interface BridgeTraceEntry {
   payloadPreview?: unknown;
 }
 
+/**
+ * Filter mode for `<BridgeTraceInspector>`.
+ */
 export type BridgeTraceFilter = 'all' | 'error' | 'slow';
 
+/**
+ * Default duration threshold in milliseconds above which an RPC trace entry is flagged as slow.
+ */
 export const DEFAULT_SLOW_THRESHOLD_MS = 300;
 
+/**
+ * Built-in filter pill options for `<BridgeTraceInspector>`.
+ */
 export const TRACE_FILTER_OPTIONS: ReadonlyArray<{ value: BridgeTraceFilter; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'error', label: '仅错误' },
   { value: 'slow', label: '慢请求' },
 ];
 
+/**
+ * Determines whether a trace entry represents an RPC or transport error/timeout.
+ */
 export function isTraceError(entry: BridgeTraceEntry): boolean {
   return (
     entry.ok === false ||
@@ -39,6 +54,9 @@ export function isTraceError(entry: BridgeTraceEntry): boolean {
   );
 }
 
+/**
+ * Determines whether a trace entry's duration meets or exceeds `slowThresholdMs`.
+ */
 export function isTraceSlow(
   entry: BridgeTraceEntry,
   slowThresholdMs = DEFAULT_SLOW_THRESHOLD_MS,
@@ -46,16 +64,25 @@ export function isTraceSlow(
   return typeof entry.durationMs === 'number' && entry.durationMs >= slowThresholdMs;
 }
 
+/**
+ * Returns the primary display label (`method`, `event`, `kind`, or `phase`) for a trace row.
+ */
 export function getTraceLabel(entry: BridgeTraceEntry): string {
   return entry.method ?? entry.event ?? entry.kind ?? entry.phase ?? 'trace';
 }
 
+/**
+ * Extracts a numeric epoch timestamp in milliseconds from a trace entry.
+ */
 export function getTraceTimestampMs(entry: BridgeTraceEntry): number | null {
   if (typeof entry.timestampMs === 'number') return entry.timestampMs;
   if (typeof entry.timestamp === 'number') return entry.timestamp;
   return null;
 }
 
+/**
+ * Formats a trace entry's timestamp as `HH:mm:ss.SSS`.
+ */
 export function formatTraceTimestamp(entry: BridgeTraceEntry): string {
   const ts = getTraceTimestampMs(entry);
   if (ts === null) return '--:--:--';
@@ -68,12 +95,18 @@ export function formatTraceTimestamp(entry: BridgeTraceEntry): string {
   return `${hh}:${mm}:${ss}.${ms}`;
 }
 
+/**
+ * Aggregated counts of total, error, and slow trace entries.
+ */
 export interface TraceSummary {
   total: number;
   errors: number;
   slow: number;
 }
 
+/**
+ * Computes total, error, and slow entry counts across a trace list.
+ */
 export function summarizeTraceEntries(
   entries: readonly BridgeTraceEntry[],
   slowThresholdMs = DEFAULT_SLOW_THRESHOLD_MS,
@@ -87,12 +120,18 @@ export function summarizeTraceEntries(
   return { total: entries.length, errors, slow };
 }
 
+/**
+ * Criteria accepted by `filterTraceEntries`.
+ */
 export interface TraceFilterCriteria {
   filter?: BridgeTraceFilter;
   query?: string;
   slowThresholdMs?: number;
 }
 
+/**
+ * Filters trace entries by status category (`all` | `error` | `slow`) and search query.
+ */
 export function filterTraceEntries(
   entries: readonly BridgeTraceEntry[],
   criteria: TraceFilterCriteria = {},
@@ -120,6 +159,9 @@ export function filterTraceEntries(
   });
 }
 
+/**
+ * Formats a sanitized trace payload preview as pretty-printed JSON.
+ */
 export function formatTracePayload(payloadPreview: unknown): string {
   if (payloadPreview === undefined) return '';
   if (typeof payloadPreview === 'string') return payloadPreview;
@@ -130,6 +172,9 @@ export function formatTracePayload(payloadPreview: unknown): string {
   }
 }
 
+/**
+ * Resolves a localized badge label and semantic tone for a trace entry's phase.
+ */
 export function resolveTracePhaseBadge(entry: BridgeTraceEntry): {
   label: string;
   variant: 'neutral' | 'accent' | 'success' | 'warning' | 'danger';

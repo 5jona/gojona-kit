@@ -1,7 +1,13 @@
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Semantic fill tone for `<ProgressBar>`.
+ */
 export type ProgressBarTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
 
+/**
+ * Props for `<ProgressBar>`.
+ */
 export interface ProgressBarProps {
   /** Completion percentage between 0 and 100. */
   value: number;

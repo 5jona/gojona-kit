@@ -1,11 +1,17 @@
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Quick preset pill definition for `<Slider>`.
+ */
 export interface SliderPreset {
   label: string;
   value: number;
 }
 
+/**
+ * Props for `<Slider>`.
+ */
 export interface SliderProps {
   label?: string;
   value: number;
@@ -22,6 +28,10 @@ export interface SliderProps {
   'data-testid'?: string;
 }
 
+/**
+ * Accessible range slider built on `@radix-ui/react-slider` with optional quick-preset pills
+ * and commit callback support.
+ */
 export function Slider({
   label,
   value,
@@ -75,10 +85,9 @@ export function Slider({
               }
             : undefined
         }
-        aria-label={label ?? '滑块'}
         className="relative flex h-6 w-full touch-none select-none items-center data-[disabled]:opacity-45"
       >
-        <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-[var(--radius-pill)] bg-[var(--surface-elevated)] border border-[var(--border-hairline)]">
+        <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)]">
           <SliderPrimitive.Range className="absolute h-full rounded-[var(--radius-pill)] bg-[var(--accent)]" />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb

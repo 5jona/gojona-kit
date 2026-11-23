@@ -1,6 +1,9 @@
 import type { HTMLAttributes } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Semantic glass card surface bound to `--surface-card`, `--border-hairline`, and `--radius-card`.
+ */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
@@ -14,6 +17,9 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   );
 }
 
+/**
+ * Header row container for `<Card>`, aligning title/description on the left and trailing actions on the right.
+ */
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
@@ -24,6 +30,9 @@ export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElemen
   );
 }
 
+/**
+ * Primary heading for a `<Card>` section.
+ */
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
@@ -34,6 +43,9 @@ export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingEle
   );
 }
 
+/**
+ * Secondary subtitle or helper copy displayed beneath `<CardTitle>`.
+ */
 export function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
@@ -44,6 +56,11 @@ export function CardDescription({ className, ...props }: HTMLAttributes<HTMLPara
   );
 }
 
+/**
+ * Vertical flex content container for `<Card>` children.
+ */
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-pochita="card-content" className={cn('space-y-3', className)} {...props} />;
+  return (
+    <div data-pochita="card-content" className={cn('flex flex-col gap-3', className)} {...props} />
+  );
 }

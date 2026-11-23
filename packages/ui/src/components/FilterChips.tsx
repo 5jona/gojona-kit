@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Single chip option descriptor for `<FilterChips>`.
+ */
 export interface FilterChipOption<T extends string = string> {
   value: T;
   label: string;
@@ -9,6 +12,9 @@ export interface FilterChipOption<T extends string = string> {
   disabled?: boolean;
 }
 
+/**
+ * Single-select props for `<FilterChips>`.
+ */
 export interface FilterChipsSingleProps<T extends string = string> {
   options: readonly FilterChipOption<T>[];
   selected: T;
@@ -19,6 +25,9 @@ export interface FilterChipsSingleProps<T extends string = string> {
   'data-testid'?: string;
 }
 
+/**
+ * Multi-select props for `<FilterChips>`.
+ */
 export interface FilterChipsMultiProps<T extends string = string> {
   options: readonly FilterChipOption<T>[];
   selected: readonly T[];
@@ -29,6 +38,9 @@ export interface FilterChipsMultiProps<T extends string = string> {
   'data-testid'?: string;
 }
 
+/**
+ * Union of single-select and multi-select props for `<FilterChips>`.
+ */
 export type FilterChipsProps<T extends string = string> =
   | FilterChipsSingleProps<T>
   | FilterChipsMultiProps<T>;

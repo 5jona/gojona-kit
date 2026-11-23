@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import React from 'react';
 import {
+  BridgeProvider,
   BridgeRpcError,
   createBridge,
   createDeferredBridgeDisposer,
+  createTraceStore,
   HostTransport,
   MockTransport,
   PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS,
+  PortChannel,
 } from '../src/index.ts';
 
 class FakeHostWindow extends EventTarget {
@@ -297,4 +301,239 @@ test('createBridge isolates onPluginEvent and onPluginBackendState by pluginId a
   unsubEvent();
   unsubState();
   bridge.dispose();
+});
+
+function createProviderBridge(options) {
+  const internals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const prevDispatcher = internals.H;
+  internals.H = {
+    useRef: (init) => ({ current: init }),
+    useMemo: (fn) => fn(),
+    useEffect: () => {},
+  };
+  try {
+    const element = BridgeProvider({ options });
+    return element.props.value;
+  } finally {
+    internals.H = prevDispatcher;
+  }
+}
+
+test('BridgeProvider forwards traceStore/traceBufferSize and only passes optional RPC/mock callbacks when provided', async () => {
+  // 1. KSU mode without onMockPluginInvoke or onKsuRpc must NOT be hijacked into mock mode
+  const ksuBareBridge = createProviderBridge({ forceEnv: 'ksu' });
+  await assert.rejects(
+    () => ksuBareBridge.invokePlugin('daemon.status'),
+    /not supported in KernelSU mode unless onMockPluginInvoke or onKsuRpc is provided/,
+  );
+  ksuBareBridge.dispose();
+
+  // 2. KSU mode with onKsuRpc forwards plugin.invoke:<method> to onKsuRpc
+  const ksuCalls = [];
+  const ksuRpcBridge = createProviderBridge({
+    forceEnv: 'ksu',
+    onKsuRpc: (method, params) => {
+      ksuCalls.push({ method, params });
+      return { handledByKsu: true };
+    },
+  });
+  const ksuRes = await ksuRpcBridge.invokePlugin('daemon.status', { verbose: true });
+  assert.deepEqual(ksuRes, { handledByKsu: true });
+  assert.deepEqual(ksuCalls, [
+    { method: 'plugin.invoke:daemon.status', params: { verbose: true } },
+  ]);
+  ksuRpcBridge.dispose();
+
+  // 3. Mock mode without onMockPluginInvoke preserves mockTransport.registerHandler('plugin.invoke:*')
+  const mockTransport = new MockTransport();
+  mockTransport.registerHandler('plugin.invoke:custom.action', (params) => ({
+    fromHandler: true,
+    params,
+  }));
+  const mockBridge = createProviderBridge({
+    forceEnv: 'mock',
+    mockTransport,
+  });
+  const mockRes = await mockBridge.invokePlugin('custom.action', { id: 7 });
+  assert.deepEqual(mockRes, { fromHandler: true, params: { id: 7 } });
+  mockBridge.dispose();
+  mockTransport.dispose();
+
+  // 4. BridgeProvider forwards traceStore and traceBufferSize to createBridge
+  const traceStore = createTraceStore({ maxEntries: 12 });
+  const tracedBridge = createProviderBridge({
+    forceEnv: 'mock',
+    traceStore,
+    traceBufferSize: 12,
+  });
+  await tracedBridge.invoke('daemon.ping');
+  assert.equal(traceStore.getEntries().length, 2);
+  assert.equal(tracedBridge.getTraceEntries().length, 2);
+  tracedBridge.dispose();
+});
+
+test('PortChannel bounds queue capacity and evicts timed-out payloads before port attaches', async () => {
+  const channel = new PortChannel(3);
+  channel.enqueue(JSON.stringify({ id: 'rpc_1', method: 'm1' }));
+  channel.enqueue(JSON.stringify({ id: 'rpc_2', method: 'm2' }));
+  channel.enqueue(JSON.stringify({ id: 'rpc_3', method: 'm3' }));
+  channel.enqueue(JSON.stringify({ id: 'rpc_4', method: 'm4' }));
+  assert.equal(channel.getQueueSize(), 3);
+
+  // Evict by request id
+  assert.equal(channel.evict('rpc_3'), true);
+  assert.equal(channel.evict('rpc_nonexistent'), false);
+  assert.equal(channel.getQueueSize(), 2);
+
+  const flushed = [];
+  const mc = new MessageChannel();
+  mc.port1.onmessage = (ev) => {
+    flushed.push(JSON.parse(String(ev.data)).id);
+  };
+  mc.port1.start();
+  channel.attachPort(mc.port2, () => {});
+  await new Promise((r) => setTimeout(r, 15));
+  assert.deepEqual(flushed, ['rpc_2', 'rpc_4']);
+  mc.port1.close();
+  mc.port2.close();
+  channel.dispose();
+
+  // End-to-end HostTransport timeout eviction before port attachment
+  const originalWindow = globalThis.window;
+  const fakeWindow = new FakeHostWindow();
+  globalThis.window = fakeWindow;
+  try {
+    const transport = new HostTransport({
+      allowedOrigins: [fakeWindow.location.origin],
+      timeoutMs: 25,
+    });
+
+    await assert.rejects(() => transport.invoke('timed.out.op'), /timed out after 25ms/);
+    const livePromise = transport.invoke('live.op', undefined, 1000);
+
+    const hostMc = new MessageChannel();
+    const receivedMethods = [];
+    hostMc.port1.onmessage = (ev) => {
+      const req = JSON.parse(String(ev.data));
+      receivedMethods.push(req.method);
+      hostMc.port1.postMessage(
+        JSON.stringify({ jsonrpc: '2.0', id: req.id, result: { method: req.method } }),
+      );
+    };
+    hostMc.port1.start();
+    fakeWindow.dispatchEvent(
+      new MessageEvent('message', { origin: '', source: null, data: '', ports: [hostMc.port2] }),
+    );
+
+    const liveRes = await livePromise;
+    assert.deepEqual(liveRes, { method: 'live.op' });
+    assert.deepEqual(receivedMethods, ['live.op']);
+
+    hostMc.port1.close();
+    hostMc.port2.close();
+    transport.dispose();
+  } finally {
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
+});
+
+test('createBridge adds PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS even when invokePlugin omits timeoutMs and avoids WS handshake unhandled rejections', async () => {
+  const originalWindow = globalThis.window;
+  const originalWebSocket = globalThis.WebSocket;
+
+  class FakeWindow extends FakeHostWindow {
+    constructor() {
+      super();
+      this.scheduledTimeouts = [];
+      this.setTimeout = (fn, ms) => {
+        this.scheduledTimeouts.push(ms);
+        return setTimeout(fn, ms);
+      };
+      this.sentPayloads = [];
+      this.__POCHITA_HOST__ = {
+        postMessage: (msg) => {
+          this.sentPayloads.push(JSON.parse(msg));
+        },
+      };
+    }
+  }
+
+  const fakeWindow = new FakeWindow();
+  globalThis.window = fakeWindow;
+
+  try {
+    const bridge = createBridge({
+      forceEnv: 'host',
+      pluginId: 'demo',
+      allowedOrigins: [fakeWindow.location.origin],
+    });
+
+    const callPromise = bridge.invokePlugin('default.margin.op', { key: 'val' });
+    assert.equal(fakeWindow.sentPayloads.length, 1);
+    const req = fakeWindow.sentPayloads[0];
+    assert.deepEqual(req.params, { method: 'default.margin.op', params: { key: 'val' } });
+    // Default 8000ms + 2000ms wire margin = 10000ms
+    assert.equal(fakeWindow.scheduledTimeouts.at(-1), 8000 + PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS);
+
+    fakeWindow.dispatchEvent(
+      new MessageEvent('message', {
+        origin: fakeWindow.location.origin,
+        data: JSON.stringify({ jsonrpc: '2.0', id: req.id, result: { ok: true } }),
+      }),
+    );
+    assert.deepEqual(await callPromise, { ok: true });
+    bridge.dispose();
+
+    // WebSocket closing during handshake must reject cleanly without unhandledRejection
+    delete fakeWindow.__POCHITA_HOST__;
+    class ClosingHandshakeWebSocket {
+      static OPEN = 1;
+      constructor(url) {
+        this.url = url;
+        this.readyState = 0;
+        queueMicrotask(() => {
+          this.onclose?.();
+        });
+      }
+      send() {}
+      close() {}
+    }
+    globalThis.WebSocket = ClosingHandshakeWebSocket;
+
+    let unhandledCount = 0;
+    const onUnhandled = () => {
+      unhandledCount += 1;
+    };
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const wsTransport = new HostTransport({
+        wsUrl: 'ws://127.0.0.1:9999/rpc',
+        timeoutMs: 500,
+      });
+      await assert.rejects(
+        () => wsTransport.invoke('ws.test'),
+        /Host WebSocket closed during handshake/,
+      );
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(unhandledCount, 0);
+      wsTransport.dispose();
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  } finally {
+    if (originalWebSocket !== undefined) {
+      globalThis.WebSocket = originalWebSocket;
+    } else {
+      delete globalThis.WebSocket;
+    }
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
 });

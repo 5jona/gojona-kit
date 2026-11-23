@@ -22,10 +22,16 @@ const inputVariants = cva(
   },
 );
 
+/**
+ * Props for `<Input>`.
+ */
 export interface InputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>,
     VariantProps<typeof inputVariants> {}
 
+/**
+ * Single-line text input bound to semantic card and border tokens with optional monospace styling.
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, size, mono, type = 'text', ...props },
   ref,

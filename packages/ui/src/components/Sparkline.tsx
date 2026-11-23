@@ -1,7 +1,13 @@
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Semantic color tone for `<Sparkline>`.
+ */
 export type SparklineTone = 'accent' | 'success' | 'warning' | 'danger';
 
+/**
+ * Props for `<Sparkline>`.
+ */
 export interface SparklineProps {
   values: readonly number[];
   width?: number;
@@ -13,6 +19,9 @@ export interface SparklineProps {
   'data-testid'?: string;
 }
 
+/**
+ * Precomputed SVG polyline points and closed area path returned by `buildSparklineGeometry`.
+ */
 export interface SparklineGeometry {
   linePoints: string;
   areaPath: string;

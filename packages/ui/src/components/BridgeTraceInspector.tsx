@@ -1,6 +1,6 @@
 import { AlertCircle, Check, ChevronDown, ChevronRight, Copy, Search, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { copyTextWithFallback } from '../lib/clipboard.ts';
+import { useMemo, useState } from 'react';
+import { useCopyFeedback } from '../hooks/useCopyFeedback.ts';
 import { cn } from '../lib/cn.ts';
 import { Badge } from './Badge.tsx';
 import { Button } from './Button.tsx';
@@ -30,6 +30,9 @@ export {
   summarizeTraceEntries,
 };
 
+/**
+ * Props for `<BridgeTraceInspector>`.
+ */
 export interface BridgeTraceInspectorProps {
   entries: readonly BridgeTraceEntry[];
   title?: string;
@@ -42,6 +45,10 @@ export interface BridgeTraceInspectorProps {
   'data-testid'?: string;
 }
 
+/**
+ * Interactive inspector for `@pochita/bridge` RPC, event, and port lifecycle traces
+ * with error/slow filtering, expandable payload previews, and JSON copy.
+ */
 export function BridgeTraceInspector({
   entries,
   title = '桥接追踪',
@@ -56,16 +63,7 @@ export function BridgeTraceInspector({
   const [filter, setFilter] = useState<BridgeTraceFilter>('all');
   const [query, setQuery] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
-  const timerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  const { copyStatus, copyText } = useCopyFeedback({ onCopy });
 
   const summary = useMemo(
     () => summarizeTraceEntries(entries, slowThresholdMs),
@@ -79,14 +77,7 @@ export function BridgeTraceInspector({
 
   const handleCopyJson = async () => {
     const json = JSON.stringify(filtered, null, 2);
-    const ok = await copyTextWithFallback(json, onCopy);
-    setCopyStatus(ok ? 'copied' : 'error');
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-    }
-    timerRef.current = window.setTimeout(() => {
-      setCopyStatus('idle');
-    }, 1500);
+    await copyText(json);
   };
 
   const toggleRow = (rowKey: string) => {
@@ -113,7 +104,7 @@ export function BridgeTraceInspector({
           <Button
             size="sm"
             variant="ghost"
-            onClick={handleCopyJson}
+            onClick={() => void handleCopyJson()}
             disabled={filtered.length === 0}
             aria-label="复制追踪 JSON"
           >
@@ -150,7 +141,10 @@ export function BridgeTraceInspector({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--surface-elevated)] px-3.5 py-2">
-        <fieldset className="m-0 flex items-center gap-1 border-0 p-0" aria-label="追踪状态筛选">
+        <fieldset
+          className="m-0 flex flex-wrap items-center gap-1 border-0 p-0"
+          aria-label="追踪类型筛选"
+        >
           {TRACE_FILTER_OPTIONS.map((opt) => {
             const active = filter === opt.value;
             return (
@@ -171,6 +165,7 @@ export function BridgeTraceInspector({
             );
           })}
         </fieldset>
+
         <div className="relative min-w-[140px] flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[var(--text-secondary)]"
@@ -180,7 +175,7 @@ export function BridgeTraceInspector({
             size="sm"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="筛选方法或事件..."
+            placeholder="筛选方法、事件或错误..."
             aria-label="筛选追踪记录"
             className="h-7 pl-7 text-[11px]"
           />
@@ -199,7 +194,11 @@ export function BridgeTraceInspector({
           </div>
         ) : (
           filtered.map((entry, idx) => {
-            const rowKey = `${entry.id ?? 'trace'}_${entry.phase ?? entry.kind ?? idx}_${idx}`;
+            const phaseOrKind = entry.phase ?? entry.kind ?? 'trace';
+            const tsPart = entry.timestampMs ?? entry.timestamp ?? '';
+            const rowKey = entry.id
+              ? `${entry.id}_${phaseOrKind}_${tsPart}`
+              : `trace_${phaseOrKind}_${tsPart || idx}`;
             const expanded = Boolean(expandedKeys[rowKey]);
             const badge = resolveTracePhaseBadge(entry);
             const slow = isTraceSlow(entry, slowThresholdMs);
@@ -244,7 +243,7 @@ export function BridgeTraceInspector({
                 </button>
 
                 {expanded ? (
-                  <div className="space-y-1.5 border-t border-[var(--border-hairline)] bg-[var(--surface-elevated)] px-4 py-2.5 font-mono text-[11px] text-[var(--text-secondary)]">
+                  <div className="flex flex-col gap-1.5 border-t border-[var(--border-hairline)] bg-[var(--surface-elevated)] px-4 py-2.5 font-mono text-[11px] text-[var(--text-secondary)]">
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       <span>传输通道: {entry.transport ?? 'unknown'}</span>
                       <span>时间: {formatTraceTimestamp(entry)}</span>

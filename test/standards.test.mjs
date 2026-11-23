@@ -30,10 +30,18 @@ function countLines(filePath) {
 test('all package and app source files satisfy <= 300 soft limit and <= 400 hard limit', () => {
   const pkgSrcFiles = [];
   for (const pkg of fs.readdirSync(path.join(REPO_ROOT, 'packages'))) {
-    const srcDir = path.join(REPO_ROOT, 'packages', pkg, 'src');
+    const pkgDir = path.join(REPO_ROOT, 'packages', pkg);
+    if (!fs.statSync(pkgDir).isDirectory()) continue;
+    const srcDir = path.join(pkgDir, 'src');
     for (const file of walkFiles(srcDir)) {
       if (SOURCE_EXTENSIONS.has(path.extname(file))) {
         pkgSrcFiles.push(file);
+      }
+    }
+    // Also cover packages without a src/ subdirectory (such as packages/config/*.mjs).
+    for (const entry of fs.readdirSync(pkgDir, { withFileTypes: true })) {
+      if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
+        pkgSrcFiles.push(path.join(pkgDir, entry.name));
       }
     }
   }
@@ -56,6 +64,12 @@ test('all package and app source files satisfy <= 300 soft limit and <= 400 hard
       path.relative(REPO_ROOT, file).startsWith(`packages${path.sep}contracts-gen${path.sep}src`),
     ),
     'Expected packages/contracts-gen/src/*.mjs to be covered by line-count checks',
+  );
+  assert.ok(
+    pkgSrcFiles.some((file) =>
+      path.relative(REPO_ROOT, file).startsWith(`packages${path.sep}config${path.sep}`),
+    ),
+    'Expected packages/config/*.mjs to be covered by line-count checks',
   );
 
   for (const file of pkgSrcFiles) {
@@ -135,14 +149,51 @@ test('TypeScript sources use explicit import type for React type-only symbols', 
   }
 });
 
-test('workspace package dist/ artifacts exist and stay in sync with src/', () => {
+test('workspace package dist/ artifacts exist, mirror src/ modules, and stay fresher than src/ mtimes', () => {
   for (const pkg of ['ui', 'bridge', 'sdk']) {
     const pkgDir = path.join(REPO_ROOT, 'packages', pkg);
-    const distIndexJs = path.join(pkgDir, 'dist', 'index.js');
-    const distIndexDts = path.join(pkgDir, 'dist', 'index.d.ts');
+    const srcDir = path.join(pkgDir, 'src');
+    const distDir = path.join(pkgDir, 'dist');
+    const distIndexJs = path.join(distDir, 'index.js');
+    const distIndexDts = path.join(distDir, 'index.d.ts');
     assert.ok(fs.existsSync(distIndexJs), `Missing ${path.relative(REPO_ROOT, distIndexJs)}`);
     assert.ok(fs.existsSync(distIndexDts), `Missing ${path.relative(REPO_ROOT, distIndexDts)}`);
     assert.ok(fs.statSync(distIndexJs).size > 0, `${pkg}/dist/index.js must not be empty`);
     assert.ok(fs.statSync(distIndexDts).size > 0, `${pkg}/dist/index.d.ts must not be empty`);
+
+    let newestSrcMtimeMs = 0;
+    let newestSrcFile = '';
+    for (const srcFile of walkFiles(srcDir)) {
+      if (!srcFile.endsWith('.ts') && !srcFile.endsWith('.tsx')) continue;
+      const srcStat = fs.statSync(srcFile);
+      if (srcStat.mtimeMs > newestSrcMtimeMs) {
+        newestSrcMtimeMs = srcStat.mtimeMs;
+        newestSrcFile = path.relative(REPO_ROOT, srcFile);
+      }
+      const relBase = path.relative(srcDir, srcFile).replace(/\.tsx?$/, '');
+      const expectedJs = path.join(distDir, `${relBase}.js`);
+      const expectedDts = path.join(distDir, `${relBase}.d.ts`);
+      assert.ok(
+        fs.existsSync(expectedJs),
+        `Missing compiled artifact ${path.relative(REPO_ROOT, expectedJs)} for ${path.relative(REPO_ROOT, srcFile)} (run pnpm build)`,
+      );
+      assert.ok(
+        fs.existsSync(expectedDts),
+        `Missing declaration artifact ${path.relative(REPO_ROOT, expectedDts)} for ${path.relative(REPO_ROOT, srcFile)} (run pnpm build)`,
+      );
+    }
+
+    let newestDistMtimeMs = 0;
+    for (const distFile of fs.readdirSync(distDir, { recursive: true })) {
+      const fullDist = path.join(distDir, String(distFile));
+      if (fs.statSync(fullDist).isFile()) {
+        newestDistMtimeMs = Math.max(newestDistMtimeMs, fs.statSync(fullDist).mtimeMs);
+      }
+    }
+
+    assert.ok(
+      newestDistMtimeMs + 1000 >= newestSrcMtimeMs,
+      `packages/${pkg}/dist is stale relative to ${newestSrcFile}; run pnpm build or pnpm check`,
+    );
   }
 });

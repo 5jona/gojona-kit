@@ -13,12 +13,20 @@ import { SegmentedControl } from '../dist/components/SegmentedControl.js';
 import { Slider } from '../dist/components/Slider.js';
 import { buildSparklineGeometry, Sparkline } from '../dist/components/Sparkline.js';
 import { StatusBanner } from '../dist/components/StatusBanner.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../dist/components/Tabs.js';
+import { ThemeSwitcher } from '../dist/components/ThemeSwitcher.js';
+import { ToastProvider, useToast } from '../dist/components/Toast.js';
+import { ThemeProvider } from '../dist/theme/ThemeProvider.js';
 import { cn } from '../src/lib/cn.ts';
 import { isValidThemeId, THEME_REGISTRY } from '../src/theme/registry.ts';
 import { buildThemeSyncKey } from '../src/theme/sync.ts';
 import {
+  ALLOWED_DYNAMIC_CSS_TOKENS,
+  applyDynamicCssTokens,
+  clearDynamicCssTokens,
   colorWithAlpha,
   inspectThemeTokens,
+  isAllowedDynamicCssToken,
   readThemeToken,
   SEMANTIC_THEME_TOKENS,
   STORAGE_KEY_SCHEME,
@@ -435,4 +443,90 @@ test('Slider supports formatValue and AppShell supports headerMode compact/hidde
   assert.ok(compactHeaderHtml.includes('data-header-mode="compact"'));
   assert.ok(compactHeaderHtml.includes('<header'));
   assert.ok(!compactHeaderHtml.includes('不会显示'));
+
+  // Slider must only render aria-label once (on the slider thumb, not duplicated on root)
+  const ariaLabelMatches = sliderHtml.match(/aria-label="色温"/g) ?? [];
+  assert.equal(ariaLabelMatches.length, 1);
+});
+
+test('applyDynamicCssTokens enforces ALLOWED_DYNAMIC_CSS_TOKENS allowlist', () => {
+  assert.ok(ALLOWED_DYNAMIC_CSS_TOKENS.includes('--accent'));
+  assert.ok(ALLOWED_DYNAMIC_CSS_TOKENS.includes('--border-hairline'));
+  assert.equal(isAllowedDynamicCssToken('--accent'), true);
+  assert.equal(isAllowedDynamicCssToken('--untrusted-custom'), false);
+
+  const props = new Map();
+  const mockRoot = {
+    style: {
+      setProperty: (k, v) => props.set(k, v),
+      removeProperty: (k) => props.delete(k),
+    },
+  };
+
+  const applied = applyDynamicCssTokens(
+    {
+      '--accent': '#3b82f6',
+      '--accent-soft': 'rgba(59, 130, 246, 0.2)',
+      '--arbitrary-untrusted': '#ff0000',
+    },
+    mockRoot,
+  );
+  assert.deepEqual(applied, ['--accent', '--accent-soft']);
+  assert.equal(props.get('--accent'), '#3b82f6');
+  assert.equal(props.has('--arbitrary-untrusted'), false);
+
+  clearDynamicCssTokens(['--accent', '--arbitrary-untrusted'], mockRoot);
+  assert.equal(props.has('--accent'), false);
+  assert.equal(props.get('--accent-soft'), 'rgba(59, 130, 246, 0.2)');
+});
+
+function ProbeToast({ onRead }) {
+  const first = useToast();
+  const second = useToast();
+  onRead(first, second);
+  return createElement('span', null, 'probe');
+}
+
+test('Tabs, Toast, SegmentedControl, and ThemeSwitcher include narrow-screen overflow guards and stable fallback pushToast', () => {
+  const tabsHtml = renderToStaticMarkup(
+    createElement(
+      Tabs,
+      { defaultValue: 'a' },
+      createElement(
+        TabsList,
+        null,
+        createElement(TabsTrigger, { value: 'a' }, '第一项'),
+        createElement(TabsTrigger, { value: 'b' }, '第二项'),
+      ),
+      createElement(TabsContent, { value: 'a' }, '面板A'),
+    ),
+  );
+  assert.ok(tabsHtml.includes('overflow-x-auto'));
+  assert.ok(tabsHtml.includes('min-w-0'));
+
+  const switcherHtml = renderToStaticMarkup(
+    createElement(ThemeProvider, null, createElement(ThemeSwitcher, { compact: true })),
+  );
+  assert.ok(switcherHtml.includes('min-w-0'));
+  assert.ok(switcherHtml.includes('overflow-x-auto'));
+
+  // useToast fallback outside ToastProvider must return a referentially stable pushToast
+  let toastA = null;
+  let toastB = null;
+  renderToStaticMarkup(
+    createElement(ProbeToast, {
+      onRead: (a, b) => {
+        toastA = a;
+        toastB = b;
+      },
+    }),
+  );
+  assert.ok(toastA);
+  assert.equal(toastA, toastB);
+  assert.equal(toastA.pushToast, toastB.pushToast);
+
+  const toastProviderHtml = renderToStaticMarkup(
+    createElement(ToastProvider, null, createElement('div', null, '内容')),
+  );
+  assert.ok(toastProviderHtml.includes('data-pochita="toast-viewport"'));
 });

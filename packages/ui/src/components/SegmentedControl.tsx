@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Option descriptor for `<SegmentedControl>`.
+ */
 export interface SegmentedControlOption<T extends string = string> {
   value: T;
   label: string;
@@ -8,6 +11,9 @@ export interface SegmentedControlOption<T extends string = string> {
   disabled?: boolean;
 }
 
+/**
+ * Props for `<SegmentedControl>`.
+ */
 export interface SegmentedControlProps<T extends string = string> {
   options: readonly SegmentedControlOption<T>[];
   value: T;
@@ -43,7 +49,7 @@ export function SegmentedControl<T extends string = string>({
       data-value={value}
       data-testid={dataTestId}
       className={cn(
-        'm-0 inline-flex min-w-0 items-center gap-1 rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1',
+        'm-0 inline-flex min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1 [scrollbar-width:none]',
         fullWidth && 'flex w-full',
         className,
       )}
@@ -65,7 +71,7 @@ export function SegmentedControl<T extends string = string>({
               }
             }}
             className={cn(
-              'inline-flex cursor-pointer select-none items-center justify-center gap-1.5 rounded-[var(--radius-pill)] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45',
+              'inline-flex cursor-pointer select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-pill)] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45',
               size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-xs',
               fullWidth && 'min-w-0 flex-1',
               active

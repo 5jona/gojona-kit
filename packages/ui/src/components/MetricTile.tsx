@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 import { Badge, type BadgeProps } from './Badge.tsx';
 
+/**
+ * Props for `<MetricTile>`.
+ */
 export interface MetricTileProps {
   label: string;
   value: string | number;
@@ -14,6 +17,9 @@ export interface MetricTileProps {
   'data-testid'?: string;
 }
 
+/**
+ * Compact numeric KPI tile with tabular numerals, optional unit suffix, and status badge.
+ */
 export function MetricTile({
   label,
   value,
@@ -48,12 +54,12 @@ export function MetricTile({
         ) : null}
       </div>
 
-      <div className="flex items-baseline gap-1">
-        <span className="tabular-nums text-xl font-semibold tracking-tight text-[var(--text-primary)]">
+      <div className="flex min-w-0 items-baseline gap-1">
+        <span className="min-w-0 truncate tabular-nums text-xl font-semibold tracking-tight text-[var(--text-primary)]">
           {value}
         </span>
         {unit ? (
-          <span className="text-xs font-medium text-[var(--text-secondary)]">{unit}</span>
+          <span className="shrink-0 text-xs font-medium text-[var(--text-secondary)]">{unit}</span>
         ) : null}
       </div>
 

@@ -3,6 +3,9 @@ import type { ThemeDefinition, ThemeId } from './types.ts';
 
 const VALID_THEME_ID_SET: ReadonlySet<string> = new Set(THEME_IDS);
 
+/**
+ * Canonical registry mapping each supported `ThemeId` to its visual metadata and native container hints.
+ */
 export const THEME_REGISTRY: Record<ThemeId, ThemeDefinition> = {
   'coloros-glass': {
     id: 'coloros-glass',
@@ -22,8 +25,14 @@ export const THEME_REGISTRY: Record<ThemeId, ThemeDefinition> = {
   },
 };
 
+/**
+ * Ordered list of registered theme definitions for `<ThemeSwitcher>`.
+ */
 export const THEME_LIST: readonly ThemeDefinition[] = Object.values(THEME_REGISTRY);
 
+/**
+ * Type guard checking whether an arbitrary string is a registered `ThemeId`.
+ */
 export function isValidThemeId(value: string | null): value is ThemeId {
   return value !== null && VALID_THEME_ID_SET.has(value);
 }

@@ -1,4 +1,9 @@
-import { BridgeProvider, createBridge, createThemeSyncDeduplicator } from '@pochita/bridge';
+import {
+  BridgeProvider,
+  createBridge,
+  createDeferredBridgeDisposer,
+  createThemeSyncDeduplicator,
+} from '@pochita/bridge';
 import {
   AppShell,
   type AppShellVariant,
@@ -59,12 +64,19 @@ export default function App() {
     [appendLog],
   );
 
-  useEffect(() => () => bridge.dispose(), [bridge]);
+  const disposer = useMemo(() => createDeferredBridgeDisposer(), []);
+
+  useEffect(() => {
+    disposer.retain(bridge);
+    return () => {
+      disposer.scheduleDispose(bridge);
+    };
+  }, [bridge, disposer]);
 
   const themeSyncDeduplicator = useMemo(
     () =>
       createThemeSyncDeduplicator((payload) => {
-        void bridge.sendContainerAction({ type: 'syncTheme', payload });
+        void bridge.sendContainerAction({ type: 'syncTheme', payload }).catch(() => {});
       }),
     [bridge],
   );
@@ -74,8 +86,8 @@ export default function App() {
       <BridgeProvider client={bridge}>
         <ToastProvider>
           <div className="playground-backdrop min-h-dvh p-3 sm:p-5">
-            <div className="mx-auto max-w-5xl space-y-4">
-              <Card className="space-y-3.5">
+            <div className="mx-auto flex max-w-5xl flex-col gap-4">
+              <Card className="flex flex-col gap-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">

@@ -48,6 +48,10 @@
   --panel-shadow-dark: 0 20px 48px rgba(0, 0, 0, 0.65);
   --card-shadow-light: 0 1px 2px rgba(9, 9, 11, 0.05);
   --card-shadow-dark: 0 1px 0 rgba(255, 255, 255, 0.03);
+  --surface-toast-light: rgba(255, 255, 255, 0.96);
+  --surface-toast-dark: rgba(24, 24, 27, 0.96);
+  --thumb-bg-light: #ffffff;
+  --thumb-bg-dark: #f4f4f5;
 
   --surface-canvas: var(--surface-canvas-light);
   --surface-panel: var(--surface-panel-light);
@@ -67,8 +71,8 @@
   --scrollbar-track: var(--scrollbar-track-light);
   --panel-shadow: var(--panel-shadow-light);
   --card-shadow: var(--card-shadow-light);
-  --surface-toast: light-dark(rgba(255, 255, 255, 0.96), rgba(24, 24, 27, 0.96));
-  --thumb-bg: light-dark(#ffffff, #f4f4f5);
+  --surface-toast: var(--surface-toast-light);
+  --thumb-bg: var(--thumb-bg-light);
 
   @media (prefers-color-scheme: dark) {
     --surface-canvas: var(--surface-canvas-dark);
@@ -89,6 +93,8 @@
     --scrollbar-track: var(--scrollbar-track-dark);
     --panel-shadow: var(--panel-shadow-dark);
     --card-shadow: var(--card-shadow-dark);
+    --surface-toast: var(--surface-toast-dark);
+    --thumb-bg: var(--thumb-bg-dark);
   }
 
   @supports (color: light-dark(white, black)) {
@@ -108,8 +114,8 @@
     --danger: light-dark(var(--danger-light), var(--danger-dark));
     --scrollbar-thumb: light-dark(var(--scrollbar-thumb-light), var(--scrollbar-thumb-dark));
     --scrollbar-track: light-dark(var(--scrollbar-track-light), var(--scrollbar-track-dark));
-    --surface-toast: light-dark(rgba(255, 255, 255, 0.96), rgba(24, 24, 27, 0.96));
-    --thumb-bg: light-dark(#ffffff, #f4f4f5);
+    --surface-toast: light-dark(var(--surface-toast-light), var(--surface-toast-dark));
+    --thumb-bg: light-dark(var(--thumb-bg-light), var(--thumb-bg-dark));
   }
 
   &:has(> head > meta[name="color-scheme"][content="dark"]) {

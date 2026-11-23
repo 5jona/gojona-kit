@@ -1,6 +1,6 @@
 import { AlertCircle, ArrowDown, Check, Copy, Download, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { copyTextWithFallback } from '../lib/clipboard.ts';
+import { useCopyFeedback } from '../hooks/useCopyFeedback.ts';
 import { cn } from '../lib/cn.ts';
 import { Button } from './Button.tsx';
 import { Input } from './Input.tsx';
@@ -21,6 +21,9 @@ export {
   type LogLevel,
 };
 
+/**
+ * Props for `<LogConsole>`.
+ */
 export interface LogConsoleProps {
   entries: readonly LogEntry[];
   onClear?: () => void;
@@ -50,6 +53,10 @@ const LEVEL_STYLES: Record<LogLevel, string> = {
 
 const BOTTOM_THRESHOLD_PX = 24;
 
+/**
+ * Scrollable diagnostic log console with level filtering, keyword search, clipboard copy,
+ * export callback, and capped-buffer auto-scroll pause/resume.
+ */
 export function LogConsole({
   entries,
   onClear,
@@ -64,12 +71,11 @@ export function LogConsole({
   className,
   'data-testid': dataTestId,
 }: LogConsoleProps) {
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const { copyStatus, copyText } = useCopyFeedback({ onCopy });
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<LogFilterLevel>('all');
   const [scrollPaused, setScrollPaused] = useState(false);
 
-  const timerRef = useRef<number | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const filteredEntries = useMemo(
@@ -81,20 +87,18 @@ export function LogConsole({
     [entries, filterable, levelFilter, searchable, searchQuery],
   );
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  const firstEntry = filteredEntries[0];
+  const lastEntry = filteredEntries[filteredEntries.length - 1];
+  const latestEntryKey = lastEntry
+    ? `${filteredEntries.length}:${firstEntry?.id ?? ''}:${lastEntry.id}:${lastEntry.timestamp}`
+    : '';
 
   useEffect(() => {
-    if (!autoScroll || scrollPaused || filteredEntries.length === 0) return;
+    if (!autoScroll || scrollPaused || !latestEntryKey) return;
     const el = scrollerRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [autoScroll, scrollPaused, filteredEntries.length]);
+  }, [autoScroll, scrollPaused, latestEntryKey]);
 
   const handleScroll = () => {
     if (!autoScroll) return;
@@ -113,15 +117,7 @@ export function LogConsole({
   };
 
   const handleCopy = async () => {
-    const text = formatLogEntriesText(filteredEntries);
-    const success = await copyTextWithFallback(text, onCopy);
-    setCopyStatus(success ? 'copied' : 'error');
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-    }
-    timerRef.current = window.setTimeout(() => {
-      setCopyStatus('idle');
-    }, 1500);
+    await copyText(formatLogEntriesText(filteredEntries));
   };
 
   const handleExport = () => {
@@ -147,10 +143,15 @@ export function LogConsole({
           {title} ({countLabel})
         </span>
         <div className="flex items-center gap-1">
-          {autoScroll && scrollPaused ? (
-            <Button size="sm" variant="secondary" onClick={scrollToBottom} aria-label="回到底部">
-              <ArrowDown className="size-3.5" />
-              回到底部
+          {autoScroll && scrollPaused && filteredEntries.length > 0 ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={scrollToBottom}
+              aria-label="恢复自动滚动到底部"
+            >
+              <ArrowDown className="size-3.5 text-[var(--accent)]" />
+              底部
             </Button>
           ) : null}
           {onExport ? (
@@ -168,7 +169,7 @@ export function LogConsole({
           <Button
             size="sm"
             variant="ghost"
-            onClick={handleCopy}
+            onClick={() => void handleCopy()}
             disabled={filteredEntries.length === 0}
             aria-label="复制日志"
           >
@@ -255,7 +256,7 @@ export function LogConsole({
         ref={scrollerRef}
         onScroll={handleScroll}
         className={cn(
-          'pochita-scroller space-y-1 px-3.5 py-2.5 font-mono text-[11px] leading-relaxed',
+          'pochita-scroller flex flex-col gap-1 px-3.5 py-2.5 font-mono text-[11px] leading-relaxed',
           maxHeightClassName,
         )}
       >

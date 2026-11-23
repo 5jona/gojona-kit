@@ -31,10 +31,16 @@ const buttonVariants = cva(
   },
 );
 
+/**
+ * Props for `<Button>`.
+ */
 export interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {}
 
+/**
+ * Semantic action button supporting primary, secondary, ghost, danger, and pill variants.
+ */
 export function Button({ className, variant, size, type = 'button', ...props }: ButtonProps) {
   return (
     <button

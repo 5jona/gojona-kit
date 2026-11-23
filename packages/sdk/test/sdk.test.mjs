@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { createBridge, MockTransport } from '@pochita/bridge';
+import React from 'react';
 import {
   BridgeRpcError,
   BUILTIN_DIAG_PLUGIN_ID,
@@ -247,6 +249,20 @@ test('lifecycle and network event parsers validate payloads and hooks are export
       scopeActive: true,
     },
   );
+  // Canonical record.active takes precedence when both fields are present
+  assert.deepEqual(
+    parseScopeChangedEvent({
+      foregroundPackage: 'com.example.app',
+      active: false,
+      scopeActive: true,
+    }),
+    {
+      foregroundPackage: 'com.example.app',
+      foregroundActivity: '',
+      active: false,
+      scopeActive: false,
+    },
+  );
   assert.equal(parseScopeChangedEvent({ scopeActive: true }), null);
 
   assert.deepEqual(
@@ -299,4 +315,98 @@ test('usePluginStorage keeps initialValue out of reload dependency array to prev
   assert.match(src, /const initialValueRef = useRef\(initialValue\)/);
   assert.match(src, /\}, \[bridge, cleanPath, isJson\]\);/);
   assert.doesNotMatch(src, /\[bridge, cleanPath, initialValue, isJson\]/);
+});
+
+function DynamicThemeProbe() {
+  useDynamicThemeState(true);
+  return null;
+}
+
+test('useDynamicThemeState enforces allowlisted CSS variables and clears stale keys absent from newer palette updates', () => {
+  const originalDocument = globalThis.document;
+  const styleProps = new Map();
+  globalThis.document = {
+    documentElement: {
+      style: {
+        setProperty: (k, v) => styleProps.set(k, v),
+        removeProperty: (k) => styleProps.delete(k),
+        getPropertyValue: (k) => styleProps.get(k) ?? '',
+      },
+    },
+  };
+
+  const mockTransport = new MockTransport();
+  const bridge = createBridge({ forceEnv: 'mock', pluginId: 'demo', mockTransport });
+
+  const internals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const prevDispatcher = internals.H;
+  let latestTokens = {};
+  let effectCleanup = null;
+
+  internals.H = {
+    useContext: () => ({ pluginId: 'demo', bridge, backendState: 'online' }),
+    useState: () => [
+      latestTokens,
+      (next) => {
+        latestTokens = typeof next === 'function' ? next(latestTokens) : next;
+      },
+    ],
+    useEffect: (fn) => {
+      effectCleanup = fn();
+    },
+  };
+
+  try {
+    DynamicThemeProbe();
+
+    // 1st update: includes allowlisted --accent and --border-hairline plus non-allowlisted --untrusted-var
+    mockTransport.emit('theme.paletteUpdated', {
+      themeId: 'coloros-glass',
+      isDark: true,
+      seedArgb: 0xff0066ff,
+      lumaHint: 0.5,
+      cssTokens: {
+        '--accent': '#112233',
+        '--border-hairline': 'rgba(255, 255, 255, 0.2)',
+        '--untrusted-var': '#ff00ff',
+      },
+    });
+
+    assert.equal(styleProps.get('--accent'), '#112233');
+    assert.equal(styleProps.get('--border-hairline'), 'rgba(255, 255, 255, 0.2)');
+    assert.equal(styleProps.has('--untrusted-var'), false);
+    assert.deepEqual(latestTokens, {
+      '--accent': '#112233',
+      '--border-hairline': 'rgba(255, 255, 255, 0.2)',
+    });
+
+    // 2nd update: omits --border-hairline; stale --border-hairline must be cleared from DOM and state
+    mockTransport.emit('theme.paletteUpdated', {
+      themeId: 'coloros-glass',
+      isDark: true,
+      seedArgb: 0xff3b82f6,
+      lumaHint: 0.5,
+      cssTokens: {
+        '--accent': '#445566',
+      },
+    });
+
+    assert.equal(styleProps.get('--accent'), '#445566');
+    assert.equal(styleProps.has('--border-hairline'), false);
+    assert.deepEqual(latestTokens, { '--accent': '#445566' });
+
+    // Unmount cleanup clears remaining applied keys
+    effectCleanup?.();
+    assert.equal(styleProps.size, 0);
+    assert.deepEqual(latestTokens, {});
+  } finally {
+    internals.H = prevDispatcher;
+    bridge.dispose();
+    mockTransport.dispose();
+    if (originalDocument !== undefined) {
+      globalThis.document = originalDocument;
+    } else {
+      delete globalThis.document;
+    }
+  }
 });

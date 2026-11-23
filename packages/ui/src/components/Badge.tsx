@@ -25,6 +25,9 @@ const badgeVariants = cva(
   },
 );
 
+/**
+ * Props for `<Badge>`.
+ */
 export interface BadgeProps
   extends HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {
@@ -32,6 +35,9 @@ export interface BadgeProps
   pulse?: boolean;
 }
 
+/**
+ * Compact semantic status pill with optional live status indicator dot and pulse animation.
+ */
 export function Badge({
   className,
   variant,

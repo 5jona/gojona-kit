@@ -1,8 +1,13 @@
 import { AlertTriangle, Check, ChevronDown, ChevronUp, Copy, RotateCcw } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import type { CopyFeedbackStatus } from '../hooks/useCopyFeedback.ts';
+import { copyTextWithFallback } from '../lib/clipboard.ts';
 import { cn } from '../lib/cn.ts';
 import { Button } from './Button.tsx';
 
+/**
+ * Props for `<ErrorBoundary>`.
+ */
 export interface ErrorBoundaryProps {
   children: ReactNode;
   title?: string;
@@ -18,26 +23,7 @@ interface ErrorBoundaryState {
   error: Error | null;
   componentStack: string | null;
   showStack: boolean;
-  copyStatus: 'idle' | 'copied' | 'error';
-}
-
-function copyTextFallback(text: string): boolean {
-  if (typeof document === 'undefined') return false;
-  const textArea = document.createElement('textarea');
-  textArea.value = text;
-  textArea.style.position = 'fixed';
-  textArea.style.left = '-9999px';
-  textArea.style.top = '-9999px';
-  textArea.setAttribute('readonly', '');
-  document.body.appendChild(textArea);
-  try {
-    textArea.select();
-    return document.execCommand('copy');
-  } catch {
-    return false;
-  } finally {
-    document.body.removeChild(textArea);
-  }
+  copyStatus: CopyFeedbackStatus;
 }
 
 /**
@@ -67,6 +53,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   override componentWillUnmount(): void {
+    this.clearCopyTimer();
+  }
+
+  private clearCopyTimer(): void {
     if (this.copyTimer !== null && typeof window !== 'undefined') {
       window.clearTimeout(this.copyTimer);
       this.copyTimer = null;
@@ -74,6 +64,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   readonly handleReset = (): void => {
+    this.clearCopyTimer();
     this.setState({
       error: null,
       componentStack: null,
@@ -98,35 +89,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       .filter(Boolean)
       .join('\n\n');
 
-    let ok = false;
-    if (this.props.onCopy) {
-      try {
-        ok = Boolean(await this.props.onCopy(details));
-      } catch {
-        ok = false;
-      }
-    } else {
-      try {
-        if (
-          typeof navigator !== 'undefined' &&
-          navigator.clipboard &&
-          typeof navigator.clipboard.writeText === 'function'
-        ) {
-          await navigator.clipboard.writeText(details);
-          ok = true;
-        } else {
-          ok = copyTextFallback(details);
-        }
-      } catch {
-        ok = copyTextFallback(details);
-      }
-    }
-
+    const ok = await copyTextWithFallback(details, this.props.onCopy);
     this.setState({ copyStatus: ok ? 'copied' : 'error' });
+    this.clearCopyTimer();
     if (typeof window !== 'undefined') {
-      if (this.copyTimer !== null) {
-        window.clearTimeout(this.copyTimer);
-      }
       this.copyTimer = window.setTimeout(() => {
         this.copyTimer = null;
         this.setState({ copyStatus: 'idle' });

@@ -32,6 +32,9 @@ export function isAllowedDynamicCssToken(tokenName: string): tokenName is Semant
   return ALLOWED_DYNAMIC_CSS_TOKEN_SET.has(tokenName);
 }
 
+/**
+ * Single semantic CSS custom property inspection record returned by `inspectThemeTokens`.
+ */
 export interface ThemeTokenEntry {
   token: string;
   resolved: string;
@@ -39,6 +42,9 @@ export interface ThemeTokenEntry {
   inlineOverride: string | null;
 }
 
+/**
+ * Snapshot of active theme attributes and resolved semantic CSS tokens on a root DOM element.
+ */
 export interface ThemeTokenSnapshot {
   themeId: string | null;
   surface: string | null;

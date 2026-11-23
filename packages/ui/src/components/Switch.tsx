@@ -2,8 +2,14 @@ import * as SwitchPrimitive from '@radix-ui/react-switch';
 import type { ComponentPropsWithoutRef } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Props for `<Switch>`.
+ */
 export type SwitchProps = ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>;
 
+/**
+ * Accessible toggle switch built on `@radix-ui/react-switch` and bound to `--accent` and `--thumb-bg`.
+ */
 export function Switch({ className, ...props }: SwitchProps) {
   return (
     <SwitchPrimitive.Root

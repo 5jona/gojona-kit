@@ -1,6 +1,16 @@
+/**
+ * Severity level of a diagnostic log entry.
+ */
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+
+/**
+ * Filter selection value for `<LogConsole>`.
+ */
 export type LogFilterLevel = 'all' | LogLevel;
 
+/**
+ * Structured diagnostic log entry displayed in `<LogConsole>`.
+ */
 export interface LogEntry {
   id: string;
   timestamp: string;
@@ -10,6 +20,9 @@ export interface LogEntry {
   message: string;
 }
 
+/**
+ * Built-in filter chip definitions for `<LogConsole>`.
+ */
 export const LOG_FILTER_OPTIONS: ReadonlyArray<{ value: LogFilterLevel; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'error', label: '错误' },
@@ -18,11 +31,17 @@ export const LOG_FILTER_OPTIONS: ReadonlyArray<{ value: LogFilterLevel; label: s
   { value: 'debug', label: '调试' },
 ];
 
+/**
+ * Filtering criteria for `filterLogEntries`.
+ */
 export interface LogFilterCriteria {
   level?: LogFilterLevel;
   query?: string;
 }
 
+/**
+ * Filters diagnostic log entries by severity level and case-insensitive message/source/tag substring.
+ */
 export function filterLogEntries(
   entries: readonly LogEntry[],
   criteria: LogFilterCriteria = {},
@@ -46,6 +65,9 @@ export function filterLogEntries(
   });
 }
 
+/**
+ * Formats log entries as newline-delimited plain text for clipboard copy or file export.
+ */
 export function formatLogEntriesText(entries: readonly LogEntry[]): string {
   return entries
     .map((entry) => {

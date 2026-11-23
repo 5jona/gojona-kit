@@ -10,8 +10,14 @@ import {
 } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Semantic tone of a toast notification.
+ */
 export type ToastTone = 'info' | 'success' | 'warning' | 'danger';
 
+/**
+ * Active toast notification item rendered by `<ToastProvider>`.
+ */
 export interface ToastItem {
   id: string;
   message: string;
@@ -24,6 +30,13 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+const FALLBACK_TOAST_CONTEXT: ToastContextValue = Object.freeze({
+  pushToast: () => {},
+});
+
+/**
+ * Floating toast notification provider binding `--surface-toast` with automatic dismissal.
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const timersRef = useRef<Set<number>>(new Set());
@@ -65,7 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             data-pochita="toast"
             data-toast-tone={item.tone ?? 'info'}
             className={cn(
-              'pointer-events-auto flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-toast)] px-4 py-2 text-xs font-medium text-[var(--text-primary)] shadow-lg backdrop-blur-md',
+              'pointer-events-auto flex max-w-full items-center gap-2 break-words rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-toast)] px-4 py-2 text-xs font-medium text-[var(--text-primary)] shadow-lg backdrop-blur-md',
               item.tone === 'success' &&
                 'border-[color-mix(in_oklab,var(--success)_40%,transparent)]',
               item.tone === 'warning' &&
@@ -85,7 +98,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 aria-hidden="true"
               />
             ) : null}
-            <span>{item.message}</span>
+            <span className="min-w-0 break-words">{item.message}</span>
           </div>
         ))}
       </div>
@@ -93,10 +106,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Returns the nearest toast dispatcher (`pushToast`), falling back to a referentially
+ * stable no-op dispatcher when called outside `<ToastProvider>`.
+ */
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
-  if (!ctx) {
-    return { pushToast: () => {} };
-  }
-  return ctx;
+  return ctx ?? FALLBACK_TOAST_CONTEXT;
 }

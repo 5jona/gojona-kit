@@ -1,8 +1,14 @@
 import type { ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Semantic tone of an active `<ControlTile>`.
+ */
 export type ControlTileTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
 
+/**
+ * Props for `<ControlTile>`.
+ */
 export interface ControlTileProps {
   label: string;
   value?: string | number;

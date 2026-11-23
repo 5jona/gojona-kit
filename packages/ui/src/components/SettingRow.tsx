@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Props for `<SettingRow>`.
+ */
 export interface SettingRowProps {
   title: string;
   description?: string;
@@ -10,6 +13,9 @@ export interface SettingRowProps {
   'data-testid'?: string;
 }
 
+/**
+ * Two-column setting row pairing a title and optional description with a trailing interactive control.
+ */
 export function SettingRow({
   title,
   description,

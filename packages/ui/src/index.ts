@@ -77,6 +77,13 @@ export { Switch, type SwitchProps } from './components/Switch.tsx';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs.tsx';
 export { ThemeSwitcher, type ThemeSwitcherProps } from './components/ThemeSwitcher.tsx';
 export { type ToastItem, ToastProvider, type ToastTone, useToast } from './components/Toast.tsx';
+export {
+  type CopyFeedbackStatus,
+  type UseCopyFeedbackOptions,
+  type UseCopyFeedbackResult,
+  useCopyFeedback,
+} from './hooks/useCopyFeedback.ts';
+export { copyTextWithFallback } from './lib/clipboard.ts';
 export { cn } from './lib/cn.ts';
 export { isValidThemeId, THEME_LIST, THEME_REGISTRY } from './theme/registry.ts';
 export {

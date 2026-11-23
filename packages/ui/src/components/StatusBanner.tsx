@@ -1,8 +1,14 @@
 import type { ReactNode } from 'react';
 import { cn } from '../lib/cn.ts';
 
+/**
+ * Semantic alert tone for `<StatusBanner>`.
+ */
 export type StatusBannerTone = 'info' | 'success' | 'warning' | 'danger';
 
+/**
+ * Props for `<StatusBanner>`.
+ */
 export interface StatusBannerProps {
   tone: StatusBannerTone;
   title: string;
