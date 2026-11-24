@@ -18,14 +18,15 @@ export type TabsTriggerProps = ComponentPropsWithoutRef<typeof TabsPrimitive.Tri
 /** Props for `<TabsContent>`. */
 export type TabsContentProps = ComponentPropsWithoutRef<typeof TabsPrimitive.Content>;
 
-const ROOT_CLS = 'relative min-w-0 overflow-x-clip touch-pan-y';
+const ROOT_CLS = 'relative flex min-w-0 flex-1 flex-col overflow-x-clip touch-pan-y';
 const LIST_CLS =
   'relative inline-flex w-full min-w-0 max-w-full items-center gap-1 overflow-x-auto touch-pan-x rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1 [scrollbar-width:none]';
 const INDICATOR_CLS =
   'pointer-events-none absolute top-1 bottom-1 left-0 z-0 rounded-[calc(var(--radius-control)-3px)] bg-[var(--surface-card)] shadow-sm opacity-0';
 const TRIGGER_CLS =
   'relative z-[1] inline-flex min-w-0 flex-1 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[calc(var(--radius-control)-3px)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] hover:text-[var(--text-primary)] data-[state=active]:text-[var(--text-primary)]';
-const CONTENT_CLS = 'mt-3.5 min-w-0 touch-pan-y focus-visible:outline-none [&[hidden]]:hidden';
+const CONTENT_CLS =
+  'mt-3.5 min-w-0 flex-1 touch-pan-y focus-visible:outline-none [&[hidden]]:hidden';
 
 const POINTER_FOCUS_WINDOW_MS = 500;
 const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());

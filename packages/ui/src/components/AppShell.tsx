@@ -153,7 +153,7 @@ export function AppShell({
       {isPage ? (
         <main
           className={cn(
-            'mx-auto w-full flex-1 px-4 py-4 sm:px-6',
+            'mx-auto flex w-full flex-1 flex-col px-4 py-4 sm:px-6',
             maxWidthClassName,
             isScrollable && 'pochita-scroller',
             bodyClassName,
@@ -164,7 +164,7 @@ export function AppShell({
       ) : (
         <div
           className={cn(
-            'min-h-0 flex-1',
+            'flex min-h-0 flex-1 flex-col',
             isDrawer ? 'px-3 py-3' : 'p-4',
             isScrollable && 'pochita-scroller',
             bodyClassName,
