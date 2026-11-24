@@ -197,3 +197,31 @@ test('workspace package dist/ artifacts exist, mirror src/ modules, and stay fre
     );
   }
 });
+
+test('all workspace package.json versions stay aligned with root package.json', () => {
+  const rootPkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+  const expectedVersion = rootPkg.version;
+  assert.match(expectedVersion, /^[0-9]+\.[0-9]+\.[0-9]+$/);
+
+  const manifests = [
+    ...fs
+      .readdirSync(path.join(REPO_ROOT, 'packages'))
+      .map((dir) => path.join(REPO_ROOT, 'packages', dir, 'package.json')),
+    ...fs
+      .readdirSync(path.join(REPO_ROOT, 'apps'))
+      .map((dir) => path.join(REPO_ROOT, 'apps', dir, 'package.json')),
+  ].filter((file) => fs.existsSync(file));
+
+  assert.ok(
+    manifests.length >= 5,
+    `Expected at least 5 workspace manifests, got ${manifests.length}`,
+  );
+  for (const manifest of manifests) {
+    const pkg = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+    assert.equal(
+      pkg.version,
+      expectedVersion,
+      `${path.relative(REPO_ROOT, manifest)} version (${pkg.version}) must match root (${expectedVersion})`,
+    );
+  }
+});

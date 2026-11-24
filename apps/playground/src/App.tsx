@@ -192,7 +192,7 @@ export default function App() {
                   footer={
                     <div className="flex items-center justify-between gap-2">
                       <span>@gojona/ui · @gojona/bridge · @gojona/config</span>
-                      <span className="tabular-nums">v0.1.0</span>
+                      <span className="tabular-nums">v0.2.0</span>
                     </div>
                   }
                 >

@@ -1,18 +1,18 @@
-# Pochita WebUI Kit — Architecture & Navigation Map
+# gojona-kit — Architecture & Navigation Map
 
-`gojona-kit` is the shared monorepo providing the React design system, multi-runtime host transport bridge, SideVeil plugin SDK, build/lint presets, and deterministic cross-language contract compiler used across Android WebView overlays, KernelSU WebUI modules, and standalone browser previews.
+`gojona-kit` is the shared monorepo providing the React design system, multi-runtime host transport bridge, SideVeil plugin SDK, build/lint presets, and deterministic cross-language contract compiler used across Android WebView overlays, KernelSU WebUI modules, desktop Tauri frontends, and standalone browser previews.
 
 ## 1. Repository Layout & Entry Points
 
-| Path                      | Package / Role          | Key Entry Points                                                                                                    |
-| ------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/`        | `@gojona/config`        | `index.mjs` (Vite preset), `themes.mjs` (SSOT), `biome.base.json`, `register-ts.mjs`                                |
-| `packages/contracts-gen/` | `@gojona/contracts-gen` | `src/cli.mjs` (`pochita-contracts-gen`), `contract.schema.json`, `src/diff.mjs`, emitters, `src/validator.mjs`      |
-| `packages/bridge/`        | `@gojona/bridge`        | `src/index.ts`, `src/detect.ts`, `src/host.ts`, `src/ksu.ts`, `src/mock.ts`, `src/trace.ts`                         |
-| `packages/ui/`            | `@gojona/ui`            | `src/index.ts`, `src/theme/tokens.ts`, `src/styles/index.css`                                                       |
-| `packages/sdk/`           | `@gojona/sideveil-sdk`  | `src/index.ts`, `src/PluginContext.ts`, `src/typedClient.ts`, `src/hooks.ts`, `src/presentation.ts`, `src/theme.ts` |
-| `apps/playground/`        | `@gojona/playground`    | Dual-viewport workbench and live theme/component preview                                                            |
-| `test/standards.test.mjs` | Repo Quality Gate       | Enforces line limits, `THEME_IDS` SSOT, zero hex colors, `import type`, `dist/` sync                                |
+| Path                      | Package / Role          | Key Entry Points                                                                                                                 |
+| ------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/config/`        | `@gojona/config`        | `index.mjs` (Vite preset with exact-regex `POCHITA_KIT_ROOT` aliases), `themes.mjs` (SSOT), `biome.base.json`, `register-ts.mjs` |
+| `packages/contracts-gen/` | `@gojona/contracts-gen` | `src/cli.mjs` (`pochita-contracts-gen`), `contract.schema.json`, `src/diff.mjs`, emitters, `src/validator.mjs`                   |
+| `packages/bridge/`        | `@gojona/bridge`        | `src/index.ts`, `src/core.ts` (React-free), `src/detect.ts`, `src/host.ts`, `src/ksu.ts`, `src/mock.ts`, `src/trace.ts`          |
+| `packages/ui/`            | `@gojona/ui`            | `src/index.ts`, `src/components/tabPagerCommitState.ts`, `src/theme/tokens.ts`, `src/styles/index.css`                           |
+| `packages/sdk/`           | `@gojona/sideveil-sdk`  | `src/index.ts`, `src/core.ts` (React-free), `src/PluginContext.ts`, `src/typedClient.ts`, `src/hooks.ts`, `src/theme.ts`         |
+| `apps/playground/`        | `@gojona/playground`    | Dual-viewport workbench and live theme/component preview                                                                         |
+| `test/standards.test.mjs` | Repo Quality Gate       | Enforces line limits, `THEME_IDS` SSOT, zero hex colors, `import type`, `dist/` sync, and workspace version parity               |
 
 ## 2. Package Dependency DAG & Forbidden Reverse Edges
 
@@ -115,13 +115,15 @@
 ```text
   WebUI Caller ──► createBridge() / HostTransport.invoke()
                          │
-                         ├─ 1. PortChannel (upgraded MessagePort via window.postMessage)
-                         ├─ 2. JS Interface (window.__POCHITA_HOST__.postMessage)
+                         ├─ 1. Bound WebMessageListener (window.__POCHITA_HOST__.postMessage)
+                         │     (sends host.attach{channel:'listener'}; closes any late MessagePort)
+                         ├─ 2. PortChannel (upgraded MessagePort via window.postMessage, fallback when no listener)
                          ├─ 3. WebSocketChannel (loopback wsUrl fallback)
-                         └─ 4. PortChannel pending queue (buffered until port attaches)
+                         └─ 4. PortChannel pending queue (buffered until channel attaches)
 ```
 
-- **Origin Isolation**: Every `window` `message` event must pass `isTrustedWindowMessage(event, allowedOrigins)` before port adoption or payload parsing. Production hosts pin explicit `allowedOrigins` (e.g., `https://appassets.androidplatform.net`) and never `'*'`.
+- **Listener-Over-Port Precedence**: Android `WebViewCompat.addWebMessageListener` closes any legacy `MessagePort` as soon as `host.attach(channel: 'listener')` is acknowledged. `HostTransport` therefore always prefers `boundHostListener` when present and immediately closes late-arriving transferred ports so `plugin.invoke` calls are never dropped into a closed port.
+- **Origin Isolation**: Every `window` `message` event must pass `isTrustedWindowMessage(event, allowedOrigins)` before port adoption or payload parsing. Production hosts pin explicit `allowedOrigins` (e.g., `https://<pluginId>.plugins.sideveil.local`) and never `'*'`.
 - **JSON-RPC 2.0 & Tracing**: `plugin.invoke` and `container.action` requests carry monotonic IDs and per-call timeouts. `BridgeTracer` captures `rpcStart`/`rpcOk`/`rpcError`/`eventIn`/`port.*` events into a bounded ring buffer with `sanitizeTraceValue` redacting sensitive keys and truncating oversized payloads.
 
 ## 5. Theme & Zero-Flash Hydration Pipeline

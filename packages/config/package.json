@@ -1,6 +1,6 @@
 {
   "name": "@gojona/config",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Shared Vite + React + Tailwind v4 preset, Biome config, Node TS test hook, and theme bootstrap SSOT for gojona-kit.",
   "license": "MIT",
   "author": "5jona",

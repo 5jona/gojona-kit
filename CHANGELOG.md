@@ -4,6 +4,18 @@ All notable changes to `gojona-kit` (`@gojona/*` packages) are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-25
+
+### Fixed
+
+- **`@gojona/ui`**: Fixed rapid, consecutive, and reversed tab-swipe flicker and lost commits via an explicit settle/commit state machine (`tabPagerCommitState.ts`), with comprehensive unit tests.
+- **`@gojona/bridge`**: Prioritized active Android `WebMessageListener` channel over late-transferred `MessagePort` instances in `HostTransport`, closing superseded ports and preventing `plugin.invoke` timeouts in SideVeil overlays.
+- **`@gojona/config`**: Anchored `POCHITA_KIT_ROOT` Vite aliases with exact regex patterns so subpath imports such as `@gojona/bridge/core` and `@gojona/sideveil-sdk/core` resolve reliably.
+
+### Changed
+
+- Synced generated SideVeil contract constants (`SIDEVEIL_BUILTIN_DIAGNOSTIC.VERSION = '0.2.0'`) and added workspace-wide version parity checks in `test/standards.test.mjs`.
+
 ## [0.1.1] - 2026-11-24
 
 ### Changed
