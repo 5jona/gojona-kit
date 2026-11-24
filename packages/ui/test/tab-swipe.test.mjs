@@ -16,10 +16,12 @@ import {
   hasScrollableHorizontalAncestor,
   interpolateIndicatorRect,
   isInEdgeGuardZone,
+  isSwipeTargetOwnedByTabs,
   recordVelocitySample,
   resolveAdjacentTab,
   resolvePagerCommitStep,
   resolveSwipeStep,
+  resolveSwipeSurface,
   shouldIgnoreSwipeStart,
 } from '../src/lib/tabSwipe.ts';
 
@@ -363,4 +365,65 @@ test('Slider marks its root with data-swipe-ignore so slider drags never fight t
   };
   const sliderTrack = { tagName: 'SPAN', parentElement: sliderRoot };
   assert.equal(shouldIgnoreSwipeStart(sliderTrack, tabsRoot), true);
+});
+
+test('resolveSwipeSurface and isSwipeTargetOwnedByTabs delegate blank-space swipes safely', () => {
+  const shellBody = {
+    tagName: 'MAIN',
+    tabsList: [],
+    querySelectorAll(sel) {
+      return sel === '[data-pochita="tabs"][data-swipeable="true"]' ? this.tabsList : [];
+    },
+  };
+  const outerTabs = {
+    tagName: 'DIV',
+    parentElement: { closest: () => null },
+    closest(sel) {
+      if (sel === '[data-pochita="app-shell-body"]') return shellBody;
+      if (sel === '[data-pochita="tabs"]') return outerTabs;
+      return null;
+    },
+  };
+  const innerTabs = {
+    tagName: 'DIV',
+    parentElement: {
+      closest: (sel) => (sel === '[data-pochita="tabs"]' ? outerTabs : null),
+    },
+    closest(sel) {
+      if (sel === '[data-pochita="app-shell-body"]') return shellBody;
+      if (sel === '[data-pochita="tabs"]') return innerTabs;
+      return null;
+    },
+  };
+  shellBody.tabsList = [outerTabs, innerTabs];
+
+  // Top-level Tabs delegates to enclosing AppShell body; nested Tabs stays scoped to itself
+  assert.equal(resolveSwipeSurface(outerTabs), shellBody);
+  assert.equal(resolveSwipeSurface(innerTabs), innerTabs);
+
+  // Blank space inside AppShell body below/around outerTabs -> owned by outerTabs
+  const blankSpaceTarget = {
+    tagName: 'MAIN',
+    closest: () => null,
+  };
+  assert.equal(isSwipeTargetOwnedByTabs(blankSpaceTarget, outerTabs, shellBody), true);
+  assert.equal(isSwipeTargetOwnedByTabs(blankSpaceTarget, innerTabs, innerTabs), false);
+
+  // Touch inside nested innerTabs -> owned ONLY by innerTabs, never by outerTabs
+  const innerCardTarget = {
+    tagName: 'DIV',
+    closest: (sel) => (sel === '[data-pochita="tabs"]' ? innerTabs : null),
+  };
+  assert.equal(isSwipeTargetOwnedByTabs(innerCardTarget, innerTabs, innerTabs), true);
+  assert.equal(isSwipeTargetOwnedByTabs(innerCardTarget, outerTabs, shellBody), false);
+
+  // Touch inside dialog/header outside Tabs -> rejected even on delegated surface
+  const dialogOverlay = {
+    contains: () => false,
+  };
+  const modalTarget = {
+    tagName: 'DIV',
+    closest: (sel) => (sel.includes('[role="dialog"]') ? dialogOverlay : null),
+  };
+  assert.equal(isSwipeTargetOwnedByTabs(modalTarget, outerTabs, shellBody), false);
 });

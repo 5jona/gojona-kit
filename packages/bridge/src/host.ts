@@ -83,17 +83,27 @@ export class HostTransport {
   }
 
   private getTraceTransport(): BridgeTraceTransport {
-    if (this.portChannel.hasPort()) return 'port';
     if (this.boundHostListener !== null) return 'web-message-listener';
+    if (this.portChannel.hasPort()) return 'port';
     return 'host';
   }
 
   private processMessageEvent(event: MessageEvent): void {
-    if (event.ports && event.ports.length > 0) {
+    if (event.ports?.length) {
       const [transferredPort] = event.ports;
-      const hadPort = this.portChannel.hasPort();
-      this.portChannel.attachPort(transferredPort, (data) => this.handleRawPayload(data));
-      this.tracer.record({ kind: hadPort ? 'port.replaced' : 'port.installed', transport: 'port' });
+      if (this.boundHostListener !== null) {
+        // Listener channel is authoritative; close any late legacy transferred port.
+        try {
+          transferredPort.close();
+        } catch {}
+      } else {
+        const hadPort = this.portChannel.hasPort();
+        this.portChannel.attachPort(transferredPort, (data) => this.handleRawPayload(data));
+        this.tracer.record({
+          kind: hadPort ? 'port.replaced' : 'port.installed',
+          transport: 'port',
+        });
+      }
     }
     if (
       (typeof event.data === 'string' && event.data.length > 0) ||
@@ -124,7 +134,6 @@ export class HostTransport {
     }
     if (!parsed || typeof parsed !== 'object') return;
     const msg = parsed as Partial<RpcResponse & HostEvent>;
-
     if (typeof msg.id === 'string') {
       const pending = this.pending.get(msg.id);
       if (!pending) return;
@@ -143,9 +152,7 @@ export class HostTransport {
           pending.method,
           pending.startedAt,
           rpcErr.message,
-          {
-            code: msg.error.code,
-          },
+          { code: msg.error.code },
         );
         pending.reject(rpcErr);
       } else {
@@ -173,6 +180,10 @@ export class HostTransport {
   }
 
   private async postRaw(payload: string): Promise<void> {
+    if (this.boundHostListener && typeof this.boundHostListener.postMessage === 'function') {
+      this.boundHostListener.postMessage(payload);
+      return;
+    }
     if (this.portChannel.send(payload)) return;
     const host = typeof window !== 'undefined' ? window.__POCHITA_HOST__ : undefined;
     if (typeof host?.postMessage === 'function') {
@@ -225,25 +236,23 @@ export class HostTransport {
     try {
       await this.postRaw(serialized);
     } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
       const pending = this.pending.get(id);
       if (pending) {
         this.pending.delete(id);
         window.clearTimeout(pending.timer);
-        const error = err instanceof Error ? err : new Error(String(err));
         this.tracer.rpcError(transport, id, method, startedAt, error.message);
-        throw error;
       }
-      throw err instanceof Error ? err : new Error(String(err));
+      throw error;
     }
-
     return promise;
   }
 
-  async sendContainerAction(action: ContainerAction): Promise<void> {
-    await this.invoke('container.action', action);
-  }
+  sendContainerAction = (action: ContainerAction): Promise<void> =>
+    this.invoke('container.action', action).then(() => {});
 
   getChannelKind(): BridgeChannelKind {
+    if (this.boundHostListener !== null) return 'web-message-listener';
     if (this.portChannel.hasPort()) return 'port';
     const host = typeof window !== 'undefined' ? window.__POCHITA_HOST__ : undefined;
     if (typeof host?.postMessage === 'function') {

@@ -214,6 +214,39 @@ test('HostTransport and createBridge support WebViewCompat WebMessageListener, h
     assert.deepEqual(res, { echoed: 'telemetry.snapshot', params: { detail: true } });
     assert.equal(outbound.length, 2);
 
+    // Late-arriving legacy WebMessagePort transfer from onPageFinished must NOT hijack
+    // the active WebMessageListener channel (Android host closes its peer port on host.attach).
+    let stalePortClosed = false;
+    const stalePortSent = [];
+    const stalePort = {
+      onmessage: null,
+      start() {},
+      postMessage(msg) {
+        stalePortSent.push(msg);
+      },
+      close() {
+        stalePortClosed = true;
+      },
+    };
+    const portTransferEvent = new Event('message');
+    Object.defineProperties(portTransferEvent, {
+      data: { value: '' },
+      origin: { value: '' },
+      source: { value: null },
+      ports: { value: [stalePort] },
+    });
+    fakeWindow.dispatchEvent(portTransferEvent);
+    assert.equal(stalePortClosed, true);
+    assert.equal(bridge.getDiagnostics().channelKind, 'web-message-listener');
+
+    const pluginRes = await bridge.invokePlugin('container.list');
+    assert.deepEqual(pluginRes, {
+      echoed: 'plugin.invoke',
+      params: { method: 'container.list' },
+    });
+    assert.equal(stalePortSent.length, 0);
+    assert.equal(outbound.length, 3);
+
     // Dispose detaches WebMessageListener cleanly
     bridge.dispose();
     assert.equal(listenerObj.removedListeners, 1);

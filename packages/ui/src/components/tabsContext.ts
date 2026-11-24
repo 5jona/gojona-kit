@@ -17,6 +17,8 @@ export interface TabIndicatorController {
   clearDragging: () => void;
   /** Marks that the pill already settled at `tabValue` via swipe so value sync skips re-animating. */
   markSettledFor: (tabValue: string) => void;
+  /** Re-syncs the indicator pill to the current active tab trigger (used after external cancels). */
+  syncActive?: (animate?: boolean) => void;
 }
 
 /** Shared internal context between `<Tabs>`, `<TabsList>`, `<TabsTrigger>`, and `<TabsContent>`. */
@@ -109,6 +111,31 @@ export function revealPeekPanel(
 /** Easing curve shared by sliding indicator pill and pager settle transitions. */
 export const PAGER_SETTLE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
+/** Clears inline styles across all owned panels and reconciles `hidden` to `activeTab`. */
+export function reconcilePanelsToActive(
+  root: HTMLDivElement | null,
+  activeTab: string | undefined,
+): void {
+  if (!root) return;
+  const { panels } = discoverTabsAndPanels(root);
+  for (const [tab, panel] of panels) {
+    clearPanelStyles(panel);
+    if (activeTab !== undefined) {
+      panel.hidden = tab !== activeTab;
+    }
+  }
+}
+
+/** Handle for an active GPU panel settle transition. */
+export interface PanelSettleHandle {
+  activePanel: HTMLElement | null;
+  peekPanel: HTMLElement | null;
+  /** Completes the settle immediately (snapping pill to target) and invokes `onDone`. */
+  finalize: () => void;
+  /** Aborts the settle silently without invoking `onDone`. */
+  cancel: () => void;
+}
+
 /** Runs a synchronized GPU transform settle on outgoing/incoming panels and indicator pill. */
 export function runPanelSettle(params: {
   activePanel: HTMLElement | null;
@@ -119,7 +146,7 @@ export function runPanelSettle(params: {
   pillTarget: TabIndicatorRect | undefined;
   indicator: TabIndicatorController | null;
   onDone: () => void;
-}): { finalize: () => void } | null {
+}): PanelSettleHandle | null {
   const {
     activePanel,
     peekPanel,
@@ -149,19 +176,32 @@ export function runPanelSettle(params: {
 
   let finished = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  const onEnd = (ev: TransitionEvent) => {
-    if (ev.target === watchEl && ev.propertyName === 'transform') finalize();
+  const cleanup = () => {
+    watchEl.removeEventListener?.('transitionend', onEnd);
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
   };
-  const finalize = () => {
+  const finish = (snapPill: boolean) => {
     if (finished) return;
     finished = true;
-    watchEl.removeEventListener?.('transitionend', onEnd);
-    if (timer !== null) clearTimeout(timer);
+    cleanup();
+    if (snapPill && pillTarget) indicator?.applyRect(pillTarget, false, 0);
     onDone();
   };
+  const onEnd = (ev: TransitionEvent) => {
+    if (ev.target === watchEl && ev.propertyName === 'transform') finish(false);
+  };
+  const finalize = () => finish(true);
+  const cancel = () => {
+    if (finished) return;
+    finished = true;
+    cleanup();
+  };
   watchEl.addEventListener?.('transitionend', onEnd);
-  timer = setTimeout(finalize, durationMs + 60);
-  return { finalize };
+  timer = setTimeout(() => finish(false), durationMs + 60);
+  return { activePanel, peekPanel, finalize, cancel };
 }
 
 /** Mutable geometry/peek subset updated inside a single rAF per drag frame. */

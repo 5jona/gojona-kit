@@ -415,3 +415,51 @@ test('createTabPagerEngine handles boundary rubber-band, mid-drag peek reversal,
   midEngine.end('touch', 12, 160, false);
   midEngine.destroy();
 });
+
+test('createTabPagerEngine switches tabs when swiping blank AppShell body space outside Tabs box', () => {
+  const fixture = createFakeTabsFixture({ active: 'overview', viewportWidth: 360 });
+  const shellBody = {
+    tagName: 'MAIN',
+    querySelectorAll(sel) {
+      return sel === '[data-pochita="tabs"][data-swipeable="true"]' ? [fixture.root] : [];
+    },
+  };
+  fixture.root.parentElement = { closest: () => null };
+  fixture.root.closest = (sel) => {
+    if (sel === '[data-pochita="app-shell-body"]') return shellBody;
+    if (sel === '[data-pochita="tabs"]') return fixture.root;
+    return null;
+  };
+
+  let committed = null;
+  let now = 4000;
+  const engine = createTabPagerEngine({
+    getRoot: () => fixture.root,
+    getSurface: () => shellBody,
+    getIndicator: () => fixture.indicator,
+    getCurrentValue: () => 'overview',
+    isSwipeable: () => true,
+    getOrientation: () => 'horizontal',
+    getTabOrder: () => undefined,
+    getEdgeGuardPx: () => 24,
+    onCommitTab: (next) => {
+      committed = next;
+    },
+    now: () => now,
+    getWindowWidth: () => 360,
+  });
+
+  // Target is bare <main> below Tabs (closest('[data-pochita="tabs"]') === null)
+  const blankMainTarget = {
+    tagName: 'MAIN',
+    closest: () => null,
+  };
+  engine.begin('touch', 99, 260, 720, blankMainTarget);
+  now = 4016;
+  assert.equal(engine.move('touch', 99, 110, 722), true); // dx = -150 (> 28% of 360)
+  now = 4032;
+  engine.end('touch', 99, 110, false);
+  fixture.panels.get('rules').dispatchTransitionEnd('transform');
+  assert.equal(committed, 'rules');
+  engine.destroy();
+});

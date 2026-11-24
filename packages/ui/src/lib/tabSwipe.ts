@@ -1,7 +1,9 @@
 export {
   blurStrandedTabTrigger,
   hasScrollableHorizontalAncestor,
+  isSwipeTargetOwnedByTabs,
   prefersReducedMotion,
+  resolveSwipeSurface,
   shouldIgnoreSwipeStart,
 } from './tabSwipeDom.ts';
 
@@ -235,7 +237,7 @@ export function computeSettleDurationMs(
 ): number {
   const dist = Math.max(0, Number.isFinite(remainingPx) ? remainingPx : 0);
   const absV = Math.abs(Number.isFinite(vReleasePxPerMs) ? vReleasePxPerMs : 0);
-  const speed = Math.max(0.5, Math.min(3.5, absV));
+  const speed = Math.max(0.5, Math.min(6.0, absV));
   return Math.round(Math.max(minMs, Math.min(maxMs, dist / (speed * 1.15))));
 }
 

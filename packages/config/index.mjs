@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
@@ -110,7 +111,8 @@ export function createPochitaViteConfig(options = {}) {
     resolve = {},
   } = options;
 
-  const rawKitRoot = kitRoot ?? (process.env.POCHITA_KIT_ROOT?.trim() || DEFAULT_KIT_ROOT);
+  const explicitKitRoot = kitRoot ?? process.env.POCHITA_KIT_ROOT?.trim();
+  const rawKitRoot = explicitKitRoot || DEFAULT_KIT_ROOT;
   const resolvedKitRoot = rawKitRoot ? path.resolve(rawKitRoot) : undefined;
   const existingAllow = (server?.fs?.allow ?? []).map((entry) => path.resolve(entry));
   const mergedFs = resolvedKitRoot
@@ -120,9 +122,54 @@ export function createPochitaViteConfig(options = {}) {
       }
     : server?.fs;
 
+  const kitPkgsDir =
+    explicitKitRoot && resolvedKitRoot ? path.resolve(resolvedKitRoot, 'packages') : undefined;
+  const hasLocalKitPkgs =
+    Boolean(kitPkgsDir) && existsSync(path.resolve(kitPkgsDir, 'ui/src/index.ts'));
+  const kitAliases =
+    hasLocalKitPkgs && kitPkgsDir
+      ? [
+          {
+            find: /^@gojona\/ui\/styles\.css$/,
+            replacement: path.resolve(kitPkgsDir, 'ui/src/styles/index.css'),
+          },
+          {
+            find: /^@gojona\/ui\/theme-tokens$/,
+            replacement: path.resolve(kitPkgsDir, 'ui/src/theme/tokens.ts'),
+          },
+          { find: /^@gojona\/ui$/, replacement: path.resolve(kitPkgsDir, 'ui/src/index.ts') },
+          {
+            find: /^@gojona\/bridge\/core$/,
+            replacement: path.resolve(kitPkgsDir, 'bridge/src/core.ts'),
+          },
+          {
+            find: /^@gojona\/bridge$/,
+            replacement: path.resolve(kitPkgsDir, 'bridge/src/index.ts'),
+          },
+          {
+            find: /^@gojona\/sideveil-sdk\/core$/,
+            replacement: path.resolve(kitPkgsDir, 'sdk/src/core.ts'),
+          },
+          {
+            find: /^@gojona\/sideveil-sdk$/,
+            replacement: path.resolve(kitPkgsDir, 'sdk/src/index.ts'),
+          },
+          {
+            find: /^@gojona\/config\/themes$/,
+            replacement: path.resolve(kitPkgsDir, 'config/themes.mjs'),
+          },
+        ]
+      : [];
+  const userAliases = Array.isArray(resolve?.alias)
+    ? resolve.alias
+    : resolve?.alias
+      ? Object.entries(resolve.alias).map(([find, replacement]) => ({ find, replacement }))
+      : [];
+
   const existingDedupe = Array.isArray(resolve?.dedupe) ? resolve.dedupe : [];
   const mergedResolve = {
     ...resolve,
+    ...(kitAliases.length > 0 ? { alias: [...userAliases, ...kitAliases] } : {}),
     dedupe: Array.from(new Set(['react', 'react-dom', ...existingDedupe])),
   };
 

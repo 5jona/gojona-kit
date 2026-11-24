@@ -1,6 +1,6 @@
-import type { PointerEvent, RefObject, TouchEvent } from 'react';
+import type { RefObject } from 'react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { prefersReducedMotion } from '../lib/tabSwipe.ts';
+import { prefersReducedMotion, resolveSwipeSurface } from '../lib/tabSwipe.ts';
 import { createTabPagerEngine } from './tabPagerEngine.ts';
 import {
   discoverTabsAndPanels,
@@ -15,6 +15,14 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const isTouchOrPen = (type: string): boolean => type === 'touch' || type === 'pen';
 
+function findTouchById(list: globalThis.TouchList, id: number): globalThis.Touch | undefined {
+  for (let i = 0; i < list.length; i += 1) {
+    const item = list[i];
+    if (item && item.identifier === id) return item;
+  }
+  return undefined;
+}
+
 export interface UseTabPagerOptions {
   rootRef: RefObject<HTMLDivElement | null>;
   indicatorControllerRef: RefObject<TabIndicatorController | null>;
@@ -27,12 +35,13 @@ export interface UseTabPagerOptions {
 }
 
 /**
- * React hook wiring `createTabPagerEngine`, native non-passive `touchmove` locking,
- * and subtle tap-click directional slide-in transitions (`±20px -> 0`, `180ms`).
+ * React hook wiring `createTabPagerEngine`, container-level blank-space touch/pointer delegation,
+ * native non-passive `touchmove` axis locking, and subtle tap-click slide-in transitions.
  */
-export function useTabPager(opts: UseTabPagerOptions) {
+export function useTabPager(opts: UseTabPagerOptions): void {
   const optsRef = useRef(opts);
   optsRef.current = opts;
+  const surfaceRef = useRef<HTMLElement | null>(null);
   const prevValueRef = useRef<string | undefined>(opts.currentValue);
   const clickAnimRef = useRef<Animation | null>(null);
   const lastTouchTimeRef = useRef(0);
@@ -41,6 +50,7 @@ export function useTabPager(opts: UseTabPagerOptions) {
   if (!engineRef.current) {
     engineRef.current = createTabPagerEngine({
       getRoot: () => optsRef.current.rootRef.current,
+      getSurface: () => surfaceRef.current ?? optsRef.current.rootRef.current,
       getIndicator: () => optsRef.current.indicatorControllerRef.current,
       getCurrentValue: () => optsRef.current.currentValue,
       isSwipeable: () => optsRef.current.swipeable,
@@ -55,19 +65,120 @@ export function useTabPager(opts: UseTabPagerOptions) {
     });
   }
 
-  // Attach native non-passive touchmove listener to call preventDefault ONLY when horizontally locked.
+  // Attach native touch/pointer listeners on the enclosing shell body (or root when nested)
+  // so horizontal swipes in empty vertical/horizontal margins work regardless of wrapper heights.
   useEffect(() => {
     const root = optsRef.current.rootRef.current;
-    if (!root || !opts.swipeable || opts.orientation === 'vertical') return;
-    const handleNativeTouchMove = (e: globalThis.TouchEvent) => {
+    if (!root || !opts.swipeable || opts.orientation === 'vertical') {
+      surfaceRef.current = null;
+      return;
+    }
+    const surface = resolveSwipeSurface(root) ?? root;
+    surfaceRef.current = surface;
+    const supportsTouch = typeof window !== 'undefined' && 'ontouchstart' in window;
+
+    const onTouchStart = (e: globalThis.TouchEvent) => {
+      lastTouchTimeRef.current = nowMs();
+      const engine = engineRef.current;
+      if (!engine) return;
+      const activeInput = engine.getActiveInput();
+      if (activeInput?.source === 'touch') {
+        if (findTouchById(e.touches, activeInput.id)) {
+          if (!engine.isHorizontallyLocked()) engine.abort();
+          return;
+        }
+        // Recover if the previously tracked touch disappeared without touchend/touchcancel.
+        engine.abort();
+      }
+      if (e.touches.length !== 1) {
+        engine.abort();
+        return;
+      }
       const t = e.touches[0];
-      if (!t || !engineRef.current) return;
-      if (engineRef.current.move('touch', t.identifier, t.clientX, t.clientY) && e.cancelable) {
+      if (t && e.target) {
+        engine.begin('touch', t.identifier, t.clientX, t.clientY, e.target);
+      }
+    };
+    const onTouchMove = (e: globalThis.TouchEvent) => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      const activeInput = engine.getActiveInput();
+      if (activeInput?.source !== 'touch') return;
+      const t = findTouchById(e.touches, activeInput.id);
+      if (!t) return;
+      if (engine.move('touch', t.identifier, t.clientX, t.clientY) && e.cancelable) {
         e.preventDefault();
       }
     };
-    root.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
-    return () => root.removeEventListener('touchmove', handleNativeTouchMove);
+    const onTouchEnd = (e: globalThis.TouchEvent) => {
+      lastTouchTimeRef.current = nowMs();
+      const engine = engineRef.current;
+      if (!engine) return;
+      const activeInput = engine.getActiveInput();
+      if (activeInput?.source !== 'touch') return;
+      const t = findTouchById(e.changedTouches, activeInput.id);
+      if (t) engine.end('touch', t.identifier, t.clientX, false, t.clientY);
+    };
+    const onTouchCancel = (e: globalThis.TouchEvent) => {
+      lastTouchTimeRef.current = nowMs();
+      const engine = engineRef.current;
+      if (!engine) return;
+      const activeInput = engine.getActiveInput();
+      if (activeInput?.source !== 'touch') return;
+      const t = findTouchById(e.changedTouches, activeInput.id);
+      if (t) engine.end('touch', t.identifier, t.clientX, true, t.clientY);
+    };
+    const onPointerDown = (e: globalThis.PointerEvent) => {
+      if (e.pointerType === 'touch' && supportsTouch) return;
+      if (
+        !isTouchOrPen(e.pointerType) ||
+        !e.isPrimary ||
+        nowMs() - lastTouchTimeRef.current < 400 ||
+        !e.target
+      ) {
+        return;
+      }
+      engineRef.current?.begin('pointer', e.pointerId, e.clientX, e.clientY, e.target);
+    };
+    const onPointerMove = (e: globalThis.PointerEvent) => {
+      if (e.pointerType === 'touch' && supportsTouch) return;
+      if (isTouchOrPen(e.pointerType)) {
+        engineRef.current?.move('pointer', e.pointerId, e.clientX, e.clientY);
+      }
+    };
+    const onPointerUp = (e: globalThis.PointerEvent) => {
+      if (e.pointerType === 'touch' && supportsTouch) return;
+      if (isTouchOrPen(e.pointerType)) {
+        engineRef.current?.end('pointer', e.pointerId, e.clientX, false, e.clientY);
+      }
+    };
+    const onPointerCancel = (e: globalThis.PointerEvent) => {
+      if (e.pointerType === 'touch' && supportsTouch) return;
+      if (isTouchOrPen(e.pointerType)) {
+        engineRef.current?.end('pointer', e.pointerId, e.clientX, true, e.clientY);
+      }
+    };
+
+    const passive = { passive: true } as const;
+    surface.addEventListener('touchstart', onTouchStart, passive);
+    surface.addEventListener('touchmove', onTouchMove, { passive: false });
+    surface.addEventListener('touchend', onTouchEnd, passive);
+    surface.addEventListener('touchcancel', onTouchCancel, passive);
+    surface.addEventListener('pointerdown', onPointerDown, passive);
+    surface.addEventListener('pointermove', onPointerMove, passive);
+    surface.addEventListener('pointerup', onPointerUp, passive);
+    surface.addEventListener('pointercancel', onPointerCancel, passive);
+    return () => {
+      surfaceRef.current = null;
+      surface.removeEventListener('touchstart', onTouchStart);
+      surface.removeEventListener('touchmove', onTouchMove);
+      surface.removeEventListener('touchend', onTouchEnd);
+      surface.removeEventListener('touchcancel', onTouchCancel);
+      surface.removeEventListener('pointerdown', onPointerDown);
+      surface.removeEventListener('pointermove', onPointerMove);
+      surface.removeEventListener('pointerup', onPointerUp);
+      surface.removeEventListener('pointercancel', onPointerCancel);
+    };
   }, [opts.swipeable, opts.orientation]);
 
   // Finalize swipe commit before paint, or run subtle directional slide-in on tap/keyboard switch.
@@ -75,8 +186,9 @@ export function useTabPager(opts: UseTabPagerOptions) {
     const prev = prevValueRef.current;
     const next = opts.currentValue;
     prevValueRef.current = next;
-    if (engineRef.current?.flushPendingCommit()) return;
-    if (!prev || !next || prev === next || prefersReducedMotion()) return;
+    if (prev === next) return;
+    if (engineRef.current?.flushPendingCommit(next)) return;
+    if (!prev || !next || prefersReducedMotion()) return;
 
     const discovered = discoverTabsAndPanels(optsRef.current.rootRef.current);
     const order = optsRef.current.tabOrder?.length ? optsRef.current.tabOrder : discovered.tabs;
@@ -102,39 +214,4 @@ export function useTabPager(opts: UseTabPagerOptions) {
       clickAnimRef.current?.cancel();
     };
   }, []);
-
-  return {
-    onTouchStart(e: TouchEvent<HTMLDivElement>) {
-      lastTouchTimeRef.current = nowMs();
-      const t = e.touches.length === 1 ? e.touches[0] : undefined;
-      if (t) engineRef.current?.begin('touch', t.identifier, t.clientX, t.clientY, e.target);
-      else engineRef.current?.abort();
-    },
-    onTouchEnd(e: TouchEvent<HTMLDivElement>) {
-      lastTouchTimeRef.current = nowMs();
-      const t = e.changedTouches[0];
-      if (t) engineRef.current?.end('touch', t.identifier, t.clientX, false);
-    },
-    onTouchCancel(e: TouchEvent<HTMLDivElement>) {
-      const t = e.changedTouches[0];
-      if (t) engineRef.current?.end('touch', t.identifier, t.clientX, true);
-    },
-    onPointerDown(e: PointerEvent<HTMLDivElement>) {
-      if (!isTouchOrPen(e.pointerType) || nowMs() - lastTouchTimeRef.current < 400) return;
-      engineRef.current?.begin('pointer', e.pointerId, e.clientX, e.clientY, e.target);
-    },
-    onPointerMove(e: PointerEvent<HTMLDivElement>) {
-      if (isTouchOrPen(e.pointerType)) {
-        engineRef.current?.move('pointer', e.pointerId, e.clientX, e.clientY);
-      }
-    },
-    onPointerUp(e: PointerEvent<HTMLDivElement>) {
-      if (isTouchOrPen(e.pointerType))
-        engineRef.current?.end('pointer', e.pointerId, e.clientX, false);
-    },
-    onPointerCancel(e: PointerEvent<HTMLDivElement>) {
-      if (isTouchOrPen(e.pointerType))
-        engineRef.current?.end('pointer', e.pointerId, e.clientX, true);
-    },
-  };
 }

@@ -89,9 +89,11 @@ export function useTabIndicator(): UseTabIndicatorResult {
   const activeValueRef = useRef<string | undefined>(activeValue);
   activeValueRef.current = activeValue;
 
+  const indicatorControllerRef = ctx?.indicatorControllerRef;
+
   // Register imperative controller for finger-coupled pill tracking during swipe drags.
   useEffect(() => {
-    if (!ctx) return;
+    if (!indicatorControllerRef) return;
     const controller: TabIndicatorController = {
       snapshotRects() {
         const rects = new Map<string, TabIndicatorRect>();
@@ -121,17 +123,35 @@ export function useTabIndicator(): UseTabIndicatorResult {
         const indicator = indicatorRef.current;
         if (indicator) indicator.style.willChange = '';
       },
+      syncActive(animate = true) {
+        const list = listRef.current;
+        const indicator = indicatorRef.current;
+        if (!list || !indicator) return;
+        settledForTabRef.current = null;
+        const activeTrigger = findActiveTrigger(list, activeValueRef.current);
+        if (!activeTrigger) {
+          indicator.style.opacity = '0';
+          return;
+        }
+        const rect: TabIndicatorRect = {
+          x: activeTrigger.offsetLeft,
+          width: activeTrigger.offsetWidth,
+        };
+        applyIndicatorStyle(indicator, rect, animate && initializedRef.current, PILL_GLIDE_MS);
+        if (rect.width > 0) initializedRef.current = true;
+      },
     };
-    ctx.indicatorControllerRef.current = controller;
+    indicatorControllerRef.current = controller;
     return () => {
-      if (ctx.indicatorControllerRef.current === controller) {
-        ctx.indicatorControllerRef.current = null;
+      if (indicatorControllerRef.current === controller) {
+        indicatorControllerRef.current = null;
       }
     };
-  }, [ctx]);
+  }, [indicatorControllerRef]);
 
   // Synchronize pill geometry whenever activeValue changes.
   useIsomorphicLayoutEffect(() => {
+    if (draggingRef.current) return;
     const list = listRef.current;
     const indicator = indicatorRef.current;
     if (!list || !indicator) return;

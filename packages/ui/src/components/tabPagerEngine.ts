@@ -5,6 +5,7 @@ import {
   computeSettleDurationMs,
   hasScrollableHorizontalAncestor,
   isInEdgeGuardZone,
+  isSwipeTargetOwnedByTabs,
   prefersReducedMotion,
   recordVelocitySample,
   resolveAdjacentTab,
@@ -13,12 +14,14 @@ import {
   shouldIgnoreSwipeStart,
   type VelocitySample,
 } from '../lib/tabSwipe.ts';
+import { createTabPagerCommitState } from './tabPagerCommitState.ts';
 import {
   applyDragFrameState,
   clearPanelStyles,
   type DragFrameState,
   discoverTabsAndPanels,
   hidePeekPanel,
+  type PanelSettleHandle,
   runPanelSettle,
   type TabIndicatorController,
 } from './tabsContext.ts';
@@ -33,19 +36,14 @@ interface SwipeSession extends DragFrameState {
   y0: number;
   target: EventTarget | null;
   lock: SwipeLockState;
+  appliedDx: number;
   samples: VelocitySample[];
   rafId: number | null;
 }
 
-interface PendingCommitCleanup {
-  outgoing: HTMLElement | null;
-  incoming: HTMLElement | null;
-  targetTab: string;
-  fallbackTimer: ReturnType<typeof setTimeout> | null;
-}
-
 export interface TabPagerEngineDeps {
   getRoot: () => HTMLDivElement | null;
+  getSurface?: () => HTMLElement | null;
   getIndicator: () => TabIndicatorController | null;
   getCurrentValue: () => string | undefined;
   isSwipeable: () => boolean;
@@ -61,7 +59,8 @@ export interface TabPagerEngineDeps {
 
 /**
  * Stateful DOM engine for the 1:1 dual-panel tab pager.
- * Coalesces active panel, neighbor peek, and indicator pill writes into a single rAF per frame.
+ * Coalesces active panel, neighbor peek, and indicator pill writes into a single rAF per frame,
+ * and tracks logical commits across asynchronous React renders so rapid/reversed swipes never drift.
  */
 export function createTabPagerEngine(deps: TabPagerEngineDeps) {
   const now =
@@ -70,24 +69,18 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     deps.getWindowWidth ?? (() => (typeof window !== 'undefined' ? window.innerWidth : 0));
 
   let session: SwipeSession | null = null;
-  let activeSettle: { finalize: () => void } | null = null;
-  let pendingCommit: PendingCommitCleanup | null = null;
+  let activeSettle: PanelSettleHandle | null = null;
 
-  const flushPendingCommit = (): boolean => {
-    const pending = pendingCommit;
-    if (!pending) return false;
-    if (pending.fallbackTimer !== null) clearTimeout(pending.fallbackTimer);
-    pendingCommit = null;
-    clearPanelStyles(pending.outgoing);
-    clearPanelStyles(pending.incoming);
-    if (pending.incoming && pending.targetTab !== deps.getCurrentValue()) {
-      pending.incoming.hidden = true;
-    }
-    return true;
-  };
+  const commits = createTabPagerCommitState({
+    getRoot: deps.getRoot,
+    getIndicator: deps.getIndicator,
+    getCurrentValue: deps.getCurrentValue,
+    getInFlightPanels: () => session ?? activeSettle,
+  });
 
   const applyDragFrame = (s: SwipeSession): boolean => {
     s.rafId = null;
+    s.appliedDx = s.pendingDx;
     return applyDragFrameState(s, deps.getIndicator());
   };
 
@@ -101,7 +94,17 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     clearPanelStyles(s.activePanel);
     hidePeekPanel(s.peekPanel);
     deps.getIndicator()?.clearDragging();
+    commits.rearmIdleReconcile();
   };
+
+  const cancelInFlight = () => {
+    abort();
+    if (!activeSettle) return;
+    activeSettle.cancel();
+    activeSettle = null;
+  };
+  const flushPendingCommit = (committedValue?: string): boolean =>
+    commits.flushPendingCommit(committedValue, cancelInFlight);
 
   const begin = (
     source: PagerInputSource,
@@ -111,18 +114,32 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     target: EventTarget,
   ) => {
     if (!deps.isSwipeable() || deps.getOrientation() === 'vertical') return;
-    activeSettle?.finalize();
-    deps.onBeforeBegin?.();
+    if (source === 'pointer' && session?.source === 'touch') return;
     const root = deps.getRoot();
+    const surface = deps.getSurface?.() ?? root;
     const vw = getViewportWindowWidth();
-    if (isInEdgeGuardZone(x0, vw, deps.getEdgeGuardPx()) || shouldIgnoreSwipeStart(target, root)) {
+    if (
+      isInEdgeGuardZone(x0, vw, deps.getEdgeGuardPx()) ||
+      !isSwipeTargetOwnedByTabs(target, root, surface) ||
+      shouldIgnoreSwipeStart(target, surface)
+    ) {
       return;
     }
+    if (session) abort();
+    commits.clearIdleReconcile();
+    activeSettle?.finalize();
+    commits.promoteForNewGesture();
+    deps.onBeforeBegin?.();
+
     const discovered = discoverTabsAndPanels(root);
     const explicitOrder = deps.getTabOrder();
     const tabs = explicitOrder && explicitOrder.length > 0 ? explicitOrder : discovered.tabs;
-    if (tabs.length < 2) return;
-    const active = deps.getCurrentValue() || discovered.active || tabs[0] || '';
+    if (tabs.length < 2) {
+      commits.rearmIdleReconcile();
+      return;
+    }
+    const fallbackActive = deps.getCurrentValue() || discovered.active || tabs[0] || '';
+    const active = commits.getEffectiveActive(tabs, fallbackActive);
     const activePanel = discovered.panels.get(active) ?? null;
     const viewportWidth = activePanel?.offsetWidth || root?.clientWidth || vw || 360;
 
@@ -133,6 +150,7 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
       y0,
       target,
       lock: 'pending',
+      appliedDx: 0,
       tabs,
       active,
       panels: discovered.panels,
@@ -160,10 +178,8 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     if (s.lock === 'pending') {
       const nextLock = classifySwipeLock(dx, dy, { edgeGuardPx: deps.getEdgeGuardPx() });
       if (nextLock === 'pending') return false;
-      if (
-        nextLock === 'vertical' ||
-        hasScrollableHorizontalAncestor(s.target, deps.getRoot(), dx)
-      ) {
+      const surface = deps.getSurface?.() ?? deps.getRoot();
+      if (nextLock === 'vertical' || hasScrollableHorizontalAncestor(s.target, surface, dx)) {
         s.lock = 'vertical';
         deps.getIndicator()?.clearDragging();
         return false;
@@ -183,7 +199,7 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     return true;
   };
 
-  const end = (source: PagerInputSource, id: number, x: number, cancel: boolean) => {
+  const end = (source: PagerInputSource, id: number, x: number, cancel: boolean, y?: number) => {
     const s = session;
     if (!s || s.source !== source || s.id !== id) return;
     const hadPendingRaf = s.rafId !== null;
@@ -194,25 +210,34 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     const tEnd = now();
     if (!cancel) recordVelocitySample(s.samples, x, tEnd);
     session = null;
-
+    if (s.lock === 'pending' && !cancel && y !== undefined) {
+      const dx = x - s.x0;
+      const surface = deps.getSurface?.() ?? deps.getRoot();
+      const finalLock = classifySwipeLock(dx, y - s.y0, { edgeGuardPx: deps.getEdgeGuardPx() });
+      if (finalLock === 'horizontal' && !hasScrollableHorizontalAncestor(s.target, surface, dx)) {
+        s.lock = 'horizontal';
+      }
+    }
     if (s.lock !== 'horizontal') {
       deps.getIndicator()?.clearDragging();
+      commits.rearmIdleReconcile();
       return;
     }
     s.pendingDx = x - s.x0;
     const vRelease = cancel ? 0 : computeReleaseVelocity(s.samples, tEnd);
     const step = cancel ? 0 : resolvePagerCommitStep(s.pendingDx, vRelease, s.viewportWidth);
     const nextTab = step !== 0 ? resolveAdjacentTab(s.tabs, s.active, step) : null;
-    const needsSync = hadPendingRaf || (nextTab !== null && s.peekTab !== nextTab);
-    const revealedNow = needsSync ? applyDragFrame(s) : false;
+    const needsSync =
+      hadPendingRaf || s.appliedDx !== s.pendingDx || (nextTab !== null && s.peekTab !== nextTab);
+    if (needsSync) applyDragFrame(s);
 
     if (nextTab && nextTab !== s.active) {
-      if (revealedNow && s.peekPanel) void s.peekPanel.offsetWidth;
       const remaining = Math.max(0, s.viewportWidth - Math.abs(s.lastOffset));
       const durationMs =
         remaining < 0.5 || prefersReducedMotion()
           ? 0
           : computeSettleDurationMs(remaining, vRelease);
+      if (needsSync && durationMs > 0) void (s.peekPanel ?? s.activePanel)?.offsetWidth;
       activeSettle = runPanelSettle({
         activePanel: s.activePanel,
         peekPanel: s.peekPanel,
@@ -225,13 +250,7 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
           activeSettle = null;
           blurStrandedTabTrigger(deps.getRoot(), deps.getDocument?.());
           deps.getIndicator()?.markSettledFor(nextTab);
-          const fallbackTimer = setTimeout(flushPendingCommit, 80);
-          pendingCommit = {
-            outgoing: s.activePanel,
-            incoming: s.peekPanel,
-            targetTab: nextTab,
-            fallbackTimer,
-          };
+          commits.recordSwipeCommit(s.activePanel, s.peekPanel, nextTab);
           deps.onCommitTab(nextTab);
         },
       });
@@ -239,6 +258,7 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     }
 
     const cancelMs = Math.abs(s.lastOffset) < 0.5 || prefersReducedMotion() ? 0 : CANCEL_SETTLE_MS;
+    if (needsSync && cancelMs > 0) void (s.peekPanel ?? s.activePanel)?.offsetWidth;
     activeSettle = runPanelSettle({
       activePanel: s.activePanel,
       peekPanel: s.peekPanel,
@@ -252,6 +272,7 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
         clearPanelStyles(s.activePanel);
         hidePeekPanel(s.peekPanel);
         deps.getIndicator()?.clearDragging();
+        commits.rearmIdleReconcile();
       },
     });
   };
@@ -262,10 +283,17 @@ export function createTabPagerEngine(deps: TabPagerEngineDeps) {
     end,
     abort,
     flushPendingCommit,
+    getActiveInput: () => (session ? { source: session.source, id: session.id } : null),
+    isHorizontallyLocked: () => session?.lock === 'horizontal',
     destroy() {
       abort();
-      activeSettle?.finalize();
-      flushPendingCommit();
+      if (activeSettle) {
+        activeSettle.cancel();
+        clearPanelStyles(activeSettle.activePanel);
+        hidePeekPanel(activeSettle.peekPanel);
+        activeSettle = null;
+      }
+      commits.destroy();
     },
   };
 }

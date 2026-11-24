@@ -81,7 +81,7 @@ export function Tabs({
     return nowMs() - pointerInteractionTimeRef.current < POINTER_FOCUS_WINDOW_MS;
   }, []);
 
-  const pager = useTabPager({
+  useTabPager({
     rootRef,
     indicatorControllerRef,
     currentValue,
@@ -121,34 +121,6 @@ export function Tabs({
         value={currentValue}
         defaultValue={defaultValue}
         onValueChange={handleValueChange}
-        onTouchStart={(e) => {
-          props.onTouchStart?.(e);
-          pager.onTouchStart(e);
-        }}
-        onTouchEnd={(e) => {
-          props.onTouchEnd?.(e);
-          pager.onTouchEnd(e);
-        }}
-        onTouchCancel={(e) => {
-          props.onTouchCancel?.(e);
-          pager.onTouchCancel(e);
-        }}
-        onPointerDown={(e) => {
-          props.onPointerDown?.(e);
-          pager.onPointerDown(e);
-        }}
-        onPointerMove={(e) => {
-          props.onPointerMove?.(e);
-          pager.onPointerMove(e);
-        }}
-        onPointerUp={(e) => {
-          props.onPointerUp?.(e);
-          pager.onPointerUp(e);
-        }}
-        onPointerCancel={(e) => {
-          props.onPointerCancel?.(e);
-          pager.onPointerCancel(e);
-        }}
       />
     </TabsInternalContext.Provider>
   );

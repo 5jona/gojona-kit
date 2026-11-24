@@ -2,6 +2,8 @@ const IGNORED_TAGS = new Set(['input', 'textarea', 'select']);
 const IGNORED_ROLES = new Set(['slider', 'switch', 'tablist']);
 const IGNORE_SELECTOR =
   '[data-swipe-ignore], input, textarea, select, [role="slider"], [role="switch"], [role="tablist"], [contenteditable="true"]';
+const NON_DELEGATED_REGION_SELECTOR =
+  'header, footer, nav, [role="dialog"], [aria-modal="true"], [data-pochita="toast-viewport"]';
 
 interface InspectableNode {
   tagName?: string;
@@ -124,4 +126,102 @@ export function hasScrollableHorizontalAncestor(
     current = current.parentElement ?? current.parentNode ?? null;
   }
   return false;
+}
+
+/**
+ * Resolves the gesture listener surface for `root` (`[data-pochita="tabs"]`).
+ * Top-level `<Tabs>` attach to their enclosing `[data-pochita="app-shell-body"]` (or fallback
+ * `<main>` / `document.body`) so horizontal swipes in empty vertical/horizontal margins work
+ * regardless of intermediate wrapper heights or max-width gutters. Nested `<Tabs>` stay scoped
+ * strictly to their own `root`.
+ */
+export function resolveSwipeSurface(root: HTMLElement | null): HTMLElement | null {
+  if (!root) return null;
+  const rootNode = root as unknown as InspectableNode & {
+    ownerDocument?: { body?: HTMLElement | null };
+  };
+  const parentEl = rootNode.parentElement ?? null;
+  if (
+    parentEl &&
+    typeof parentEl.closest === 'function' &&
+    parentEl.closest('[data-pochita="tabs"]')
+  ) {
+    return root;
+  }
+  if (typeof rootNode.closest === 'function') {
+    const shellBody = rootNode.closest('[data-pochita="app-shell-body"]') as HTMLElement | null;
+    if (shellBody) return shellBody;
+    const mainEl = rootNode.closest('main') as HTMLElement | null;
+    if (mainEl) return mainEl;
+  }
+  return rootNode.ownerDocument?.body ?? root;
+}
+
+/**
+ * Checks whether a touch/pointer start `target` belongs to `root` (`[data-pochita="tabs"]`),
+ * either directly inside `root` (and not inside a deeper nested `<Tabs>`) or via delegated
+ * blank-space capture on `surface` when `root` is the sole visible top-level swipeable `<Tabs>`.
+ */
+export function isSwipeTargetOwnedByTabs(
+  target: EventTarget | null,
+  root: HTMLElement | null,
+  surface?: HTMLElement | null,
+): boolean {
+  if (!root || !target || typeof target !== 'object') return false;
+  const targetNode = target as InspectableNode;
+
+  let nearestTabs: unknown = null;
+  if (typeof targetNode.closest === 'function') {
+    nearestTabs = targetNode.closest('[data-pochita="tabs"]');
+  } else {
+    let cur: InspectableNode | null = targetNode;
+    while (cur && typeof cur === 'object') {
+      if (
+        readAttr(cur, 'data-pochita') === 'tabs' ||
+        cur === (root as unknown as InspectableNode)
+      ) {
+        nearestTabs = cur;
+        break;
+      }
+      cur = cur.parentElement ?? cur.parentNode ?? null;
+    }
+  }
+
+  if (nearestTabs === root) return true;
+  if (nearestTabs !== null && nearestTabs !== undefined) return false;
+
+  const activeSurface = surface ?? root;
+  if (activeSurface === root) return false;
+
+  if (typeof targetNode.closest === 'function') {
+    const excluded = targetNode.closest(NON_DELEGATED_REGION_SELECTOR) as InspectableNode | null;
+    if (excluded && !(typeof excluded.contains === 'function' && excluded.contains(root))) {
+      return false;
+    }
+  }
+
+  const surfaceNode = activeSurface as unknown as InspectableNode & {
+    querySelectorAll?: (selector: string) => Iterable<InspectableNode>;
+  };
+  if (typeof surfaceNode.querySelectorAll !== 'function') return false;
+
+  let topLevelVisibleCount = 0;
+  let matchesRoot = false;
+  for (const candidate of surfaceNode.querySelectorAll(
+    '[data-pochita="tabs"][data-swipeable="true"]',
+  )) {
+    const parent = candidate.parentElement ?? candidate.parentNode ?? null;
+    if (parent && typeof parent.closest === 'function' && parent.closest('[data-pochita="tabs"]')) {
+      continue;
+    }
+    if (typeof candidate.closest === 'function' && candidate.closest('[hidden]')) {
+      continue;
+    }
+    topLevelVisibleCount += 1;
+    if (candidate === (root as unknown as InspectableNode)) {
+      matchesRoot = true;
+    }
+  }
+
+  return topLevelVisibleCount === 1 && matchesRoot;
 }
