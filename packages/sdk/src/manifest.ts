@@ -1,10 +1,50 @@
 import {
   type ContainerBackdrop,
   type ContainerPresentationMode,
-  type PluginBackendState,
   SIDEVEIL_BUILTIN_DIAGNOSTIC,
   SIDEVEIL_TIMEOUT_BOUNDS,
-} from '@gojona/bridge';
+} from '@gojona/bridge/core';
+import type {
+  PluginBackendKind,
+  PluginBackendState,
+  PluginCapability,
+  PluginManifest,
+  PluginRuntimeDescriptor,
+} from './generated/sideveilPlugin.ts';
+
+export {
+  CAPABILITY_RISK_TIER_VALUES,
+  type CapabilityRiskTier,
+  PLUGIN_APPROVAL_STATUS_VALUES,
+  PLUGIN_BACKEND_KIND_VALUES,
+  PLUGIN_BACKEND_STATE_VALUES,
+  PLUGIN_CAPABILITY_VALUES,
+  PLUGIN_DAEMON_RESTART_POLICY_VALUES,
+  PLUGIN_DAEMON_STATUS_VALUES,
+  PLUGIN_ORIGIN_VALUES,
+  PLUGIN_PRESENTATION_MODE_VALUES,
+  PLUGIN_SURFACE_BACKDROP_VALUES,
+  type PluginApprovalStatus,
+  type PluginBackendKind,
+  type PluginBackendState,
+  type PluginCapability,
+  type PluginDaemonRestartPolicy,
+  type PluginDaemonSpec,
+  type PluginDaemonStatus,
+  type PluginEmbedPrefs,
+  type PluginManifest,
+  type PluginManifestEmbedPrefs,
+  type PluginManifestNetworkPrefs,
+  type PluginManifestSurfacePrefs,
+  type PluginManifestTriggers,
+  type PluginNetworkPrefs,
+  type PluginOrigin,
+  type PluginPresentationMode,
+  type PluginRuntimeDescriptor,
+  type PluginScopeOverride,
+  type PluginSurfaceBackdrop,
+  type PluginSurfacePrefs,
+} from './generated/sideveilPlugin.ts';
 
 export const BUILTIN_DIAG_PLUGIN_ID = SIDEVEIL_BUILTIN_DIAGNOSTIC.ID;
 
@@ -20,72 +60,11 @@ export function resolvePluginOrigin(pluginId: string): string {
   return `https://${pluginId}.plugins.sideveil.local`;
 }
 
-export type PluginCapability =
-  | 'storage'
-  | 'toast'
-  | 'system-exec'
-  | 'native-hud'
-  | 'clipboard'
-  | 'haptics'
-  | 'telemetry'
-  | 'inter-plugin-bus'
-  | 'network-loopback'
-  | 'network-lan'
-  | 'network-context';
-
-export type PluginBackendKind = 'none' | 'uds-native' | 'uds-app';
-
-export type PluginSurfaceBackdrop = ContainerBackdrop;
-export type PluginPresentationMode = ContainerPresentationMode;
-
 export interface PluginTriggers {
   packages: string[];
   activities?: string[];
   global: boolean;
   priority: number;
-}
-
-export interface PluginSurfacePrefs {
-  backdrop: PluginSurfaceBackdrop;
-  presentation?: PluginPresentationMode;
-  crossOriginIsolated?: boolean;
-  keepAlive?: boolean;
-  widthDp?: number;
-  heightPercent?: number;
-}
-
-export interface PluginEmbedPrefs {
-  url: string;
-  remoteUrl?: string;
-  lanSsids?: string[];
-  allowedOrigins?: string[];
-  allowCleartext?: boolean;
-  wideViewport?: boolean;
-  allowZoom?: boolean;
-  webHistoryBack?: boolean;
-  textZoom?: number;
-  showToolbar?: boolean;
-  keepAliveGraceSec?: number;
-}
-
-export interface PluginNetworkPrefs {
-  allowedOrigins?: string[];
-  allowCleartext?: boolean;
-  spaFallback?: boolean;
-}
-
-export interface PluginManifest {
-  id: string;
-  name: string;
-  version: string;
-  icon?: string;
-  triggers?: Partial<PluginTriggers>;
-  entry?: string;
-  embed?: PluginEmbedPrefs;
-  network?: PluginNetworkPrefs;
-  backend?: PluginBackendKind;
-  capabilities?: PluginCapability[];
-  surface?: Partial<PluginSurfacePrefs>;
 }
 
 export interface PluginSummary {
@@ -98,27 +77,8 @@ export interface PluginSummary {
   triggers: PluginTriggers;
 }
 
-export interface PluginDescriptor {
-  id: string;
-  name: string;
-  version: string;
-  icon?: string;
-  entry?: string;
-  embed?: PluginEmbedPrefs;
-  network?: PluginNetworkPrefs;
-  builtin: boolean;
-  enabled: boolean;
-  priority: number;
-  packages: string[];
-  activities?: string[];
-  global: boolean;
-  hasScopeOverride: boolean;
-  devServerUrl?: string;
-  backend: PluginBackendKind;
-  backendState: PluginBackendState;
-  capabilities: PluginCapability[];
-  surface: PluginSurfacePrefs;
-}
+/** Alias preserving backward compatibility with consumers importing `PluginDescriptor`. */
+export type PluginDescriptor = PluginRuntimeDescriptor;
 
 export interface PluginOverrideEntry {
   enabled?: boolean;
@@ -140,6 +100,8 @@ export interface PluginOverrideEntry {
   keepAliveGraceSec?: number;
   widthDp?: number;
   heightPercent?: number;
+  grantedCapabilities?: PluginCapability[];
+  daemonApproved?: boolean;
 }
 
 export interface PluginOverridesFile {
@@ -151,6 +113,8 @@ export interface PluginOverridesFile {
  * Type-safe helper for defining a SideVeil plugin manifest with sensible defaults.
  */
 export function definePluginManifest(manifest: PluginManifest): PluginManifest {
+  const backdrop: ContainerBackdrop = manifest.surface?.backdrop ?? 'native-glass';
+  const presentation: ContainerPresentationMode = manifest.surface?.presentation ?? 'drawer';
   return {
     ...manifest,
     ...(manifest.embed !== undefined ? { embed: { ...manifest.embed } } : {}),
@@ -166,8 +130,8 @@ export function definePluginManifest(manifest: PluginManifest): PluginManifest {
       priority: manifest.triggers?.priority ?? 0,
     },
     surface: {
-      backdrop: manifest.surface?.backdrop ?? 'native-glass',
-      presentation: manifest.surface?.presentation ?? 'drawer',
+      backdrop,
+      presentation,
       ...(manifest.surface?.crossOriginIsolated !== undefined
         ? { crossOriginIsolated: manifest.surface.crossOriginIsolated }
         : {}),

@@ -37,6 +37,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./core": {
+      "source": "./src/core.ts",
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
     }
   },
   "scripts": {
@@ -50,6 +56,11 @@
   },
   "peerDependencies": {
     "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

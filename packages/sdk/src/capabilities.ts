@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { parsePanelVisibilityEvent } from './lifecycleHooks.ts';
 import { useSideVeilPlugin } from './PluginContext.ts';
+import { parsePanelVisibilityEvent, shouldPollTelemetry } from './parsers.ts';
 import type { GraphicsCapabilities, PluginBusEventPayload, TelemetrySnapshot } from './types.ts';
+
+export { shouldPollTelemetry };
 
 interface NavigatorWithGpu {
   gpu?: {
@@ -113,17 +115,6 @@ export function useInterPluginBus<T = unknown>(
   );
 
   return useMemo(() => ({ publish }), [publish]);
-}
-
-/**
- * Pure helper computing whether periodic telemetry polling should stay active.
- */
-export function shouldPollTelemetry(
-  intervalMs: number,
-  panelVisible: boolean,
-  documentHidden: boolean,
-): boolean {
-  return intervalMs > 0 && panelVisible && !documentHidden;
 }
 
 /**

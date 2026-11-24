@@ -10,6 +10,7 @@ export type BridgeTracePhase = 'request' | 'response' | 'error' | 'event' | 'lif
 
 export type BridgeTraceTransport =
   | 'port'
+  | 'web-message-listener'
   | 'host'
   | 'mock'
   | 'ksu'

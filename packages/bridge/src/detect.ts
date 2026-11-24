@@ -68,9 +68,12 @@ export function detectRuntime(options: DetectRuntimeOptions = {}): RuntimeEnv {
   return 'mock';
 }
 
+const PLUGIN_ORIGIN_SUFFIX = '.plugins.sideveil.local';
+
 /**
  * Detects the active plugin identifier if running inside a SideVeil plugin container.
- * Inspects explicit override, window.__POCHITA_HOST__, and ?pluginId= URL parameter.
+ * Inspects explicit override, `window.__POCHITA_HOST__`, virtual origin hostname
+ * (`<pluginId>.plugins.sideveil.local`), and `?pluginId=` URL parameter.
  */
 export function detectPluginId(override?: string): string | null {
   if (override && override.trim().length > 0) {
@@ -92,6 +95,17 @@ export function detectPluginId(override?: string): string | null {
     if (typeof host.pluginId === 'string' && host.pluginId.trim().length > 0) {
       return host.pluginId.trim();
     }
+  }
+  try {
+    const rawHost = window.location?.hostname?.trim();
+    if (rawHost?.toLowerCase().endsWith(PLUGIN_ORIGIN_SUFFIX)) {
+      const candidate = rawHost.slice(0, rawHost.length - PLUGIN_ORIGIN_SUFFIX.length).trim();
+      if (candidate.length > 0 && !candidate.startsWith('.') && !candidate.endsWith('.')) {
+        return candidate;
+      }
+    }
+  } catch {
+    // ignore
   }
   try {
     if (window.location?.search) {

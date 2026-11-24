@@ -5,6 +5,23 @@ import type { DynamicThemePalettePayload, HostEventListener, PluginBackendState 
  * exception isolation so one throwing subscriber cannot prevent remaining subscribers
  * from receiving the event.
  */
+export function subscribeEventListener(
+  listeners: Map<string, Set<HostEventListener>>,
+  event: string,
+  listener: HostEventListener,
+): () => void {
+  let set = listeners.get(event);
+  if (!set) {
+    set = new Set();
+    listeners.set(event, set);
+  }
+  set.add(listener);
+  return () => {
+    set.delete(listener);
+    if (set.size === 0) listeners.delete(event);
+  };
+}
+
 export function dispatchEventListeners(
   listeners: Map<string, Set<HostEventListener>>,
   event: string,
@@ -26,11 +43,16 @@ export function dispatchEventListeners(
  * scoped/direct deduplication.
  */
 export function createBridgeEventSubscriptions(
-  pluginId: string | null,
+  pluginId: string | null | (() => string | null),
   onHostEvent: (event: string, listener: HostEventListener) => () => void,
 ) {
-  const matchesPluginScope = (payloadPluginId: unknown): boolean =>
-    !pluginId || typeof payloadPluginId !== 'string' || payloadPluginId === pluginId;
+  const resolvePluginId = typeof pluginId === 'function' ? pluginId : () => pluginId;
+  const matchesPluginScope = (payloadPluginId: unknown): boolean => {
+    const activePluginId = resolvePluginId();
+    return (
+      !activePluginId || typeof payloadPluginId !== 'string' || payloadPluginId === activePluginId
+    );
+  };
 
   const onPluginEvent = <T = unknown>(
     event: string,

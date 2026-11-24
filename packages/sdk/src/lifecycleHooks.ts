@@ -1,102 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PLUGIN_EVENT_LAGGED_EVENT } from './manifest.ts';
 import { useSideVeilPlugin } from './PluginContext.ts';
-import type {
-  NetworkContextSnapshot,
-  NetworkTransportKind,
-  PanelVisibilityState,
-  ScopeChangedState,
-} from './types.ts';
+import {
+  parseNetworkContextSnapshot,
+  parsePanelVisibilityEvent,
+  parsePluginEventLaggedPayload,
+  parseScopeChangedEvent,
+} from './parsers.ts';
+import type { NetworkContextSnapshot, PanelVisibilityState, ScopeChangedState } from './types.ts';
 
-const VALID_TRANSPORTS = new Set<NetworkTransportKind>([
-  'wifi',
-  'cellular',
-  'ethernet',
-  'other',
-  'none',
-]);
-
-/**
- * Validates and extracts visibility boolean from a `panel.visibility` host event payload.
- */
-export function parsePanelVisibilityEvent(raw: unknown): boolean | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const visible = (raw as { visible?: unknown }).visible;
-  return typeof visible === 'boolean' ? visible : null;
-}
-
-/**
- * Validates and extracts scope transition fields from a `scope.changed` host event payload.
- * Reads canonical `active` with backward-compatible fallback to `scopeActive`.
- */
-export function parseScopeChangedEvent(raw: unknown): ScopeChangedState | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const record = raw as {
-    foregroundPackage?: unknown;
-    foregroundActivity?: unknown;
-    active?: unknown;
-    scopeActive?: unknown;
-  };
-  if (typeof record.foregroundPackage !== 'string') return null;
-  const active =
-    typeof record.active === 'boolean'
-      ? record.active
-      : typeof record.scopeActive === 'boolean'
-        ? record.scopeActive
-        : false;
-  return {
-    foregroundPackage: record.foregroundPackage,
-    foregroundActivity:
-      typeof record.foregroundActivity === 'string' ? record.foregroundActivity : '',
-    active,
-    scopeActive: active,
-  };
-}
-
-/**
- * Validates a `NetworkContextSnapshot` returned by `network.context` or `network.contextChanged`.
- */
-export function parseNetworkContextSnapshot(raw: unknown): NetworkContextSnapshot | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const record = raw as Record<string, unknown>;
-  const transport = record.transport;
-  if (typeof transport !== 'string' || !VALID_TRANSPORTS.has(transport as NetworkTransportKind)) {
-    return null;
-  }
-  return {
-    transport: transport as NetworkTransportKind,
-    vpnActive: Boolean(record.vpnActive),
-    validated: Boolean(record.validated),
-    metered: Boolean(record.metered),
-    ...(record.interfaceName !== undefined
-      ? { interfaceName: typeof record.interfaceName === 'string' ? record.interfaceName : null }
-      : {}),
-    ...(record.ssid !== undefined
-      ? { ssid: typeof record.ssid === 'string' ? record.ssid : null }
-      : {}),
-    ...(record.gateway !== undefined
-      ? { gateway: typeof record.gateway === 'string' ? record.gateway : null }
-      : {}),
-    ...(record.localIpv4 !== undefined
-      ? { localIpv4: typeof record.localIpv4 === 'string' ? record.localIpv4 : null }
-      : {}),
-  };
-}
-
-/**
- * Extracts the dropped event count from a `plugin.eventLagged` scoped event payload.
- */
-export function parsePluginEventLaggedPayload(raw: unknown): number | null {
-  if (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0) {
-    return Math.floor(raw);
-  }
-  if (!raw || typeof raw !== 'object') return null;
-  const dropped = (raw as { dropped?: unknown }).dropped;
-  if (typeof dropped === 'number' && Number.isFinite(dropped) && dropped >= 0) {
-    return Math.floor(dropped);
-  }
-  return null;
-}
+export {
+  parseNetworkContextSnapshot,
+  parsePanelVisibilityEvent,
+  parsePluginEventLaggedPayload,
+  parseScopeChangedEvent,
+};
 
 /**
  * Subscribes to host `panel.visibility` and browser `visibilitychange` events so plugins

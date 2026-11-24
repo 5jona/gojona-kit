@@ -1,4 +1,4 @@
-import type { ContainerBackdrop } from '@gojona/bridge';
+import type { ContainerBackdrop } from '@gojona/bridge/core';
 import type { HudTextOverlay } from './generated/sideveilThemeHud.ts';
 
 export {

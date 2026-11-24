@@ -2,6 +2,7 @@ import { installPochitaDebugHandle, uninstallPochitaDebugHandle } from './debugH
 import { detectPluginId, detectRuntime } from './detect.ts';
 import { createBridgeEventSubscriptions } from './events.ts';
 import { HostTransport } from './host.ts';
+import { HostHandshakeTracker } from './hostHandshake.ts';
 import { ksuExec, ksuReadFile, ksuToast, ksuWriteFileAtomic } from './ksu.ts';
 import { MockTransport, runMockExec, runMockRpc } from './mock.ts';
 import { BridgeTracer, createTraceStore } from './trace.ts';
@@ -14,6 +15,7 @@ import type {
   ExecOptions,
   ExecResult,
   HostEventListener,
+  HostHandshakePayload,
   InvokeOptions,
   WriteFileAtomicOptions,
 } from './types.ts';
@@ -31,7 +33,7 @@ export const PLUGIN_INVOKE_WIRE_TIMEOUT_MARGIN_MS = 2000;
 export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const allowUrlOverride = options.allowUrlOverride ?? options.allowQueryOverride;
   const env = options.forceEnv ?? detectRuntime({ allowUrlOverride });
-  const pluginId = detectPluginId(options.pluginId);
+  const initialPluginId = detectPluginId(options.pluginId);
   const mockNamespace = options.mockNamespace ?? 'default';
   let ksuDisposed = false;
 
@@ -178,12 +180,8 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   };
 
   const toast = (message: string): void => {
-    if (env === 'ksu' && ksuToast(message)) {
-      return;
-    }
-    if (hostTransport) {
-      void hostTransport.invoke('ui.toast', { message }).catch(() => {});
-    }
+    if (env === 'ksu' && ksuToast(message)) return;
+    if (hostTransport) void hostTransport.invoke('ui.toast', { message }).catch(() => {});
   };
 
   const sendContainerAction = async (action: ContainerAction): Promise<void> => {
@@ -194,29 +192,47 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     mockTransport?.sendContainerAction(action);
   };
 
-  const onHostEvent = (event: string, listener: HostEventListener): (() => void) => {
-    if (hostTransport) {
-      return hostTransport.subscribe(event, listener);
-    }
-    if (mockTransport) {
-      return mockTransport.subscribe(event, listener);
-    }
-    return () => {};
+  const onHostEvent = (event: string, listener: HostEventListener): (() => void) =>
+    hostTransport
+      ? hostTransport.subscribe(event, listener)
+      : mockTransport
+        ? mockTransport.subscribe(event, listener)
+        : () => {};
+
+  const mockHandshake = !hostTransport ? new HostHandshakeTracker() : null;
+  const unsubscribeMockReady =
+    mockTransport && mockHandshake
+      ? mockTransport.subscribe('host.ready', (payload) => {
+          mockHandshake.record(payload);
+        })
+      : null;
+
+  const getHostHandshake = (): HostHandshakePayload | null =>
+    hostTransport ? hostTransport.getHostHandshake() : (mockHandshake?.get() ?? null);
+
+  const waitForHostReady = (timeoutMs?: number): Promise<HostHandshakePayload> => {
+    if (hostTransport) return hostTransport.waitForHostReady(timeoutMs);
+    if (mockHandshake) return mockHandshake.wait(timeoutMs);
+    return Promise.reject(new Error('host.ready handshake is unavailable in this runtime'));
   };
 
+  const resolvePluginId = (): string | null =>
+    initialPluginId ?? getHostHandshake()?.pluginId ?? null;
+
   const { onPluginEvent, onPluginBackendState, onBackPressed, onThemePalette } =
-    createBridgeEventSubscriptions(pluginId, onHostEvent);
+    createBridgeEventSubscriptions(resolvePluginId, onHostEvent);
 
   const getDiagnostics = (): BridgeDiagnosticsSnapshot => {
+    const activePluginId = resolvePluginId();
     if (hostTransport) {
-      return hostTransport.getDiagnostics(pluginId);
+      return hostTransport.getDiagnostics(activePluginId);
     }
     if (mockTransport) {
-      return mockTransport.getDiagnostics(pluginId, env);
+      return mockTransport.getDiagnostics(activePluginId, env);
     }
     return {
       env,
-      pluginId,
+      pluginId: activePluginId,
       channelKind: 'ksu',
       pendingCount: 0,
       pendingMethods: [],
@@ -243,6 +259,8 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
   const dispose = (): void => {
     ksuDisposed = true;
     unsubscribeOnTrace?.();
+    unsubscribeMockReady?.();
+    mockHandshake?.dispose('Bridge disposed before host.ready handshake arrived');
     uninstallPochitaDebugHandle(debugHandle);
     hostTransport?.dispose();
     if (ownsMockTransport) {
@@ -252,7 +270,9 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
 
   return {
     env,
-    pluginId,
+    get pluginId() {
+      return resolvePluginId();
+    },
     exec,
     readFile,
     writeFileAtomic,
@@ -265,6 +285,8 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     onPluginBackendState,
     onBackPressed,
     onThemePalette,
+    getHostHandshake,
+    waitForHostReady,
     getDiagnostics,
     getTraceEntries,
     clearTraceEntries,

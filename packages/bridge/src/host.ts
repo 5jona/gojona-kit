@@ -1,4 +1,5 @@
-import { dispatchEventListeners } from './events.ts';
+import { dispatchEventListeners, subscribeEventListener } from './events.ts';
+import { HostHandshakeTracker, sendHostAttachBootstrap } from './hostHandshake.ts';
 import { isTrustedWindowMessage, PortChannel, WebSocketChannel } from './portChannel.ts';
 import { BridgeRpcError } from './rpcError.ts';
 import { BridgeTracer } from './trace.ts';
@@ -10,8 +11,10 @@ import type {
   BridgeTraceStore,
   BridgeTraceTransport,
   ContainerAction,
+  EmbeddedHostGlobal,
   HostEvent,
   HostEventListener,
+  HostHandshakePayload,
   RpcRequest,
   RpcResponse,
 } from './types.ts';
@@ -45,11 +48,13 @@ export class HostTransport {
   private readonly pending = new Map<string, PendingCall>();
   private readonly listeners = new Map<string, Set<HostEventListener>>();
   private readonly portChannel = new PortChannel();
+  private readonly handshake = new HostHandshakeTracker();
   private readonly wsChannel: WebSocketChannel;
   private readonly tracer: BridgeTracer;
   private readonly defaultTimeoutMs: number;
   private readonly allowedOrigins?: string[];
 
+  private boundHostListener: EmbeddedHostGlobal | null = null;
   private reqSeq = 0;
   private disposed = false;
 
@@ -68,31 +73,44 @@ export class HostTransport {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('message', this.handleWindowMessage);
+      const host = window.__POCHITA_HOST__;
+      if (host && typeof host.addEventListener === 'function') {
+        this.boundHostListener = host;
+        host.addEventListener('message', this.handleHostListenerMessage);
+        sendHostAttachBootstrap(host);
+      }
     }
   }
 
   private getTraceTransport(): BridgeTraceTransport {
-    return this.portChannel.hasPort() ? 'port' : 'host';
+    if (this.portChannel.hasPort()) return 'port';
+    if (this.boundHostListener !== null) return 'web-message-listener';
+    return 'host';
   }
 
-  private readonly handleWindowMessage = (event: MessageEvent) => {
-    if (this.disposed) return;
-    if (!isTrustedWindowMessage(event, this.allowedOrigins)) return;
-
-    // Accept an upgraded or reinstalled dedicated WebMessagePort transferred by an Android WebView host.
+  private processMessageEvent(event: MessageEvent): void {
     if (event.ports && event.ports.length > 0) {
       const [transferredPort] = event.ports;
       const hadPort = this.portChannel.hasPort();
       this.portChannel.attachPort(transferredPort, (data) => this.handleRawPayload(data));
       this.tracer.record({ kind: hadPort ? 'port.replaced' : 'port.installed', transport: 'port' });
     }
-
     if (
       (typeof event.data === 'string' && event.data.length > 0) ||
       (event.data && typeof event.data === 'object')
     ) {
       this.handleRawPayload(event.data);
     }
+  }
+
+  private readonly handleWindowMessage = (event: MessageEvent) => {
+    if (this.disposed || !isTrustedWindowMessage(event, this.allowedOrigins)) return;
+    this.processMessageEvent(event);
+  };
+
+  private readonly handleHostListenerMessage = (event: MessageEvent) => {
+    if (this.disposed) return;
+    this.processMessageEvent(event);
   };
 
   private handleRawPayload(raw: unknown): void {
@@ -104,7 +122,6 @@ export class HostTransport {
         return;
       }
     }
-
     if (!parsed || typeof parsed !== 'object') return;
     const msg = parsed as Partial<RpcResponse & HostEvent>;
 
@@ -113,7 +130,6 @@ export class HostTransport {
       if (!pending) return;
       this.pending.delete(msg.id);
       window.clearTimeout(pending.timer);
-
       if (msg.error) {
         const rpcErr = new BridgeRpcError(
           msg.error.code,
@@ -140,6 +156,7 @@ export class HostTransport {
     }
 
     if (typeof msg.event === 'string') {
+      if (msg.event === 'host.ready') this.handshake.record(msg.payload);
       this.tracer.eventIn(this.getTraceTransport(), msg.event, msg.payload);
       dispatchEventListeners(this.listeners, msg.event, msg.payload);
     }
@@ -156,21 +173,16 @@ export class HostTransport {
   }
 
   private async postRaw(payload: string): Promise<void> {
-    if (this.portChannel.send(payload)) {
-      return;
-    }
-
+    if (this.portChannel.send(payload)) return;
     const host = typeof window !== 'undefined' ? window.__POCHITA_HOST__ : undefined;
-    if (host && typeof host.postMessage === 'function') {
+    if (typeof host?.postMessage === 'function') {
       host.postMessage(payload);
       return;
     }
-
     if (this.wsChannel.hasUrl()) {
       await this.wsChannel.send(payload);
       return;
     }
-
     this.portChannel.enqueue(payload);
   }
 
@@ -233,14 +245,20 @@ export class HostTransport {
 
   getChannelKind(): BridgeChannelKind {
     if (this.portChannel.hasPort()) return 'port';
-    if (
-      typeof window !== 'undefined' &&
-      typeof window.__POCHITA_HOST__?.postMessage === 'function'
-    ) {
-      return 'js-interface';
+    const host = typeof window !== 'undefined' ? window.__POCHITA_HOST__ : undefined;
+    if (typeof host?.postMessage === 'function') {
+      return typeof host.addEventListener === 'function' ? 'web-message-listener' : 'js-interface';
     }
     return 'ws';
   }
+
+  getHostHandshake = (): HostHandshakePayload | null => this.handshake.get();
+  waitForHostReady = (timeoutMs?: number): Promise<HostHandshakePayload> =>
+    this.handshake.wait(timeoutMs);
+  getRecentTraces = (limit?: number): BridgeTraceEvent[] => this.tracer.getRecentTraces(limit);
+  getTraceStore = (): BridgeTraceStore => this.tracer.getStore();
+  subscribe = (event: string, listener: HostEventListener): (() => void) =>
+    subscribeEventListener(this.listeners, event, listener);
 
   getDiagnostics(pluginId: string | null = null): BridgeDiagnosticsSnapshot {
     return {
@@ -255,36 +273,15 @@ export class HostTransport {
     };
   }
 
-  getRecentTraces(limit?: number): BridgeTraceEvent[] {
-    return this.tracer.getRecentTraces(limit);
-  }
-
-  getTraceStore(): BridgeTraceStore {
-    return this.tracer.getStore();
-  }
-
-  subscribe(event: string, listener: HostEventListener): () => void {
-    let set = this.listeners.get(event);
-    if (!set) {
-      set = new Set();
-      this.listeners.set(event, set);
-    }
-    set.add(listener);
-    return () => {
-      set?.delete(listener);
-      if (set && set.size === 0) {
-        this.listeners.delete(event);
-      }
-    };
-  }
-
   dispose(): void {
     this.disposed = true;
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined')
       window.removeEventListener('message', this.handleWindowMessage);
-    }
+    this.boundHostListener?.removeEventListener?.('message', this.handleHostListenerMessage);
+    this.boundHostListener = null;
     this.portChannel.dispose();
     this.wsChannel.dispose();
+    this.handshake.dispose('Transport disposed before host.ready handshake arrived');
     this.rejectAllPending('Transport disposed before request settled');
     this.listeners.clear();
   }

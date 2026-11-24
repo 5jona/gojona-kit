@@ -1,16 +1,21 @@
-import type { ContainerPinnedBounds, ContainerPresentationMode } from '@gojona/bridge';
+import type { ContainerPinnedBounds, ContainerPresentationMode } from '@gojona/bridge/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSideVeilPlugin } from './PluginContext.ts';
+import {
+  type ContainerClickThroughChangedPayload,
+  type ContainerPresentationChangedPayload,
+  type HapticKind,
+  parseClickThroughChangedEvent,
+  parsePresentationChangedEvent,
+} from './parsers.ts';
 
-export type HapticKind = 'tick' | 'click' | 'heavy' | 'cancel';
-
-export interface ContainerPresentationChangedPayload {
-  mode: ContainerPresentationMode;
-}
-
-export interface ContainerClickThroughChangedPayload {
-  clickThrough: boolean;
-}
+export {
+  type ContainerClickThroughChangedPayload,
+  type ContainerPresentationChangedPayload,
+  type HapticKind,
+  parseClickThroughChangedEvent,
+  parsePresentationChangedEvent,
+};
 
 export interface UsePresentationModeApi {
   mode: ContainerPresentationMode;
@@ -22,34 +27,6 @@ export interface UsePresentationModeApi {
   ) => Promise<void>;
   setPinnedBounds: (bounds: ContainerPinnedBounds) => Promise<void>;
   setClickThrough: (enabled: boolean) => Promise<void>;
-}
-
-const VALID_PRESENTATION_MODES: ReadonlySet<string> = new Set<ContainerPresentationMode>([
-  'drawer',
-  'peek',
-  'pinned',
-  'wide',
-  'native-hud',
-]);
-
-/**
- * Safely parses a `container.presentationChanged` host event payload.
- */
-export function parsePresentationChangedEvent(payload: unknown): ContainerPresentationMode | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const candidate = (payload as Partial<ContainerPresentationChangedPayload>).mode;
-  return typeof candidate === 'string' && VALID_PRESENTATION_MODES.has(candidate)
-    ? (candidate as ContainerPresentationMode)
-    : null;
-}
-
-/**
- * Safely parses a `container.clickThroughChanged` host event payload.
- */
-export function parseClickThroughChangedEvent(payload: unknown): boolean | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const candidate = (payload as Partial<ContainerClickThroughChangedPayload>).clickThrough;
-  return typeof candidate === 'boolean' ? candidate : null;
 }
 
 /**

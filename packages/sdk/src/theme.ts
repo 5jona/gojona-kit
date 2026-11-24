@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDynamicThemeTokens } from './hooks.ts';
 import { useSideVeilPlugin } from './PluginContext.ts';
+import { extractPluginAppearance } from './parsers.ts';
+import type { PluginAppearanceSnapshot, PluginColorMode } from './types.ts';
 
-export type PluginColorMode = 'system' | 'light' | 'dark';
-
-export interface PluginAppearanceSnapshot {
-  themeId: string | null;
-  colorMode: PluginColorMode | null;
-}
+export { extractPluginAppearance, type PluginAppearanceSnapshot, type PluginColorMode };
 
 export interface PluginThemeController<TThemeId extends string = string> {
   themeId?: TThemeId;
@@ -45,27 +42,6 @@ export interface UseSyncedPluginThemeResult {
   colorMode: PluginColorMode | null;
   resolvedScheme: 'light' | 'dark';
   isDark: boolean;
-}
-
-/**
- * Extracts `panel.themeId` and `panel.colorMode` from a raw SideVeil daemon config object.
- */
-export function extractPluginAppearance(rawConfig: unknown): PluginAppearanceSnapshot {
-  if (!rawConfig || typeof rawConfig !== 'object') {
-    return { themeId: null, colorMode: null };
-  }
-  const panel = (rawConfig as { panel?: unknown }).panel;
-  if (!panel || typeof panel !== 'object') {
-    return { themeId: null, colorMode: null };
-  }
-  const p = panel as { themeId?: unknown; colorMode?: unknown };
-  const themeId =
-    typeof p.themeId === 'string' && p.themeId.trim().length > 0 ? p.themeId.trim() : null;
-  const colorMode: PluginColorMode | null =
-    p.colorMode === 'system' || p.colorMode === 'light' || p.colorMode === 'dark'
-      ? p.colorMode
-      : null;
-  return { themeId, colorMode };
 }
 
 function getSystemScheme(): 'light' | 'dark' {

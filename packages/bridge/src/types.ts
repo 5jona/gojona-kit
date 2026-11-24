@@ -1,3 +1,4 @@
+export type { HostHandshakePayload } from './hostHandshake.ts';
 export type {
   BridgeTraceEvent,
   BridgeTraceInput,
@@ -11,13 +12,20 @@ export type {
 } from './traceTypes.ts';
 
 import type { SIDEVEIL_EVENTS, SIDEVEIL_METHODS } from './generated/sideveilConstants.ts';
+import type { HostHandshakePayload } from './hostHandshake.ts';
 import type { BridgeTraceEvent, BridgeTraceListener, BridgeTraceStore } from './traceTypes.ts';
 
 export type SideVeilMethodConstants = typeof SIDEVEIL_METHODS;
 export type SideVeilEventConstants = typeof SIDEVEIL_EVENTS;
 
 export type RuntimeEnv = 'host' | 'ksu' | 'mock' | 'browser';
-export type BridgeChannelKind = 'port' | 'js-interface' | 'ws' | 'ksu' | 'mock';
+export type BridgeChannelKind =
+  | 'port'
+  | 'web-message-listener'
+  | 'js-interface'
+  | 'ws'
+  | 'ksu'
+  | 'mock';
 export type PluginBackendState = 'none' | 'online' | 'offline';
 export type ContainerBackdrop = 'native-glass' | 'transparent' | 'opaque';
 export type ContainerPresentationMode = 'drawer' | 'peek' | 'pinned' | 'wide' | 'native-hud';
@@ -94,17 +102,9 @@ export interface InvokeOptions {
 export interface ContainerThemeSyncPayload {
   themeId: string;
   colorScheme: 'light' | 'dark';
-  /**
-   * Advisory hint indicating whether the web container requests native background blur.
-   * Standalone embedded hosts may adjust their window backdrop blur accordingly,
-   * whereas daemon-authoritative hosts may omit or ignore this hint.
-   */
+  /** Advisory hint for standalone hosts requesting native background blur. */
   wantsNativeBlur?: boolean;
-  /**
-   * Advisory hint specifying the preferred container corner radius in pixels.
-   * Standalone embedded hosts may round native window/container corners,
-   * whereas daemon-authoritative hosts may omit or ignore this hint.
-   */
+  /** Advisory hint for standalone hosts specifying preferred corner radius in pixels. */
   cornerRadiusPx?: number;
 }
 
@@ -158,6 +158,9 @@ export type MockRpcHandler = (method: string, params?: unknown) => unknown | Pro
 
 export interface EmbeddedHostGlobal {
   postMessage?: (message: string) => void;
+  addEventListener?: (type: 'message', listener: (event: MessageEvent) => void) => void;
+  removeEventListener?: (type: 'message', listener: (event: MessageEvent) => void) => void;
+  onmessage?: ((event: MessageEvent) => void) | null;
   wsUrl?: string;
   version?: string;
   pluginId?: string;
@@ -271,6 +274,8 @@ export interface BridgeClient {
   onPluginBackendState: (listener: (state: PluginBackendState) => void) => () => void;
   onBackPressed: (listener: () => void) => () => void;
   onThemePalette: (listener: (palette: DynamicThemePalettePayload) => void) => () => void;
+  getHostHandshake: () => HostHandshakePayload | null;
+  waitForHostReady: (timeoutMs?: number) => Promise<HostHandshakePayload>;
   getDiagnostics: () => BridgeDiagnosticsSnapshot;
   getTraceEntries: (limit?: number) => BridgeTraceEvent[];
   clearTraceEntries: () => void;

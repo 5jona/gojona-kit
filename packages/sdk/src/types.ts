@@ -8,16 +8,21 @@ import type {
   ContainerPresentationMode,
   ContainerThemeSyncPayload,
   DynamicThemePalettePayload,
+  ExecOptions,
+  ExecResult,
   GlassTintOverride,
+  HostHandshakePayload,
   InvokeOptions,
   PluginBackendState,
   PluginBackendStatePayload,
   PluginScopedEventPayload,
-} from '@gojona/bridge';
+  WriteFileAtomicOptions,
+} from '@gojona/bridge/core';
 import type {
   DynamicThemePalette,
   HostDynamicColorsPayload,
   HudDismissPayload,
+  HudDismissResult,
   SideVeilThemeHudEventPayloadMap,
   SideVeilThemeHudRpcMethodMap,
 } from './generated/sideveilThemeHud.ts';
@@ -25,7 +30,10 @@ import type {
   DaemonHealth,
   DaemonStatus,
   DebugGestureStats,
+  EmptyParams,
+  HostLocalAuditPayload,
   HostPluginDiagnosticsPayload,
+  HostReadyPayload,
   PanelStateChangedPayload,
   PanelVisibilityPayload,
   PingResult,
@@ -33,7 +41,7 @@ import type {
   SideVeilCoreEventPayloadMap,
   SideVeilCoreRpcMethodMap,
 } from './generated/sideveilWire.ts';
-import type { PluginDescriptor, PluginManifest } from './manifest.ts';
+import type { PluginManifest, PluginRuntimeDescriptor } from './manifest.ts';
 
 export {
   HUD_TEXT_ALIGN_VALUES,
@@ -45,26 +53,55 @@ export {
 } from './hud.ts';
 export {
   BUILTIN_DIAG_PLUGIN_ID,
+  CAPABILITY_RISK_TIER_VALUES,
+  type CapabilityRiskTier,
   DEFAULT_PLUGIN_INVOKE_TIMEOUT_MS,
   definePluginManifest,
   MAX_PLUGIN_INVOKE_TIMEOUT_MS,
   MIN_PLUGIN_INVOKE_TIMEOUT_MS,
+  PLUGIN_APPROVAL_STATUS_VALUES,
+  PLUGIN_BACKEND_KIND_VALUES,
+  PLUGIN_BACKEND_STATE_VALUES,
+  PLUGIN_CAPABILITY_VALUES,
+  PLUGIN_DAEMON_RESTART_POLICY_VALUES,
+  PLUGIN_DAEMON_STATUS_VALUES,
   PLUGIN_EVENT_LAGGED_EVENT,
+  PLUGIN_ORIGIN_VALUES,
+  PLUGIN_PRESENTATION_MODE_VALUES,
+  PLUGIN_SURFACE_BACKDROP_VALUES,
+  type PluginApprovalStatus,
   type PluginBackendKind,
   type PluginCapability,
+  type PluginDaemonRestartPolicy,
+  type PluginDaemonSpec,
+  type PluginDaemonStatus,
   type PluginDescriptor,
   type PluginEmbedPrefs,
   type PluginManifest,
+  type PluginManifestEmbedPrefs,
+  type PluginManifestNetworkPrefs,
+  type PluginManifestSurfacePrefs,
+  type PluginManifestTriggers,
   type PluginNetworkPrefs,
+  type PluginOrigin,
   type PluginOverrideEntry,
   type PluginOverridesFile,
   type PluginPresentationMode,
+  type PluginRuntimeDescriptor,
+  type PluginScopeOverride,
   type PluginSummary,
   type PluginSurfaceBackdrop,
   type PluginSurfacePrefs,
   type PluginTriggers,
   resolvePluginOrigin,
 } from './manifest.ts';
+
+export type PluginColorMode = 'system' | 'light' | 'dark';
+
+export interface PluginAppearanceSnapshot {
+  themeId: string | null;
+  colorMode: PluginColorMode | null;
+}
 
 export type NetworkTransportKind = 'wifi' | 'cellular' | 'ethernet' | 'other' | 'none';
 
@@ -92,7 +129,7 @@ export interface ScopeChangedState {
 }
 
 export interface PluginsSnapshotPayload {
-  plugins: PluginDescriptor[];
+  plugins: PluginRuntimeDescriptor[];
   matchedPluginIds: string[];
   activePluginId: string | null;
   foregroundPackage: string;
@@ -203,10 +240,17 @@ export type {
   DebugGestureStats,
   DynamicThemePalette,
   DynamicThemePalettePayload,
+  EmptyParams,
+  ExecOptions,
+  ExecResult,
   GlassTintOverride,
   HostDynamicColorsPayload,
+  HostHandshakePayload,
+  HostLocalAuditPayload,
   HostPluginDiagnosticsPayload,
+  HostReadyPayload,
   HudDismissPayload,
+  HudDismissResult,
   InvokeOptions,
   PanelStateChangedPayload,
   PanelVisibilityPayload,
@@ -215,4 +259,5 @@ export type {
   PluginBackendStatePayload,
   PluginScopedEventPayload,
   ScopeChangedPayload,
+  WriteFileAtomicOptions,
 };
