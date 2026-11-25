@@ -195,3 +195,55 @@ test('createBridge installs frozen window.__POCHITA_DEBUG__ with emitHostEvent o
     }
   }
 });
+
+test('HostTransport replays sticky hydration events to late React useEffect subscribers', () => {
+  const originalWindow = globalThis.window;
+  const listeners = new Set();
+  globalThis.window = {
+    location: { href: 'https://strata.manager.plugins.sideveil.local/web/index.html', search: '' },
+    __POCHITA_HOST__: {
+      postMessage: () => {},
+      addEventListener: (_type, fn) => listeners.add(fn),
+      removeEventListener: (_type, fn) => listeners.delete(fn),
+    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    setTimeout,
+    clearTimeout,
+  };
+
+  try {
+    const bridge = createBridge({ forceEnv: 'host', pluginId: 'strata.manager' });
+    const deliver = (msg) => {
+      for (const fn of listeners) fn({ data: JSON.stringify(msg) });
+    };
+    // Simulate host pushing initial state immediately on host.attach BEFORE useEffect subscribes
+    deliver({
+      event: 'plugin.backendState',
+      payload: { pluginId: 'strata.manager', state: 'online' },
+    });
+    deliver({ event: 'theme.paletteUpdated', payload: { cssTokens: { '--accent': '#516190' } } });
+    deliver({ event: 'panel.backPressed', payload: { timestampMs: 1 } });
+
+    const seenStates = [];
+    const seenPalettes = [];
+    let backPressCount = 0;
+    bridge.onPluginBackendState((s) => seenStates.push(s));
+    bridge.onThemePalette((p) => seenPalettes.push(p.cssTokens['--accent']));
+    bridge.onBackPressed(() => {
+      backPressCount += 1;
+    });
+
+    assert.deepEqual(seenStates, ['online']);
+    assert.deepEqual(seenPalettes, ['#516190']);
+    // Transient action events must NOT be replayed
+    assert.equal(backPressCount, 0);
+    bridge.dispose();
+  } finally {
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
+});

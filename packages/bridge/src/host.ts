@@ -47,6 +47,7 @@ export interface HostTransportOptions {
 export class HostTransport {
   private readonly pending = new Map<string, PendingCall>();
   private readonly listeners = new Map<string, Set<HostEventListener>>();
+  private readonly stickyEvents = new Map<string, unknown>();
   private readonly portChannel = new PortChannel();
   private readonly handshake = new HostHandshakeTracker();
   private readonly wsChannel: WebSocketChannel;
@@ -165,7 +166,7 @@ export class HostTransport {
     if (typeof msg.event === 'string') {
       if (msg.event === 'host.ready') this.handshake.record(msg.payload);
       this.tracer.eventIn(this.getTraceTransport(), msg.event, msg.payload);
-      dispatchEventListeners(this.listeners, msg.event, msg.payload);
+      dispatchEventListeners(this.listeners, msg.event, msg.payload, this.stickyEvents);
     }
   }
 
@@ -267,7 +268,7 @@ export class HostTransport {
   getRecentTraces = (limit?: number): BridgeTraceEvent[] => this.tracer.getRecentTraces(limit);
   getTraceStore = (): BridgeTraceStore => this.tracer.getStore();
   subscribe = (event: string, listener: HostEventListener): (() => void) =>
-    subscribeEventListener(this.listeners, event, listener);
+    subscribeEventListener(this.listeners, event, listener, this.stickyEvents);
 
   getDiagnostics(pluginId: string | null = null): BridgeDiagnosticsSnapshot {
     return {
@@ -293,5 +294,6 @@ export class HostTransport {
     this.handshake.dispose('Transport disposed before host.ready handshake arrived');
     this.rejectAllPending('Transport disposed before request settled');
     this.listeners.clear();
+    this.stickyEvents.clear();
   }
 }

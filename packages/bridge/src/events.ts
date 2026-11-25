@@ -1,6 +1,18 @@
 import type { DynamicThemePalettePayload, HostEventListener, PluginBackendState } from './types.ts';
 
 /**
+ * Stateful host-pushed hydration events whose latest payload is replayed to late subscribers
+ * (e.g. React `useEffect` hooks registering after synchronous `HostTransport` construction).
+ */
+export const STICKY_HOST_EVENTS: ReadonlySet<string> = new Set([
+  'plugin.backendState',
+  'theme.paletteUpdated',
+  'config.updated',
+  'panel.visibility',
+  'network.contextChanged',
+]);
+
+/**
  * Invokes all registered listeners for an event using a snapshot copy and per-listener
  * exception isolation so one throwing subscriber cannot prevent remaining subscribers
  * from receiving the event.
@@ -9,6 +21,7 @@ export function subscribeEventListener(
   listeners: Map<string, Set<HostEventListener>>,
   event: string,
   listener: HostEventListener,
+  stickyEvents?: ReadonlyMap<string, unknown>,
 ): () => void {
   let set = listeners.get(event);
   if (!set) {
@@ -16,6 +29,13 @@ export function subscribeEventListener(
     listeners.set(event, set);
   }
   set.add(listener);
+  if (stickyEvents?.has(event)) {
+    try {
+      listener(stickyEvents.get(event));
+    } catch {
+      // Isolate replay exceptions so subscription still completes.
+    }
+  }
   return () => {
     set.delete(listener);
     if (set.size === 0) listeners.delete(event);
@@ -26,7 +46,11 @@ export function dispatchEventListeners(
   listeners: Map<string, Set<HostEventListener>>,
   event: string,
   payload: unknown,
+  stickyEvents?: Map<string, unknown>,
 ): void {
+  if (stickyEvents && STICKY_HOST_EVENTS.has(event)) {
+    stickyEvents.set(event, payload);
+  }
   const set = listeners.get(event);
   if (!set || set.size === 0) return;
   for (const listener of Array.from(set)) {
