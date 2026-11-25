@@ -1,6 +1,6 @@
 # gojona-kit — Agent Guidelines
 
-Package-specific export, CSS, transport, and test conventions live in `packages/AGENTS.md`. For package DAG, primitive lookup, and `HostTransport` architecture, see `ARCHITECTURE.md`.
+Package-specific export, CSS, transport, and test conventions live in `packages/AGENTS.md`. For package DAG, primitive lookup, and `HostTransport` architecture, see `docs/ARCHITECTURE.md`.
 
 ## Package Boundaries
 

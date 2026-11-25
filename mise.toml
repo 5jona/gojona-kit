@@ -5,7 +5,7 @@ pnpm = "12.22.0"
 dir = "{{config_root}}"
 
 [tasks.lint]
-description = "Run Biome lint and format check across workspace (see ARCHITECTURE.md)"
+description = "Run Biome lint and format check across workspace (see docs/ARCHITECTURE.md)"
 run = "pnpm lint"
 
 [tasks.format]
@@ -25,5 +25,13 @@ description = "Build workspace package dist/ artifacts and playground applicatio
 run = "pnpm build"
 
 [tasks.check]
-description = "Run full verification gate (lint, build, typecheck, test; see ARCHITECTURE.md)"
-run = "pnpm check"
+description = "Run full verification gate (version check, lint, build, typecheck, test; see docs/ARCHITECTURE.md)"
+run = "mise run version:check && pnpm check"
+
+[tasks."version:bump"]
+description = "Bump workspace package versions and docs/CHANGELOG.md heading (usage: mise run version:bump -- <X.Y.Z>)"
+run = "node scripts/bump-version.mjs"
+
+[tasks."version:check"]
+description = "Verify workspace package versions and docs/CHANGELOG.md heading stay aligned"
+run = "node scripts/bump-version.mjs --check"

@@ -201,7 +201,10 @@ test('workspace package dist/ artifacts exist, mirror src/ modules, and stay fre
 test('all workspace package.json versions stay aligned with root package.json', () => {
   const rootPkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
   const expectedVersion = rootPkg.version;
-  assert.match(expectedVersion, /^[0-9]+\.[0-9]+\.[0-9]+$/);
+  assert.match(
+    expectedVersion,
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
+  );
 
   const manifests = [
     ...fs

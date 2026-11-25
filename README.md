@@ -2,7 +2,7 @@
 
 Reusable React UI kit, multi-theme design system, host runtime bridge, contract compiler, and shared Vite build preset for Android WebView overlays, KernelSU WebUI modules, and standalone browser dashboards.
 
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the package dependency DAG, primitive lookup matrix, transport/theme pipelines, and Scheme C contract-first codegen rules.
+See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the package dependency DAG, primitive lookup matrix, transport/theme pipelines, and Scheme C contract-first codegen rules.
 
 ## Packages
 
@@ -16,7 +16,9 @@ gojona-kit/
 │   └── ui/            # @gojona/ui: Radix-based components (Input, Button, etc.), AppShell, theme utilities
 ├── apps/
 │   └── playground/    # @gojona/playground: dual-viewport and live theme workbench
-├── ARCHITECTURE.md    # Architecture DAG, primitive lookup matrix, and contract-first workflow
+├── docs/
+│   ├── ARCHITECTURE.md # Architecture DAG, primitive lookup matrix, and contract-first workflow
+│   └── CHANGELOG.md    # Package release history
 └── AGENTS.md          # Repository agent & engineering guidelines
 ```
 

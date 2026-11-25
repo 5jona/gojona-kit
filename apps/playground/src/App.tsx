@@ -22,6 +22,7 @@ import {
 } from '@gojona/ui';
 import { Layers, LayoutPanelTop, Smartphone, Tablet } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import playgroundPkg from '../package.json';
 import { BridgeDiagTab } from './components/BridgeDiagTab.tsx';
 import { ExtensionsTab } from './components/ExtensionsTab.tsx';
 import { TelemetryTab } from './components/TelemetryTab.tsx';
@@ -192,7 +193,7 @@ export default function App() {
                   footer={
                     <div className="flex items-center justify-between gap-2">
                       <span>@gojona/ui · @gojona/bridge · @gojona/config</span>
-                      <span className="tabular-nums">v0.2.0</span>
+                      <span className="tabular-nums">v{playgroundPkg.version}</span>
                     </div>
                   }
                 >

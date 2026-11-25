@@ -5,10 +5,20 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run mode (runs pnpm -r pack --dry-run without publishing to npm or creating a GitHub Release)"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
   id-token: write
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -30,10 +40,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify version parity and tag alignment
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            node scripts/bump-version.mjs --check --tag "${GITHUB_REF_NAME}"
+          else
+            node scripts/bump-version.mjs --check
+          fi
+
       - name: Run full verification gate
         run: pnpm check
 
+      - name: Pack dry-run (workflow_dispatch / non-tag safeguard)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') || inputs.dry_run == true }}
+        run: pnpm -r pack --dry-run
+
       - name: Publish unpublished packages to npmjs.org (OIDC Trusted Publishing / NPM_TOKEN)
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -57,6 +81,31 @@ jobs:
             fi
           done
 
+      - name: Extract release notes from docs/CHANGELOG.md
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e '
+            const fs = require("node:fs");
+            const ver = process.argv[1];
+            const lines = fs.readFileSync("docs/CHANGELOG.md", "utf8").split(/\r?\n/);
+            const headerRe = new RegExp(`^## \\[${ver.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\](?:\\s|$)`);
+            const start = lines.findIndex((l) => headerRe.test(l));
+            if (start === -1) {
+              console.error(`Missing docs/CHANGELOG.md section for ${ver}`);
+              process.exit(1);
+            }
+            const rest = lines.slice(start + 1);
+            const endOffset = rest.findIndex((l) => /^## \[/.test(l));
+            const body = (endOffset === -1 ? rest : rest.slice(0, endOffset)).join("\n").trim();
+            if (!body) {
+              console.error(`Empty docs/CHANGELOG.md section for ${ver}`);
+              process.exit(1);
+            }
+            fs.writeFileSync("RELEASE_NOTES.md", `${body}\n`, "utf8");
+          ' "${VERSION}"
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -64,10 +113,15 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
+          extra_args=()
+          if [[ "${TAG}" == *-alpha* || "${TAG}" == *-beta* || "${TAG}" == *-rc* ]]; then
+            extra_args+=(--prerelease)
+          fi
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "[*] Release ${TAG} already exists."
           else
             gh release create "${TAG}" \
               --title "gojona-kit ${TAG}" \
-              --generate-notes
+              --notes-file RELEASE_NOTES.md \
+              "${extra_args[@]}"
           fi
