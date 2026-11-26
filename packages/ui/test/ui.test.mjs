@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AppShell } from '../dist/components/AppShell.js';
@@ -97,6 +100,7 @@ test('colorWithAlpha parses hex, rgb, rgba, and clamps alpha within [0, 1]', () 
     'color(display-p3 0.2 0.5 0.9 / 0.6)',
   );
   assert.equal(colorWithAlpha('color(srgb 0.1 0.2 0.3 / 0.8)', 1.5), 'color(srgb 0.1 0.2 0.3 / 1)');
+  assert.equal(colorWithAlpha('#0066ff', Number.NaN), 'rgba(0, 102, 255, 1)');
 });
 
 test('readThemeToken fallback behavior and scheme-specific token resolution', () => {
@@ -529,4 +533,22 @@ test('Tabs, Toast, SegmentedControl, and ThemeSwitcher include narrow-screen ove
     createElement(ToastProvider, null, createElement('div', null, '内容')),
   );
   assert.ok(toastProviderHtml.includes('data-pochita="toast-viewport"'));
+});
+
+test('theme CSS files wrap :root tokens in @layer base so native-glass overrides cascade properly', () => {
+  const stylesRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/styles');
+  for (const rel of [
+    'base.css',
+    'themes/coloros-glass.css',
+    'themes/modern-saas-dark.css',
+    'surfaces/native-glass.css',
+  ]) {
+    const css = fs.readFileSync(path.join(stylesRoot, rel), 'utf8');
+    assert.ok(css.includes('@layer base'), `${rel} must place :root rules inside @layer base`);
+    const layerIdx = css.indexOf('@layer base');
+    const rootIdx = css.indexOf(':root');
+    if (rootIdx !== -1) {
+      assert.ok(layerIdx < rootIdx, `${rel} :root rule must appear inside @layer base`);
+    }
+  }
 });

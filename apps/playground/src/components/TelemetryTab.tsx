@@ -73,7 +73,7 @@ export function TelemetryTab({ onLog }: TelemetryTabProps) {
   };
 
   return (
-    <div className="space-y-3.5">
+    <div className="flex flex-col gap-3.5">
       <div className="pochita-metrics-grid">
         <MetricTile
           label="功耗负载"

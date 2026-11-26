@@ -1,4 +1,26 @@
 /**
+ * Schedules a timeout using `window.setTimeout` when available, falling back to `globalThis.setTimeout`.
+ */
+export function scheduleHostTimer(fn: () => void, ms: number): number {
+  const fnSet =
+    typeof window !== 'undefined' && typeof window.setTimeout === 'function'
+      ? window.setTimeout
+      : globalThis.setTimeout;
+  return fnSet(fn, ms) as unknown as number;
+}
+
+/**
+ * Cancels a timeout scheduled by `scheduleHostTimer`.
+ */
+export function clearHostTimer(timerId: number): void {
+  const fnClear =
+    typeof window !== 'undefined' && typeof window.clearTimeout === 'function'
+      ? window.clearTimeout
+      : globalThis.clearTimeout;
+  fnClear(timerId);
+}
+
+/**
  * Validates whether a `window` `MessageEvent` originates from a trusted host or
  * a native Android WebView `postWebMessage` `MessagePort` transfer.
  */
@@ -198,7 +220,7 @@ export class WebSocketChannel {
       this.connectingWs = socket;
       let settled = false;
 
-      const connectTimer = window.setTimeout(() => {
+      const connectTimer = scheduleHostTimer(() => {
         if (settled) return;
         settled = true;
         if (this.connectingWs === socket) this.connectingWs = null;
@@ -212,7 +234,7 @@ export class WebSocketChannel {
       }, this.timeoutMs);
 
       socket.onopen = () => {
-        window.clearTimeout(connectTimer);
+        clearHostTimer(connectTimer);
         if (this.connectingWs === socket) this.connectingWs = null;
         if (this.disposed) {
           settled = true;
@@ -228,7 +250,7 @@ export class WebSocketChannel {
       };
       socket.onmessage = (ev) => this.onMessage(ev.data);
       socket.onerror = () => {
-        window.clearTimeout(connectTimer);
+        clearHostTimer(connectTimer);
         if (this.connectingWs === socket) this.connectingWs = null;
         this.connectPromise = null;
         if (!settled) {
@@ -237,7 +259,7 @@ export class WebSocketChannel {
         }
       };
       socket.onclose = () => {
-        window.clearTimeout(connectTimer);
+        clearHostTimer(connectTimer);
         if (this.connectingWs === socket) this.connectingWs = null;
         const wasOpen = this.ws === socket;
         if (wasOpen) this.ws = null;

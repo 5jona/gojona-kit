@@ -25,7 +25,10 @@ import {
   useNetworkContext,
   usePanelVisibility,
   usePluginEventLagged,
+  usePluginRpc,
+  usePluginStorage,
   useScopeChanged,
+  useSyncedPluginTheme,
 } from '../src/index.ts';
 
 test('BUILTIN_DIAG_PLUGIN_ID is canonical', () => {
@@ -272,9 +275,9 @@ test('lifecycle and network event parsers validate payloads and hooks are export
       validated: true,
       metered: false,
       interfaceName: 'wlan0',
-      ssid: 'HomeNet',
-      gateway: '192.168.1.1',
-      localIpv4: '192.168.1.20',
+      ssid: 'LabWiFi',
+      gateway: '192.0.2.1',
+      localIpv4: '192.0.2.20',
     }),
     {
       transport: 'wifi',
@@ -282,9 +285,9 @@ test('lifecycle and network event parsers validate payloads and hooks are export
       validated: true,
       metered: false,
       interfaceName: 'wlan0',
-      ssid: 'HomeNet',
-      gateway: '192.168.1.1',
-      localIpv4: '192.168.1.20',
+      ssid: 'LabWiFi',
+      gateway: '192.0.2.1',
+      localIpv4: '192.0.2.20',
     },
   );
   assert.equal(parseNetworkContextSnapshot({ transport: 'bluetooth' }), null);
@@ -408,5 +411,173 @@ test('useDynamicThemeState enforces allowlisted CSS variables and clears stale k
     } else {
       delete globalThis.document;
     }
+  }
+});
+
+function AsyncRaceProbe() {
+  const rpc = usePluginRpc('data.fetch');
+  const storage = usePluginStorage('prefs.json', { count: 0 });
+  return { rpc, storage };
+}
+
+test('usePluginRpc and usePluginStorage ignore stale overlapping async completions', async () => {
+  const internals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const prevDispatcher = internals.H;
+
+  let resolveFirstRpc;
+  let resolveSecondRpc;
+  let rpcCallCount = 0;
+  let resolveSlowRead;
+  const mockTransport = new MockTransport({
+    onPluginInvoke: () =>
+      new Promise((resolve) => {
+        rpcCallCount += 1;
+        if (rpcCallCount === 1) resolveFirstRpc = resolve;
+        else resolveSecondRpc = resolve;
+      }),
+  });
+  const bridge = createBridge({ forceEnv: 'mock', pluginId: 'demo', mockTransport });
+  bridge.readFile = () =>
+    new Promise((resolve) => {
+      resolveSlowRead = resolve;
+    });
+  bridge.writeFileAtomic = async () => ({ errno: 0, stdout: 'OK', stderr: '' });
+
+  const stateSlots = [];
+  const refSlots = [];
+  const effectCleanups = [];
+  let stateCursor = 0;
+  let refCursor = 0;
+
+  internals.H = {
+    useContext: () => ({ pluginId: 'demo', bridge, backendState: 'online' }),
+    useState: (init) => {
+      const idx = stateCursor++;
+      if (!(idx in stateSlots)) {
+        stateSlots[idx] = typeof init === 'function' ? init() : init;
+      }
+      return [
+        stateSlots[idx],
+        (next) => {
+          stateSlots[idx] = typeof next === 'function' ? next(stateSlots[idx]) : next;
+        },
+      ];
+    },
+    useRef: (init) => {
+      const idx = refCursor++;
+      if (!(idx in refSlots)) refSlots[idx] = { current: init };
+      return refSlots[idx];
+    },
+    useCallback: (fn) => fn,
+    useMemo: (fn) => fn(),
+    useEffect: (fn) => {
+      const cleanup = fn();
+      if (typeof cleanup === 'function') effectCleanups.push(cleanup);
+    },
+  };
+
+  try {
+    const { rpc, storage } = AsyncRaceProbe();
+    // Overlapping RPC calls: second resolves first, first resolves later
+    const p1 = rpc.invoke({ seq: 1 });
+    const p2 = rpc.invoke({ seq: 2 });
+    resolveSecondRpc({ seq: 2 });
+    await p2;
+    assert.deepEqual(stateSlots[0], { data: { seq: 2 }, loading: false, error: null });
+
+    resolveFirstRpc({ seq: 1 });
+    await p1;
+    // Stale first call must NOT overwrite stateSlots[0]
+    assert.deepEqual(stateSlots[0], { data: { seq: 2 }, loading: false, error: null });
+
+    // Stale initial reload must NOT overwrite newer setValue
+    await storage.setValue({ count: 42 });
+    assert.deepEqual(stateSlots[1], { count: 42 });
+    resolveSlowRead(JSON.stringify({ count: 1 }));
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(stateSlots[1], { count: 42 });
+
+    for (const cleanup of effectCleanups) cleanup();
+  } finally {
+    internals.H = prevDispatcher;
+    bridge.dispose();
+    mockTransport.dispose();
+  }
+});
+
+function ThemeRaceProbe({ appliedThemes }) {
+  return useSyncedPluginTheme({
+    theme: {
+      setThemeId: (id) => appliedThemes.push(id),
+      setColorMode: () => {},
+    },
+  });
+}
+
+test('useSyncedPluginTheme prevents stale config.get from overwriting fresher config.updated', async () => {
+  const internals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const prevDispatcher = internals.H;
+
+  let resolveConfigGet;
+  const mockTransport = new MockTransport({
+    handlers: {
+      'config.get': () =>
+        new Promise((resolve) => {
+          resolveConfigGet = resolve;
+        }),
+    },
+  });
+  const bridge = createBridge({ forceEnv: 'mock', pluginId: 'demo', mockTransport });
+
+  const appliedThemes = [];
+  const stateSlots = [];
+  const refSlots = [];
+  const effectCleanups = [];
+  let stateCursor = 0;
+  let refCursor = 0;
+
+  internals.H = {
+    useContext: () => ({ pluginId: 'demo', bridge, backendState: 'online' }),
+    useState: (init) => {
+      const idx = stateCursor++;
+      if (!(idx in stateSlots)) {
+        stateSlots[idx] = typeof init === 'function' ? init() : init;
+      }
+      return [
+        stateSlots[idx],
+        (next) => {
+          stateSlots[idx] = typeof next === 'function' ? next(stateSlots[idx]) : next;
+        },
+      ];
+    },
+    useRef: (init) => {
+      const idx = refCursor++;
+      if (!(idx in refSlots)) refSlots[idx] = { current: init };
+      return refSlots[idx];
+    },
+    useEffect: (fn) => {
+      const cleanup = fn();
+      if (typeof cleanup === 'function') effectCleanups.push(cleanup);
+    },
+  };
+
+  try {
+    ThemeRaceProbe({ appliedThemes });
+    mockTransport.emit('config.updated', {
+      config: { panel: { themeId: 'modern-saas-dark', colorMode: 'dark' } },
+    });
+    assert.deepEqual(appliedThemes, ['modern-saas-dark']);
+
+    resolveConfigGet({ panel: { themeId: 'coloros-glass', colorMode: 'light' } });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(appliedThemes, ['modern-saas-dark']);
+
+    for (const cleanup of effectCleanups) cleanup();
+  } finally {
+    internals.H = prevDispatcher;
+    bridge.dispose();
+    mockTransport.dispose();
   }
 });

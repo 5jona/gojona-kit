@@ -251,7 +251,7 @@ export function createBridge(options: BridgeOptions = {}): BridgeClient {
     getDiagnostics,
     getRecentTraces: getTraceEntries,
     emitMockHostEvent:
-      env === 'mock' && mockTransport
+      (env === 'mock' || env === 'browser') && mockTransport
         ? (event, payload) => mockTransport.emit(event, payload)
         : undefined,
   });

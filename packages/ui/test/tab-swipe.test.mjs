@@ -426,4 +426,28 @@ test('resolveSwipeSurface and isSwipeTargetOwnedByTabs delegate blank-space swip
     closest: (sel) => (sel.includes('[role="dialog"]') ? dialogOverlay : null),
   };
   assert.equal(isSwipeTargetOwnedByTabs(modalTarget, outerTabs, shellBody), false);
+
+  // overflowX: 'visible' must NOT block horizontal swipe even when scrollWidth > clientWidth
+  const tabsRoot = { tagName: 'DIV' };
+  const visibleOverflowWrapper = {
+    tagName: 'DIV',
+    scrollWidth: 480,
+    clientWidth: 320,
+    scrollLeft: 0,
+    style: { overflowX: 'visible' },
+    parentElement: tabsRoot,
+  };
+  const visibleChild = { tagName: 'DIV', parentElement: visibleOverflowWrapper };
+  assert.equal(hasScrollableHorizontalAncestor(visibleChild, tabsRoot, -40), false);
+
+  const autoScrollWrapper = {
+    tagName: 'DIV',
+    scrollWidth: 480,
+    clientWidth: 320,
+    scrollLeft: 0,
+    style: { overflowX: 'auto' },
+    parentElement: tabsRoot,
+  };
+  const autoChild = { tagName: 'DIV', parentElement: autoScrollWrapper };
+  assert.equal(hasScrollableHorizontalAncestor(autoChild, tabsRoot, -40), true);
 });

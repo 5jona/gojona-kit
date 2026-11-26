@@ -18,19 +18,33 @@ export function usePluginRpc<TParams = unknown, TResult = unknown>(
     loading: false,
     error: null,
   });
+  const mountedRef = useRef(true);
+  const callSeqRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const invoke = useCallback(
     async (params?: TParams, callOptions?: InvokeOptions): Promise<TResult> => {
+      const seq = ++callSeqRef.current;
       setState((prev) => ({ ...prev, loading: true, error: null }));
       const timeoutMs = callOptions?.timeoutMs ?? defaultTimeoutMs;
       const invokeOpts = timeoutMs !== undefined ? { timeoutMs } : undefined;
       try {
         const res = await bridge.invokePlugin<TResult>(method, params, invokeOpts);
-        setState({ data: res, loading: false, error: null });
+        if (mountedRef.current && seq === callSeqRef.current) {
+          setState({ data: res, loading: false, error: null });
+        }
         return res;
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        setState({ data: null, loading: false, error });
+        if (mountedRef.current && seq === callSeqRef.current) {
+          setState({ data: null, loading: false, error });
+        }
         throw error;
       }
     },

@@ -104,7 +104,7 @@ export function readThemeToken(
  * `oklch(...)`, or CSS Color 4 `color(...)` strings for Canvas 2D and CSS styles.
  */
 export function colorWithAlpha(color: string, alpha: number): string {
-  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  const clampedAlpha = Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
   const trimmed = color.trim();
   if (trimmed.startsWith('#')) {
     const hex = trimmed.slice(1);

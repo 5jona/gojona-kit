@@ -169,6 +169,7 @@ export function useTabPager(opts: UseTabPagerOptions): void {
     surface.addEventListener('pointerup', onPointerUp, passive);
     surface.addEventListener('pointercancel', onPointerCancel, passive);
     return () => {
+      engineRef.current?.abort();
       surfaceRef.current = null;
       surface.removeEventListener('touchstart', onTouchStart);
       surface.removeEventListener('touchmove', onTouchMove);

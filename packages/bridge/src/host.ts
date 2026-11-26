@@ -1,7 +1,13 @@
 import { dispatchEventListeners, subscribeEventListener } from './events.ts';
 import { HostHandshakeTracker, sendHostAttachBootstrap } from './hostHandshake.ts';
-import { isTrustedWindowMessage, PortChannel, WebSocketChannel } from './portChannel.ts';
-import { BridgeRpcError } from './rpcError.ts';
+import {
+  clearHostTimer,
+  isTrustedWindowMessage,
+  PortChannel,
+  scheduleHostTimer,
+  WebSocketChannel,
+} from './portChannel.ts';
+import { BridgeRpcError, parseHostPayload } from './rpcError.ts';
 import { BridgeTracer } from './trace.ts';
 import type {
   BridgeChannelKind,
@@ -12,11 +18,9 @@ import type {
   BridgeTraceTransport,
   ContainerAction,
   EmbeddedHostGlobal,
-  HostEvent,
   HostEventListener,
   HostHandshakePayload,
   RpcRequest,
-  RpcResponse,
 } from './types.ts';
 
 export { BridgeRpcError };
@@ -125,21 +129,13 @@ export class HostTransport {
   };
 
   private handleRawPayload(raw: unknown): void {
-    let parsed: unknown = raw;
-    if (typeof raw === 'string') {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return;
-      }
-    }
-    if (!parsed || typeof parsed !== 'object') return;
-    const msg = parsed as Partial<RpcResponse & HostEvent>;
+    const msg = parseHostPayload(raw);
+    if (!msg) return;
     if (typeof msg.id === 'string') {
       const pending = this.pending.get(msg.id);
       if (!pending) return;
       this.pending.delete(msg.id);
-      window.clearTimeout(pending.timer);
+      clearHostTimer(pending.timer);
       if (msg.error) {
         const rpcErr = new BridgeRpcError(
           msg.error.code,
@@ -172,7 +168,7 @@ export class HostTransport {
 
   private rejectAllPending(reason: string): void {
     for (const [id, pending] of this.pending.entries()) {
-      window.clearTimeout(pending.timer);
+      clearHostTimer(pending.timer);
       const error = `${reason} ("${id}")`;
       this.tracer.rpcError(pending.transport, id, pending.method, pending.startedAt, error);
       pending.reject(new Error(error));
@@ -213,7 +209,7 @@ export class HostTransport {
     this.tracer.rpcStart(transport, id, method, startedAt, params);
 
     const promise = new Promise<T>((resolve, reject) => {
-      const timer = window.setTimeout(() => {
+      const timer = scheduleHostTimer(() => {
         if (this.pending.delete(id)) {
           this.portChannel.evict(serialized);
           const error = `RPC "${method}" timed out after ${waitMs}ms`;
@@ -241,7 +237,7 @@ export class HostTransport {
       const pending = this.pending.get(id);
       if (pending) {
         this.pending.delete(id);
-        window.clearTimeout(pending.timer);
+        clearHostTimer(pending.timer);
         this.tracer.rpcError(transport, id, method, startedAt, error.message);
       }
       throw error;

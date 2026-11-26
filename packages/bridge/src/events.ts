@@ -82,14 +82,14 @@ export function createBridgeEventSubscriptions(
     event: string,
     listener: (payload: T) => void,
   ): (() => void) => {
-    let suppressNextDirect = false;
+    let suppressDirectCount = 0;
     const unsubScoped = onHostEvent('plugin.event', (data) => {
       if (data && typeof data === 'object') {
         const payloadObj = data as { pluginId?: string; event?: string; payload?: T };
         if (payloadObj.event === event && matchesPluginScope(payloadObj.pluginId)) {
-          suppressNextDirect = true;
+          suppressDirectCount += 1;
           queueMicrotask(() => {
-            suppressNextDirect = false;
+            suppressDirectCount = 0;
           });
           listener(payloadObj.payload as T);
         }
@@ -99,8 +99,8 @@ export function createBridgeEventSubscriptions(
       return unsubScoped;
     }
     const unsubDirect = onHostEvent(event, (data) => {
-      if (suppressNextDirect) {
-        suppressNextDirect = false;
+      if (suppressDirectCount > 0) {
+        suppressDirectCount -= 1;
         return;
       }
       if (

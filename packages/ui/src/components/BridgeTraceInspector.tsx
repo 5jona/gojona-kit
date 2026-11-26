@@ -198,7 +198,7 @@ export function BridgeTraceInspector({
             const tsPart = entry.timestampMs ?? entry.timestamp ?? '';
             const rowKey = entry.id
               ? `${entry.id}_${phaseOrKind}_${tsPart}`
-              : `trace_${phaseOrKind}_${tsPart || idx}`;
+              : `trace_${phaseOrKind}_${tsPart}_${idx}`;
             const expanded = Boolean(expandedKeys[rowKey]);
             const badge = resolveTracePhaseBadge(entry);
             const slow = isTraceSlow(entry, slowThresholdMs);

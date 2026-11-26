@@ -1,4 +1,4 @@
-import { dispatchEventListeners } from './events.ts';
+import { dispatchEventListeners, subscribeEventListener } from './events.ts';
 import {
   dispatchMockContainerAction,
   mockReadFile,
@@ -67,6 +67,7 @@ export class MockTransport implements MockTransportLike {
   private readonly onContainerAction?: (action: ContainerAction) => void;
   private readonly tracer: BridgeTracer;
   private readonly listeners = new Map<string, Set<HostEventListener>>();
+  private readonly stickyEvents = new Map<string, unknown>();
   private readonly storage = new Map<string, string>();
   private readonly handlers = new Map<string, (params?: unknown) => unknown | Promise<unknown>>();
   private readonly faults = new Map<string, Error>();
@@ -237,23 +238,13 @@ export class MockTransport implements MockTransportLike {
   }
 
   subscribe(event: string, listener: HostEventListener): () => void {
-    let set = this.listeners.get(event);
-    if (!set) {
-      set = new Set();
-      this.listeners.set(event, set);
-    }
-    set.add(listener);
-    return () => {
-      set?.delete(listener);
-      if (set && set.size === 0) {
-        this.listeners.delete(event);
-      }
-    };
+    return subscribeEventListener(this.listeners, event, listener, this.stickyEvents);
   }
 
   emit(event: string, payload?: unknown): void {
+    if (this.disposed) return;
     this.tracer.eventIn('mock', event, payload);
-    dispatchEventListeners(this.listeners, event, payload);
+    dispatchEventListeners(this.listeners, event, payload, this.stickyEvents);
   }
 
   getListenerCount(event: string): number {
@@ -287,6 +278,7 @@ export class MockTransport implements MockTransportLike {
   dispose(): void {
     this.disposed = true;
     this.listeners.clear();
+    this.stickyEvents.clear();
     this.pending.clear();
   }
 }

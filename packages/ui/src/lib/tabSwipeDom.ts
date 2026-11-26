@@ -117,7 +117,7 @@ export function hasScrollableHorizontalAncestor(
           overflowX = '';
         }
       }
-      if (overflowX !== 'hidden' && overflowX !== 'clip') {
+      if (overflowX !== 'hidden' && overflowX !== 'clip' && overflowX !== 'visible') {
         const scrollLeft = current.scrollLeft ?? 0;
         if (dx < 0 && scrollLeft < scrollWidth - clientWidth - 1) return true;
         if (dx > 0 && scrollLeft > 0) return true;

@@ -47,6 +47,26 @@ registerHooks({
         }
       }
 
+      if (specifier === '@gojona/bridge/core') {
+        const candidate = path.resolve(monorepoPackagesRoot, 'bridge/src/core.ts');
+        if (existsSync(candidate)) {
+          return {
+            url: pathToFileURL(realpathSync(candidate)).href,
+            shortCircuit: true,
+          };
+        }
+      }
+
+      if (specifier === '@gojona/sideveil-sdk/core') {
+        const candidate = path.resolve(monorepoPackagesRoot, 'sdk/src/core.ts');
+        if (existsSync(candidate)) {
+          return {
+            url: pathToFileURL(realpathSync(candidate)).href,
+            shortCircuit: true,
+          };
+        }
+      }
+
       if (specifier.startsWith('@gojona/') && !specifier.slice('@gojona/'.length).includes('/')) {
         const pkg = specifier.slice('@gojona/'.length);
         const folder = pkg === 'sideveil-sdk' ? 'sdk' : pkg;

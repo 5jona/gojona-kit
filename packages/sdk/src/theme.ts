@@ -102,6 +102,7 @@ export function useSyncedPluginTheme<TThemeId extends string = string, TConfig =
 
   useEffect(() => {
     let active = true;
+    let sawConfigUpdate = false;
 
     const applyAppearance = (appearance: PluginAppearanceSnapshot) => {
       if (appearance.themeId) setSyncedThemeId(appearance.themeId);
@@ -125,7 +126,7 @@ export function useSyncedPluginTheme<TThemeId extends string = string, TConfig =
     const hydrate = async () => {
       try {
         const raw = await bridge.invoke<TConfig>('config.get');
-        if (!active) return;
+        if (!active || sawConfigUpdate) return;
         const appearance = extractPluginAppearance(raw);
         applyAppearance(appearance);
         setHydrated(true);
@@ -143,6 +144,7 @@ export function useSyncedPluginTheme<TThemeId extends string = string, TConfig =
       if (!raw || typeof raw !== 'object') return;
       const payload = raw as Record<string, unknown>;
       if (!('config' in payload) || !payload.config) return;
+      sawConfigUpdate = true;
       const appearance = extractPluginAppearance(payload.config);
       applyAppearance(appearance);
       setHydrated(true);

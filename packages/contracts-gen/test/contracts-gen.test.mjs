@@ -152,6 +152,16 @@ test('emitSchema and validator validate positive and negative fixtures accuratel
   assert.ok(validateValue({ kind: 'unknown' }, schema.$defs.HostCommand, schema).length > 0);
   assert.equal(validateFixtureData(schema, 'NodeConfig', { nodeId: 'x' }, true).ok, true);
   assert.equal(validateFixtureData(schema, 'NodeConfig', validNode, true).ok, false);
+
+  const cyclicSchema = {
+    $defs: {
+      SelfLoop: {
+        anyOf: [{ $ref: '#/$defs/SelfLoop' }, { type: 'string' }],
+      },
+    },
+  };
+  assert.deepEqual(validateValue('ok', cyclicSchema.$defs.SelfLoop, cyclicSchema), []);
+  assert.ok(validateValue(123, cyclicSchema.$defs.SelfLoop, cyclicSchema).length > 0);
 });
 
 test('CLI generate, check drift detection, and validate-fixtures work end to end', () => {

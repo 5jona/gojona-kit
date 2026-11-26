@@ -291,6 +291,21 @@ test('createBridge isolates onPluginEvent and onPluginBackendState by pluginId a
   mockTransport.emit('metrics', { fps: 90 });
   assert.deepEqual(receivedEvents, [{ fps: 120 }, { fps: 90 }]);
 
+  // Back-to-back scoped events suppress matching back-to-back direct duplicates
+  mockTransport.emit('plugin.event', {
+    pluginId: 'plugin.alpha',
+    event: 'metrics',
+    payload: { fps: 60 },
+  });
+  mockTransport.emit('plugin.event', {
+    pluginId: 'plugin.alpha',
+    event: 'metrics',
+    payload: { fps: 61 },
+  });
+  mockTransport.emit('metrics', { fps: 60 });
+  mockTransport.emit('metrics', { fps: 61 });
+  assert.deepEqual(receivedEvents, [{ fps: 120 }, { fps: 90 }, { fps: 60 }, { fps: 61 }]);
+
   // Matching backend state delivers
   mockTransport.emit('plugin.backendState', {
     pluginId: 'plugin.alpha',

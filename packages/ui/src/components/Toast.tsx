@@ -43,9 +43,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const timers = timersRef.current;
+    const clear =
+      typeof window !== 'undefined' && typeof window.clearTimeout === 'function'
+        ? window.clearTimeout
+        : clearTimeout;
     return () => {
       for (const timerId of timers) {
-        window.clearTimeout(timerId);
+        clear(timerId);
       }
       timers.clear();
     };
@@ -54,10 +58,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const pushToast = useCallback((message: string, tone: ToastItem['tone'] = 'info') => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     setItems((prev) => [...prev.slice(-3), { id, message, tone }]);
-    const timerId = window.setTimeout(() => {
+    const schedule =
+      typeof window !== 'undefined' && typeof window.setTimeout === 'function'
+        ? window.setTimeout
+        : setTimeout;
+    const timerId = schedule(() => {
       timersRef.current.delete(timerId);
       setItems((prev) => prev.filter((t) => t.id !== id));
-    }, 2600);
+    }, 2600) as unknown as number;
     timersRef.current.add(timerId);
   }, []);
 

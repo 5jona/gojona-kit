@@ -32,6 +32,7 @@ interface ErrorBoundaryState {
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   private copyTimer: number | null = null;
+  private unmounted = false;
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -47,18 +48,27 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { error };
   }
 
+  override componentDidMount(): void {
+    this.unmounted = false;
+  }
+
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     this.setState({ componentStack: errorInfo.componentStack ?? null });
     this.props.onError?.(error, errorInfo);
   }
 
   override componentWillUnmount(): void {
+    this.unmounted = true;
     this.clearCopyTimer();
   }
 
   private clearCopyTimer(): void {
-    if (this.copyTimer !== null && typeof window !== 'undefined') {
-      window.clearTimeout(this.copyTimer);
+    if (this.copyTimer !== null) {
+      const clear =
+        typeof window !== 'undefined' && typeof window.clearTimeout === 'function'
+          ? window.clearTimeout
+          : clearTimeout;
+      clear(this.copyTimer);
       this.copyTimer = null;
     }
   }
@@ -90,14 +100,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       .join('\n\n');
 
     const ok = await copyTextWithFallback(details, this.props.onCopy);
+    if (this.unmounted) return;
     this.setState({ copyStatus: ok ? 'copied' : 'error' });
     this.clearCopyTimer();
-    if (typeof window !== 'undefined') {
-      this.copyTimer = window.setTimeout(() => {
-        this.copyTimer = null;
+    const schedule =
+      typeof window !== 'undefined' && typeof window.setTimeout === 'function'
+        ? window.setTimeout
+        : setTimeout;
+    this.copyTimer = schedule(() => {
+      this.copyTimer = null;
+      if (!this.unmounted) {
         this.setState({ copyStatus: 'idle' });
-      }, 1500);
-    }
+      }
+    }, 1500) as unknown as number;
   };
 
   override render(): ReactNode {

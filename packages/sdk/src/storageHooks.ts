@@ -21,6 +21,7 @@ export function usePluginStorage<T = string>(
   initialValueRef.current = initialValue;
 
   const mountedRef = useRef(true);
+  const opSeqRef = useRef(0);
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -33,11 +34,12 @@ export function usePluginStorage<T = string>(
   const [error, setError] = useState<Error | null>(null);
 
   const reload = useCallback(async () => {
+    const seq = ++opSeqRef.current;
     setLoading(true);
     setError(null);
     try {
       const raw = await bridge.readFile(cleanPath);
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || seq !== opSeqRef.current) return;
       if (raw === null || raw === undefined) {
         setValueState(initialValueRef.current ?? null);
       } else if (isJson) {
@@ -52,11 +54,11 @@ export function usePluginStorage<T = string>(
         setValueState(raw as unknown as T);
       }
     } catch (err) {
-      if (mountedRef.current) {
+      if (mountedRef.current && seq === opSeqRef.current) {
         setError(err instanceof Error ? err : new Error(String(err)));
       }
     } finally {
-      if (mountedRef.current) {
+      if (mountedRef.current && seq === opSeqRef.current) {
         setLoading(false);
       }
     }
@@ -68,6 +70,7 @@ export function usePluginStorage<T = string>(
 
   const setValue = useCallback(
     async (next: T) => {
+      const seq = ++opSeqRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -76,17 +79,17 @@ export function usePluginStorage<T = string>(
         if (res.errno !== 0) {
           throw new Error(`Write failed with errno ${res.errno}: ${res.stderr}`);
         }
-        if (mountedRef.current) {
+        if (mountedRef.current && seq === opSeqRef.current) {
           setValueState(next);
         }
       } catch (err) {
         const errorObj = err instanceof Error ? err : new Error(String(err));
-        if (mountedRef.current) {
+        if (mountedRef.current && seq === opSeqRef.current) {
           setError(errorObj);
         }
         throw errorObj;
       } finally {
-        if (mountedRef.current) {
+        if (mountedRef.current && seq === opSeqRef.current) {
           setLoading(false);
         }
       }

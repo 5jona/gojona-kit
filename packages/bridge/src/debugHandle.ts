@@ -82,7 +82,7 @@ export function installPochitaDebugHandle(options: {
     getDiagnostics: () => options.getDiagnostics(),
     getRecentTraces: (limit?: number) => options.getRecentTraces(limit),
     inspectThemeTokens: () => inspectDomThemeTokens(),
-    ...(options.env === 'mock' && options.emitMockHostEvent
+    ...((options.env === 'mock' || options.env === 'browser') && options.emitMockHostEvent
       ? { emitHostEvent: options.emitMockHostEvent }
       : {}),
   });

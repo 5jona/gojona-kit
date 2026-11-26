@@ -36,7 +36,12 @@ function PluginContextInner({
 
   useEffect(() => {
     let active = true;
+    let receivedEvent = false;
+    if (!hasBackend) {
+      setBackendState('none');
+    }
     const unsubscribe = bridge.onPluginBackendState((state) => {
+      receivedEvent = true;
       if (active) setBackendState(state);
     });
 
@@ -44,7 +49,7 @@ function PluginContextInner({
       void bridge
         .invoke<PluginsSnapshotPayload>('plugins.list')
         .then((snapshot) => {
-          if (!active || !snapshot || !Array.isArray(snapshot.plugins)) return;
+          if (!active || receivedEvent || !snapshot || !Array.isArray(snapshot.plugins)) return;
           const entry = snapshot.plugins.find((item) => item.id === pluginId);
           if (entry?.backendState) {
             setBackendState(entry.backendState);

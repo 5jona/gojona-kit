@@ -60,9 +60,10 @@ export function validateValue(value, schema, rootSchema, valuePath = '$', seenRe
 
   if (schema.$ref) {
     const resolved = resolveRef(rootSchema, schema.$ref, seenRefs);
-    if (resolved) {
-      errors.push(...validateValue(value, resolved.target, rootSchema, valuePath, resolved.seen));
+    if (!resolved) {
+      return [`${valuePath}: cyclic $ref "${schema.$ref}"`];
     }
+    errors.push(...validateValue(value, resolved.target, rootSchema, valuePath, resolved.seen));
     return errors;
   }
 
@@ -130,13 +131,13 @@ export function validateValue(value, schema, rootSchema, valuePath = '$', seenRe
 
   if (Array.isArray(schema.allOf)) {
     for (const branch of schema.allOf) {
-      errors.push(...validateValue(value, branch, rootSchema, valuePath));
+      errors.push(...validateValue(value, branch, rootSchema, valuePath, seenRefs));
     }
   }
 
   if (Array.isArray(schema.anyOf)) {
     const branchErrors = schema.anyOf.map((branch) =>
-      validateValue(value, branch, rootSchema, valuePath),
+      validateValue(value, branch, rootSchema, valuePath, seenRefs),
     );
     if (!branchErrors.some((errs) => errs.length === 0)) {
       errors.push(
@@ -147,7 +148,7 @@ export function validateValue(value, schema, rootSchema, valuePath = '$', seenRe
 
   if (Array.isArray(schema.oneOf)) {
     const branchErrors = schema.oneOf.map((branch) =>
-      validateValue(value, branch, rootSchema, valuePath),
+      validateValue(value, branch, rootSchema, valuePath, seenRefs),
     );
     const matchCount = branchErrors.filter((errs) => errs.length === 0).length;
     if (matchCount !== 1) {

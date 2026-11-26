@@ -87,7 +87,7 @@ export function ExtensionsTab({ onLog }: ExtensionsTabProps) {
           {extensions.map((ext) => (
             <div
               key={ext.id}
-              className="space-y-2 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-3"
+              className="flex flex-col gap-2 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">

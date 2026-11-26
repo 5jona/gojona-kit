@@ -247,3 +247,51 @@ test('HostTransport replays sticky hydration events to late React useEffect subs
     }
   }
 });
+
+test('MockTransport replays sticky hydration events and browser forceEnv exposes emitHostEvent', async () => {
+  const mockTransport = new MockTransport();
+  mockTransport.emit('plugin.backendState', { pluginId: 'demo.mock', state: 'online' });
+  mockTransport.emit('panel.backPressed', { timestampMs: 1 });
+
+  const states = [];
+  let backCount = 0;
+  const unsubState = mockTransport.subscribe('plugin.backendState', (p) => states.push(p.state));
+  const unsubBack = mockTransport.subscribe('panel.backPressed', () => {
+    backCount += 1;
+  });
+
+  assert.deepEqual(states, ['online']);
+  assert.equal(backCount, 0);
+  unsubState();
+  unsubBack();
+
+  // Dispose clears sticky cache
+  mockTransport.dispose();
+  const afterDisposeStates = [];
+  mockTransport.subscribe('plugin.backendState', (p) => afterDisposeStates.push(p.state));
+  assert.deepEqual(afterDisposeStates, []);
+
+  // forceEnv: 'browser' exposes emitHostEvent on debug handle
+  const originalWindow = globalThis.window;
+  globalThis.window = {
+    location: { origin: 'https://demo.plugins.sideveil.local', search: '' },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  try {
+    const browserBridge = createBridge({ forceEnv: 'browser', pluginId: 'demo.browser' });
+    assert.equal(typeof globalThis.window.__POCHITA_DEBUG__?.emitHostEvent, 'function');
+    browserBridge.dispose();
+
+    // HostTransport timeout works even when window.setTimeout is omitted
+    const bareHost = new HostTransport({ timeoutMs: 15 });
+    await assert.rejects(() => bareHost.invoke('no.window.timer'), /timed out after 15ms/);
+    bareHost.dispose();
+  } finally {
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete globalThis.window;
+    }
+  }
+});

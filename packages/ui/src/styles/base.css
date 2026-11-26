@@ -15,31 +15,33 @@
 }
 
 /* Always keep root color-scheme responsive to OS preference and <meta> override */
-:root {
-  color-scheme: light dark;
-  --font-sans: Inter, "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --safe-area-top: env(safe-area-inset-top, 0px);
-  --safe-area-right: env(safe-area-inset-right, 0px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-left: env(safe-area-inset-left, 0px);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  --surface-toast: light-dark(rgba(255, 255, 255, 0.94), rgba(24, 28, 38, 0.94));
-  --thumb-bg: #ffffff;
-
-  &:has(> head > meta[name="color-scheme"][content="dark"]) {
-    color-scheme: dark;
-  }
-
-  &:has(> head > meta[name="color-scheme"][content="light"]) {
-    color-scheme: light;
-  }
-}
-
 @layer base {
+  :where(:root) {
+    --surface-toast: light-dark(rgba(255, 255, 255, 0.94), rgba(24, 28, 38, 0.94));
+    --thumb-bg: #ffffff;
+  }
+
+  :root {
+    color-scheme: light dark;
+    --font-sans: Inter, "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    &:has(> head > meta[name="color-scheme"][content="dark"]) {
+      color-scheme: dark;
+    }
+
+    &:has(> head > meta[name="color-scheme"][content="light"]) {
+      color-scheme: light;
+    }
+  }
+
   *,
   *::before,
   *::after {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -181,4 +182,30 @@ test('biome.base.json excludes vendored third-party directories', () => {
   );
   const config = JSON.parse(fs.readFileSync(biomeBasePath, 'utf8'));
   assert.ok(config.files.includes.includes('!**/vendor'));
+});
+
+test('register-ts resolves /core subpaths directly to workspace TypeScript sources', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const resolved = execFileSync(
+    process.execPath,
+    [
+      '--import',
+      path.join(repoRoot, 'packages/config/register-ts.mjs'),
+      '-e',
+      [
+        'console.log(JSON.stringify({',
+        "  bridgeCore: import.meta.resolve('@gojona/bridge/core'),",
+        "  sdkCore: import.meta.resolve('@gojona/sideveil-sdk/core'),",
+        "  uiTokens: import.meta.resolve('@gojona/ui/theme-tokens'),",
+        "  configThemes: import.meta.resolve('@gojona/config/themes'),",
+        '}));',
+      ].join('\n'),
+    ],
+    { cwd: repoRoot, encoding: 'utf8' },
+  );
+  const urls = JSON.parse(resolved);
+  assert.ok(urls.bridgeCore.endsWith('/packages/bridge/src/core.ts'));
+  assert.ok(urls.sdkCore.endsWith('/packages/sdk/src/core.ts'));
+  assert.ok(urls.uiTokens.endsWith('/packages/ui/src/theme/tokens.ts'));
+  assert.ok(urls.configThemes.endsWith('/packages/config/themes.mjs'));
 });

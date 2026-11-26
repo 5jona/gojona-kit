@@ -96,7 +96,7 @@ export function BridgeDiagTab({ logs, onLog, onClearLogs }: BridgeDiagTabProps) 
   };
 
   return (
-    <div className="space-y-3.5">
+    <div className="flex flex-col gap-3.5">
       <Card>
         <CardHeader>
           <div>
