@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '../lib/cn.ts';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 font-medium transition-all duration-150 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45 cursor-pointer active:scale-[0.98]',
+  'inline-flex items-center justify-center gap-1.5 font-medium transition-[color,background-color,border-color,transform,opacity,filter] duration-150 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45 cursor-pointer active:scale-[0.98]',
   {
     variants: {
       variant: {

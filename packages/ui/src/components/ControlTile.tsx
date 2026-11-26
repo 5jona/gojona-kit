@@ -77,7 +77,7 @@ export function ControlTile({
       data-loading={loading ? 'true' : undefined}
       data-testid={dataTestId}
       className={cn(
-        'pochita-card pochita-card-interactive flex min-w-0 flex-col items-start justify-between gap-2.5 p-3 text-left transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
+        'pochita-card pochita-card-interactive flex min-w-0 flex-col items-start justify-between gap-2.5 p-3 text-left transition-[color,background-color,border-color,transform,opacity,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
         active && ACTIVE_TONE_CLASSES[tone],
         className,
       )}

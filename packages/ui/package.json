@@ -25,6 +25,10 @@
     "access": "public"
   },
   "type": "module",
+  "sideEffects": [
+    "./dist/styles.css",
+    "**/*.css"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [

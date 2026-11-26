@@ -130,15 +130,16 @@ export function hasScrollableHorizontalAncestor(
 
 /**
  * Resolves the gesture listener surface for `root` (`[data-pochita="tabs"]`).
- * Top-level `<Tabs>` attach to their enclosing `[data-pochita="app-shell-body"]` (or fallback
+ * Top-level `<Tabs>` attach to their enclosing `[data-pochita="app-shell-body"]` (or owned
+ * descendant `[data-pochita="app-shell-body"]` when `<Tabs>` wraps `<AppShell>`, or fallback
  * `<main>` / `document.body`) so horizontal swipes in empty vertical/horizontal margins work
- * regardless of intermediate wrapper heights or max-width gutters. Nested `<Tabs>` stay scoped
- * strictly to their own `root`.
+ * while headers and bottom dock chrome remain isolated. Nested `<Tabs>` stay scoped to `root`.
  */
 export function resolveSwipeSurface(root: HTMLElement | null): HTMLElement | null {
   if (!root) return null;
   const rootNode = root as unknown as InspectableNode & {
     ownerDocument?: { body?: HTMLElement | null };
+    querySelectorAll?: (selector: string) => Iterable<InspectableNode>;
   };
   const parentEl = rootNode.parentElement ?? null;
   if (
@@ -153,6 +154,14 @@ export function resolveSwipeSurface(root: HTMLElement | null): HTMLElement | nul
     if (shellBody) return shellBody;
     const mainEl = rootNode.closest('main') as HTMLElement | null;
     if (mainEl) return mainEl;
+  }
+  if (typeof rootNode.querySelectorAll === 'function') {
+    for (const candidate of rootNode.querySelectorAll('[data-pochita="app-shell-body"]')) {
+      if (typeof candidate.closest !== 'function') continue;
+      if (candidate.closest('[data-pochita="tabs"]') !== root) continue;
+      if (candidate.closest('[data-pochita="tabs-content"]')) continue;
+      return candidate as unknown as HTMLElement;
+    }
   }
   return rootNode.ownerDocument?.body ?? root;
 }

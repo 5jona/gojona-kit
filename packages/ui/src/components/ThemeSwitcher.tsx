@@ -71,7 +71,7 @@ export function ThemeSwitcher({
                 data-theme-option={item.id}
                 data-state={active ? 'active' : 'inactive'}
                 className={cn(
-                  'pochita-switcher-pill flex min-w-0 cursor-pointer items-center justify-between gap-1 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-[11px] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                  'pochita-switcher-pill flex min-w-0 cursor-pointer items-center justify-between gap-1 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-[11px] font-medium transition-[color,background-color,border-color,opacity,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                   active
                     ? 'pochita-switcher-pill-active bg-[var(--accent-soft)] text-[var(--text-primary)] ring-1 ring-inset ring-[color-mix(in_oklab,var(--accent)_45%,transparent)]'
                     : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
@@ -104,7 +104,7 @@ export function ThemeSwitcher({
                 data-state={active ? 'active' : 'inactive'}
                 onClick={() => handleSelectColorMode(opt.mode)}
                 className={cn(
-                  'inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-control)-3px)] px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                  'inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-control)-3px)] px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-[color,background-color,border-color,opacity,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                   active
                     ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-xs'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
@@ -142,7 +142,7 @@ export function ThemeSwitcher({
               data-theme-option={item.id}
               data-state={active ? 'active' : 'inactive'}
               className={cn(
-                'flex min-w-0 cursor-pointer items-start justify-between gap-3 rounded-[var(--radius-card)] border p-3 text-left transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                'flex min-w-0 cursor-pointer items-start justify-between gap-3 rounded-[var(--radius-card)] border p-3 text-left transition-[color,background-color,border-color,opacity,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                 active
                   ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
                   : 'border-[var(--border-hairline)] bg-[var(--surface-card)] hover:bg-[var(--surface-elevated)]',
@@ -194,7 +194,7 @@ export function ThemeSwitcher({
               data-state={active ? 'active' : 'inactive'}
               onClick={() => handleSelectColorMode(opt.mode)}
               className={cn(
-                'inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[calc(var(--radius-control)-3px)] px-2.5 py-1.5 text-xs font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                'inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[calc(var(--radius-control)-3px)] px-2.5 py-1.5 text-xs font-medium transition-[color,background-color,border-color,opacity,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                 active
                   ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',

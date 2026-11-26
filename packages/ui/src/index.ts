@@ -3,6 +3,7 @@ export {
   type AppShellHeaderMode,
   type AppShellProps,
   type AppShellVariant,
+  type AppShellViewportMode,
 } from './components/AppShell.tsx';
 export { Badge, type BadgeProps } from './components/Badge.tsx';
 export {
@@ -75,11 +76,14 @@ export {
 } from './components/StatusBanner.tsx';
 export { Switch, type SwitchProps } from './components/Switch.tsx';
 export {
+  BottomNav,
+  type BottomNavProps,
   Tabs,
   TabsContent,
   type TabsContentProps,
   TabsList,
   type TabsListProps,
+  type TabsListVariant,
   type TabsProps,
   TabsTrigger,
   type TabsTriggerProps,

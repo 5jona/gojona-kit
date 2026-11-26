@@ -86,7 +86,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             data-pochita="toast"
             data-toast-tone={item.tone ?? 'info'}
             className={cn(
-              'pointer-events-auto flex max-w-full items-center gap-2 break-words rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-toast)] px-4 py-2 text-xs font-medium text-[var(--text-primary)] shadow-lg backdrop-blur-md',
+              'pochita-toast pointer-events-auto flex max-w-full items-center gap-2 break-words rounded-[var(--radius-pill)] border border-[var(--border-hairline)] bg-[var(--surface-toast)] px-4 py-2 text-xs font-medium text-[var(--text-primary)] shadow-lg',
               item.tone === 'success' &&
                 'border-[color-mix(in_oklab,var(--success)_40%,transparent)]',
               item.tone === 'warning' &&

@@ -1,0 +1,73 @@
+/* Layout primitives: safe-area shell chrome, bottom dock slot, and dock-mode tab bar */
+@layer components {
+  .pochita-shell-sticky-header {
+    padding-top: var(--safe-area-top);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+    background-color: color-mix(in oklab, var(--surface-canvas) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .pochita-shell-page-body {
+    padding-left: max(1rem, var(--safe-area-left));
+    padding-right: max(1rem, var(--safe-area-right));
+  }
+
+  @media (min-width: 640px) {
+    .pochita-shell-page-body {
+      padding-left: max(1.5rem, var(--safe-area-left));
+      padding-right: max(1.5rem, var(--safe-area-right));
+    }
+  }
+
+  .pochita-shell-page-body-top-safe {
+    padding-top: max(1rem, var(--safe-area-top));
+  }
+
+  .pochita-shell-page-body-bottom-safe {
+    padding-bottom: max(1rem, var(--safe-area-bottom));
+  }
+
+  .pochita-shell-footer {
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+  }
+
+  .pochita-shell-footer-bottom-safe {
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .pochita-shell-bottom {
+    padding-top: 0.375rem;
+    padding-bottom: max(0.5rem, var(--safe-area-bottom));
+    padding-left: max(0.75rem, var(--safe-area-left));
+    padding-right: max(0.75rem, var(--safe-area-right));
+    border-top: 1px solid var(--glass-divider, var(--border-hairline));
+    background-color: color-mix(in oklab, var(--surface-canvas) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .pochita-toast {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .pochita-tabs-dock {
+    border-radius: var(--radius-card);
+  }
+
+  .pochita-tabs-dock-trigger {
+    min-height: 56px;
+  }
+
+  @media (orientation: landscape) and (max-height: 520px) {
+    .pochita-tabs-dock-trigger {
+      min-height: 44px;
+      flex-direction: row;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+    }
+  }
+}

@@ -71,7 +71,7 @@ export function SegmentedControl<T extends string = string>({
               }
             }}
             className={cn(
-              'inline-flex cursor-pointer select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-pill)] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45',
+              'inline-flex cursor-pointer select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-pill)] font-medium transition-[color,background-color,border-color,opacity,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45',
               size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-xs',
               fullWidth && 'min-w-0 flex-1',
               active

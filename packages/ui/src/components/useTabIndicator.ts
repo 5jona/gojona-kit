@@ -6,6 +6,9 @@ import { useTabsInternalContext } from './tabsContext.ts';
 
 const PILL_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const PILL_GLIDE_MS = 220;
+/** Fixed layout width (px) used for pure-compositor `translate3d + scaleX` indicator transforms. */
+export const INDICATOR_BASE_WIDTH_PX = 100;
+const INDICATOR_BASE_WIDTH_CSS = `${INDICATOR_BASE_WIDTH_PX}px`;
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 function readTriggerValue(el: HTMLElement): string | null {
@@ -36,7 +39,11 @@ function findActiveTrigger(list: HTMLElement, activeValue: string | undefined): 
   return fallback;
 }
 
-function applyIndicatorStyle(
+/**
+ * Applies a pure-compositor indicator transform (`translate3d` + `scaleX` with `transform-origin: left`)
+ * against a fixed layout base width (`INDICATOR_BASE_WIDTH_PX`) so drag/settle frames trigger zero layout/paint.
+ */
+export function applyIndicatorStyle(
   el: HTMLElement,
   rect: TabIndicatorRect,
   animate: boolean,
@@ -46,12 +53,16 @@ function applyIndicatorStyle(
     el.style.opacity = '0';
     return;
   }
+  if (el.style.width !== INDICATOR_BASE_WIDTH_CSS) {
+    el.style.width = INDICATOR_BASE_WIDTH_CSS;
+  }
+  if (el.style.transformOrigin !== 'left center') {
+    el.style.transformOrigin = 'left center';
+  }
+  const scaleX = rect.width / INDICATOR_BASE_WIDTH_PX;
   const useTransition = animate && durationMs > 0 && !prefersReducedMotion();
-  el.style.transition = useTransition
-    ? `transform ${durationMs}ms ${PILL_EASING}, width ${durationMs}ms ${PILL_EASING}`
-    : 'none';
-  el.style.transform = `translate3d(${rect.x.toFixed(2)}px, 0, 0)`;
-  el.style.width = `${rect.width.toFixed(2)}px`;
+  el.style.transition = useTransition ? `transform ${durationMs}ms ${PILL_EASING}` : 'none';
+  el.style.transform = `translate3d(${rect.x.toFixed(2)}px, 0, 0) scaleX(${scaleX.toFixed(6)})`;
   el.style.opacity = '1';
 }
 
@@ -109,7 +120,7 @@ export function useTabIndicator(): UseTabIndicatorResult {
       applyRect(rect, animate, durationMs) {
         const indicator = indicatorRef.current;
         if (!indicator) return;
-        indicator.style.willChange = animate ? '' : 'transform, width';
+        indicator.style.willChange = animate ? '' : 'transform';
         applyIndicatorStyle(indicator, rect, animate, durationMs ?? PILL_GLIDE_MS);
       },
       clearDragging() {

@@ -70,4 +70,15 @@
   :root[data-surface="native-glass"] .pochita-setting-row {
     border-color: transparent;
   }
+
+  :root[data-surface="native-glass"] .pochita-shell-sticky-header,
+  :root[data-surface="native-glass"] .pochita-shell-bottom,
+  :root[data-surface="native-glass"] .pochita-toast {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  :root[data-surface="native-glass"] .pochita-shell-bottom {
+    background-color: transparent;
+  }
 }

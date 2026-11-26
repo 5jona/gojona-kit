@@ -1,6 +1,6 @@
 import * as TabsPrimitive from '@radix-ui/react-tabs';
-import type { ComponentPropsWithoutRef } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { cn } from '../lib/cn.ts';
 import { DEFAULT_TAB_SWIPE_OPTIONS } from '../lib/tabSwipe.ts';
 import {
@@ -11,22 +11,46 @@ import {
 import { useTabIndicator } from './useTabIndicator.ts';
 import { useTabPager } from './useTabPager.ts';
 
+/** Layout variant for `<TabsList>` and `<BottomNav>`. */
+export type TabsListVariant = 'pill' | 'dock';
+
 /** Props for `<TabsList>`. */
-export type TabsListProps = ComponentPropsWithoutRef<typeof TabsPrimitive.List>;
+export interface TabsListProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
+  /** Visual style: compact inline `'pill'` (default) or bottom-docked `'dock'` module selector. */
+  variant?: TabsListVariant;
+}
+
+/** Props for `<BottomNav>` (semantic alias of `<TabsList variant="dock">`). */
+export type BottomNavProps = Omit<TabsListProps, 'variant'> & {
+  variant?: TabsListVariant;
+};
+
 /** Props for `<TabsTrigger>`. */
-export type TabsTriggerProps = ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>;
+export interface TabsTriggerProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> {
+  /** Optional leading/top icon rendered inside the trigger with shrink-0 sizing. */
+  icon?: ReactNode;
+}
+
 /** Props for `<TabsContent>`. */
 export type TabsContentProps = ComponentPropsWithoutRef<typeof TabsPrimitive.Content>;
 
-const ROOT_CLS = 'relative flex min-w-0 flex-1 flex-col overflow-x-clip touch-pan-y';
+const TabsListVariantContext = createContext<TabsListVariant>('pill');
+
+const ROOT_CLS = 'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-clip touch-pan-y';
 const LIST_CLS =
-  'relative inline-flex w-full min-w-0 max-w-full items-center gap-1 overflow-x-auto touch-pan-x rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1 [scrollbar-width:none]';
+  'relative inline-flex w-full min-w-0 max-w-full shrink-0 items-center gap-1 overflow-x-auto touch-pan-x rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1 [scrollbar-width:none]';
+const DOCK_LIST_CLS =
+  'pochita-tabs-dock relative flex w-full min-w-0 max-w-full shrink-0 items-stretch gap-1 overflow-x-auto touch-pan-x border border-[var(--border-hairline)] bg-[var(--surface-elevated)] p-1 [scrollbar-width:none]';
 const INDICATOR_CLS =
-  'pointer-events-none absolute top-1 bottom-1 left-0 z-0 rounded-[calc(var(--radius-control)-3px)] bg-[var(--surface-card)] shadow-sm opacity-0';
+  'pointer-events-none absolute top-1 bottom-1 left-0 z-0 w-[100px] origin-left rounded-[calc(var(--radius-control)-3px)] bg-[var(--surface-card)] shadow-sm opacity-0';
+const DOCK_INDICATOR_CLS =
+  'pointer-events-none absolute top-1 bottom-1 left-0 z-0 w-[100px] origin-left rounded-[calc(var(--radius-card)-4px)] bg-[var(--surface-card)] shadow-sm opacity-0';
 const TRIGGER_CLS =
   'relative z-[1] inline-flex min-w-0 flex-1 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[calc(var(--radius-control)-3px)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] hover:text-[var(--text-primary)] data-[state=active]:text-[var(--text-primary)]';
+const DOCK_TRIGGER_CLS =
+  'pochita-tabs-dock-trigger relative z-[1] inline-flex min-h-[56px] min-w-0 flex-1 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 whitespace-nowrap rounded-[calc(var(--radius-card)-4px)] px-2 py-1.5 text-[11px] font-medium leading-tight text-[var(--text-secondary)] transition-[color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] hover:text-[var(--text-primary)] data-[state=active]:font-semibold data-[state=active]:text-[var(--accent)]';
 const CONTENT_CLS =
-  'mt-3.5 min-w-0 flex-1 touch-pan-y focus-visible:outline-none [&[hidden]]:hidden';
+  'mt-3.5 min-w-0 flex-1 touch-pan-y focus-visible:outline-none [&[hidden]]:hidden [[data-pochita="app-shell-body"]>&]:mt-0';
 
 const POINTER_FOCUS_WINDOW_MS = 500;
 const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -127,29 +151,41 @@ export function Tabs({
 }
 
 /** Horizontally scrollable tab trigger bar with GPU-composited sliding active indicator pill. */
-export function TabsList({ className, children, ...props }: TabsListProps) {
+export function TabsList({ variant = 'pill', className, children, ...props }: TabsListProps) {
   const { listRef, indicatorRef } = useTabIndicator();
+  const isDock = variant === 'dock';
 
   return (
-    <TabsPrimitive.List
-      ref={listRef}
-      data-pochita="tabs-list"
-      className={cn(LIST_CLS, className)}
-      {...props}
-    >
-      <span
-        ref={indicatorRef}
-        aria-hidden="true"
-        data-pochita="tabs-indicator"
-        className={INDICATOR_CLS}
-      />
-      {children}
-    </TabsPrimitive.List>
+    <TabsListVariantContext.Provider value={variant}>
+      <TabsPrimitive.List
+        ref={listRef}
+        data-pochita="tabs-list"
+        data-variant={variant}
+        className={cn(isDock ? DOCK_LIST_CLS : LIST_CLS, className)}
+        {...props}
+      >
+        <span
+          ref={indicatorRef}
+          aria-hidden="true"
+          data-pochita="tabs-indicator"
+          data-variant={variant}
+          className={isDock ? DOCK_INDICATOR_CLS : INDICATOR_CLS}
+        />
+        {children}
+      </TabsPrimitive.List>
+    </TabsListVariantContext.Provider>
   );
+}
+
+/** Semantic bottom module dock backed by `<TabsList variant="dock">` with 1:1 swipe indicator sync. */
+export function BottomNav({ variant = 'dock', ...props }: BottomNavProps) {
+  return <TabsList variant={variant} {...props} />;
 }
 
 /** Individual tab trigger button inside `<TabsList>` with touch-safe focus hygiene. */
 export function TabsTrigger({
+  icon,
+  children,
   className,
   onPointerDown,
   onTouchStart,
@@ -160,12 +196,14 @@ export function TabsTrigger({
   ...props
 }: TabsTriggerProps) {
   const ctx = useTabsInternalContext();
+  const listVariant = useContext(TabsListVariantContext);
 
   return (
     <TabsPrimitive.Trigger
       data-pochita="tabs-trigger"
+      data-variant={listVariant}
       data-tab-value={props.value}
-      className={cn(TRIGGER_CLS, className)}
+      className={cn(listVariant === 'dock' ? DOCK_TRIGGER_CLS : TRIGGER_CLS, className)}
       onPointerDown={(e) => {
         ctx?.markPointerInteraction();
         onPointerDown?.(e);
@@ -199,7 +237,14 @@ export function TabsTrigger({
         }
       }}
       {...props}
-    />
+    >
+      {icon ? (
+        <span className="shrink-0" aria-hidden="true">
+          {icon}
+        </span>
+      ) : null}
+      {children}
+    </TabsPrimitive.Trigger>
   );
 }
 
