@@ -1,5 +1,7 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import { type HTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import { cn } from '../lib/cn.ts';
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 /**
  * Layout form factor of `<AppShell>`.
@@ -81,6 +83,35 @@ export function AppShell({
   const resolvedMaxWidth = maxWidthClassName ?? (fullBleed ? 'max-w-none' : 'max-w-5xl');
   const showHeader = headerMode !== 'hidden';
   const isCompactHeader = headerMode === 'compact';
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!bottomSlot || typeof document === 'undefined') return;
+    const el = bottomRef.current;
+    if (!el) return;
+
+    const rootStyle = document.documentElement.style;
+    const syncBottomOffset = () => {
+      const height = el.getBoundingClientRect().height;
+      if (height > 0) {
+        rootStyle.setProperty('--pochita-toast-bottom', `${Math.ceil(height + 12)}px`);
+      }
+    };
+
+    syncBottomOffset();
+    if (typeof ResizeObserver === 'undefined') {
+      return () => {
+        rootStyle.removeProperty('--pochita-toast-bottom');
+      };
+    }
+
+    const observer = new ResizeObserver(syncBottomOffset);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      rootStyle.removeProperty('--pochita-toast-bottom');
+    };
+  }, [bottomSlot]);
 
   const headerTitleBlock = (
     <div className={cn('flex min-w-0 flex-1 items-center', isDrawer ? 'gap-2.5' : 'gap-3')}>
@@ -237,6 +268,7 @@ export function AppShell({
 
       {bottomSlot ? (
         <div
+          ref={bottomRef}
           data-pochita="app-shell-bottom"
           className={cn(
             'pochita-shell-bottom shrink-0',

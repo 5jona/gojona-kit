@@ -54,6 +54,15 @@
     -webkit-backdrop-filter: blur(12px);
   }
 
+  :root:has([data-pochita="app-shell-bottom"]) {
+    --pochita-toast-bottom: calc(5.25rem + var(--safe-area-bottom));
+  }
+
+  .pochita-toast-viewport {
+    bottom: var(--pochita-toast-bottom, 1.25rem);
+    transition: bottom 150ms ease-out;
+  }
+
   .pochita-tabs-dock {
     border-radius: var(--radius-card);
   }

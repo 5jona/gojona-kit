@@ -413,14 +413,33 @@ test('P1 performance invariants: native-glass disables redundant blur, zero tran
   assert.ok(nativeGlassCss.includes('.pochita-toast'));
   assert.ok(nativeGlassCss.includes('backdrop-filter: none'));
 
-  // Toast renders semantic class without Tailwind backdrop-blur-md utility override
+  // Toast renders semantic class without Tailwind backdrop-blur-md or hardcoded bottom-5
   const toastSource = fs.readFileSync(path.join(UI_ROOT, 'src/components/Toast.tsx'), 'utf8');
   assert.ok(toastSource.includes('pochita-toast'));
+  assert.ok(toastSource.includes('pochita-toast-viewport'));
+  assert.ok(!toastSource.includes('bottom-5'));
   assert.ok(!toastSource.includes('backdrop-blur-md'));
   const toastHtml = renderToStaticMarkup(
     createElement(ToastProvider, null, createElement('span', null, 'ok')),
   );
   assert.ok(toastHtml.includes('data-pochita="toast-viewport"'));
+  assert.ok(toastHtml.includes('pochita-toast-viewport'));
+  assert.ok(!toastHtml.includes('bottom-5'));
+
+  // Layout CSS defines automatic toast bottom offset when AppShell bottomSlot is present
+  const layoutCss = fs.readFileSync(path.join(UI_ROOT, 'src/styles/layout.css'), 'utf8');
+  assert.ok(layoutCss.includes(':root:has([data-pochita="app-shell-bottom"])'));
+  assert.ok(layoutCss.includes('--pochita-toast-bottom: calc(5.25rem + var(--safe-area-bottom))'));
+  assert.ok(layoutCss.includes('.pochita-toast-viewport'));
+  assert.ok(layoutCss.includes('bottom: var(--pochita-toast-bottom, 1.25rem)'));
+  assert.ok(layoutCss.includes('transition: bottom 150ms ease-out'));
+
+  // AppShell dynamically measures bottomSlot and syncs --pochita-toast-bottom safely
+  const appShellSource = fs.readFileSync(path.join(UI_ROOT, 'src/components/AppShell.tsx'), 'utf8');
+  assert.ok(appShellSource.includes('ResizeObserver'));
+  assert.ok(appShellSource.includes("rootStyle.setProperty('--pochita-toast-bottom'"));
+  assert.ok(appShellSource.includes("rootStyle.removeProperty('--pochita-toast-bottom')"));
+  assert.ok(appShellSource.includes("if (!bottomSlot || typeof document === 'undefined') return;"));
 
   // Zero transition-all across all UI components
   const componentsDir = path.join(UI_ROOT, 'src/components');

@@ -78,7 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         role="status"
         aria-live="polite"
         data-pochita="toast-viewport"
-        className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex flex-col items-center gap-2 px-4"
+        className="pochita-toast-viewport pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4"
       >
         {items.map((item) => (
           <div
