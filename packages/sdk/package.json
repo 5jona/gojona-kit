@@ -1,6 +1,6 @@
 {
   "name": "@gojona/sideveil-sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "React plugin SDK and typed RPC/event/HUD/container hooks for SideVeil Android sidebar plugins.",
   "license": "MIT",
   "author": "5jona",

@@ -1,6 +1,6 @@
 {
   "name": "@gojona/contracts-gen",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Zero-dependency contract-first IDL compiler and fixture validator emitting Rust, Kotlin, TypeScript, and JSON Schema 2020-12 artifacts.",
   "license": "MIT",
   "author": "5jona",
