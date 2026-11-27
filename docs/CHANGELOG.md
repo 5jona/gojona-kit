@@ -4,6 +4,22 @@ All notable changes to `gojona-kit` (`@gojona/*` packages) are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-11-27
+
+### Added
+
+- **`@gojona/ui`**: Added `AppShell` `fullBleed`, `viewportMode` (`scroll` | `fill`), `bottomSlot`, safe-area inset styling, `TabsList` `dock` variant, `BottomNav` alias, and `TabsTrigger` icon slot while preserving 1:1 swipe gestures across `app-shell-body`.
+
+### Changed
+
+- **`@gojona/ui`**: Converted `TabsIndicator` to compositor-only `translate3d` + `scaleX`, replaced `transition-all` with targeted transition properties, disabled redundant `native-glass` backdrop blur, and declared CSS-only `sideEffects`.
+- **`@gojona/bridge`**: Synced generated SideVeil contract constants (`SIDEVEIL_BUILTIN_DIAGNOSTIC.VERSION = '0.3.0'`).
+
+### Fixed
+
+- **`@gojona/ui`**: Offset `Toast` viewport above `AppShell` `bottomSlot`, moved theme and base `:root` tokens into `@layer base` for `native-glass` layering, and fixed `useTabPager` swipe abort and `overflow-x: visible` ancestor checks.
+- **`@gojona/config` & `@gojona/bridge` & `@gojona/sideveil-sdk` & `@gojona/contracts-gen`**: Added `/core` subpath resolution in `@gojona/config/register-ts`, fixed `onPluginEvent` concurrent deduplication, sticky events in `MockTransport`, non-DOM timer/unmount guards, stale async overwrite guards in `@gojona/sideveil-sdk`, and cyclic `$ref` rejection in `@gojona/contracts-gen`.
+
 ## [0.2.0] - 2026-11-25
 
 ### Fixed
